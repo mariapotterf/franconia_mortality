@@ -1,0 +1,207 @@
+
+
+# Make database with the study sites coordinates and sites attributes table
+
+# process: 
+
+# Read all GPS coordinates
+# read all GPS manual data
+# Need to have a unique GPS number!!
+# Read attribute table
+# Merge data
+
+
+# -------------------------------------
+
+rm(list=ls())
+
+# Libraries
+#library(tmap)
+#library(tmaptools)
+library(rgdal)
+library(dplyr)
+library(tidyr)
+
+library(sf)
+
+library(ggplot2)
+library(rnaturalearth) # for map data
+library(ggspatial)
+library(ggpubr)
+
+
+# Get path ----------------------------------------------------------------
+path = 'C:/Users/ge45lep/Documents/2021_Franconia_mortality'
+
+
+# Get working directory to read all files to gpx points:
+setwd(paste(path, "raw/fieldWork/raw", sep = '/'))
+
+
+# read data -------------------------------------
+# Get GPS files 
+gps_files <- list.files(pattern = "*.gpx") # 
+
+# get manually created missing GPS data
+gps_man <- read_sf(dsn = paste(path, "fieldData/add_GPS.shp", sep = '/')) #, layer="add_GPS.shp"
+
+# Get attribute table: download from teh sync and share
+df_att <- read.csv2(paste(path, 'raw/fieldWork/study_sites.csv', sep = '/'))
+# ------------------------------------------------
+
+unique(df_att$Species1)
+
+
+# Read gpx file
+#temp.gpx <- read_sf(dsn = gps_files[3], layer="waypoints")
+
+my_gpx <- lapply(gps_files, function(i) {read_sf(dsn = i, layer="waypoints")})
+
+
+# merge all GPS data in one file
+all_gps <- do.call("rbind", my_gpx)
+
+plot(all_gps)
+
+
+
+# Merge GPX and manual GPS data -------------------------------------------
+
+# First need to make same columns and same names
+all_gps <- 
+  all_gps %>% 
+  select_if(~!all(is.na(.))) %>%
+  rename(elevation = ele) %>% 
+  select(name, elevation, time, geometry)
+
+gps_man <-
+  gps_man %>% 
+  mutate(time = NA)  %>% 
+    select(name, elevation, time, geometry)
+
+# Add rows to create a final file
+all_gps2 = rbind(all_gps, gps_man)
+
+nrow(all_gps2)
+
+# Plot XY data collection on the map --------------
+
+
+# get and bind country data
+de_sf <- ne_states(country = "germany", returnclass = "sf")
+
+# Get only bavaria
+bav_sf <- de_sf %>% 
+  dplyr::filter(name_en == "Bavaria")
+
+
+# Plot GPS points on the map
+ggplot() + 
+  geom_sf(data = bav_sf, fill = 'grey') +
+  geom_sf(data = all_gps2, alpha = 0.5) #+
+
+
+
+# Make unique names for GPS points ----------------------------------------
+
+# Put the manes of the GPS on the same forst: 3 digits, need to add leading zero!
+sprintf("%08d", as.numeric("14"))
+
+
+# Add padding zeros on datasets: e.g leading zeros
+df_att <- df_att %>%
+  mutate(name = sprintf("%03d", as.numeric(GPS.numb)))# %>% 
+  #distinct(name)
+  
+unique(df_att$name)
+
+
+# 
+
+# Join GPS data with attributes -------------------------------------------
+merged_df <- all_gps2  %>%                # first one needs to be sf to keep sf attributes
+  select_if(~!all(is.na(.))) %>%         # Remove all columns that are NA from the GPS data
+  left_join(df_att, by = 'name')
+
+
+
+# Merge GPS with attribute table ------------------------------------------
+# merged_df <- merge(all_gps, df_att,  duplicateGeoms = T) # , all.x = T  # because converting to sf does not held NA values
+
+# 
+
+nrow(merged_df)
+
+unique(merged_df$name)
+
+
+# Plot data by species -----------------------------------------------------------
+
+
+# Make a ggplot -----------------------------------------------------------
+
+# Filter firrst the data - plots by categories:
+cat_sf <- merged_df %>% 
+  filter(Category %in% c('CC', 'F', "D"))
+
+
+p.categ <- ggplot() + 
+  geom_sf(data = bav_sf, fill = 'grey') +
+  geom_sf(data = cat_sf, 
+          aes(color = Category), alpha = 0.5) + 
+  scale_color_manual(values = c('red', 'orange', 'darkgreen'),
+                     labels = c("cleared", 'uncleared', 'forest'))+
+  theme_classic() +
+  theme(legend.position = 'bottom')
+
+
+#  Plot by species:
+my_species = c('spruce', 'fir', 'beech', 'oak', 'pine')
+species_sf <- merged_df %>% 
+  filter(Species1 %in% my_species)
+
+
+p.species <- ggplot() + 
+  geom_sf(data = bav_sf, fill = 'grey') +
+  geom_sf(data = species_sf, 
+          aes(color = Species1)) + 
+  scale_color_viridis_d() +
+  theme_classic() +
+  theme(legend.position = 'bottom')
+
+
+ggarrange(p.categ, p.species)
+
+
+# Get some stats ---------------------------------------------------------------
+
+# How many triplets by species we have?
+
+# Get corrector by the number of supbplots:
+# Triplet has 3, pair has 2
+# No need if I have group them first by estimated number of teh triplet/pairs
+
+
+df_att %>% 
+  filter(Triplet %in% c('emg pair', 'emg triplet', 'triplet')) %>% 
+  filter(Species1 %in% my_species) %>% 
+  group_by(Species1, Triplet, Triplet_num) %>% 
+ # st_drop_geometry() %>% 
+  tally() %>%
+  #print(n = 40) #
+  ungroup() %>% 
+  group_by(Species1, Triplet) %>% 
+  tally() %>% 
+#  mutate(sampl_correct = case_when(
+ #   grepl('pair',    Triplet) ~ 2,
+  #  grepl('triplet', Triplet) ~ 3) #,
+  #  #n2 = round(n/sampl_correct, 1)
+  #  ) #%>%
+  tidyr::spread(Species1, n) #%>% 
+  #dplyr::select(!c(n, sampl_correct))
+  
+  
+  
+
+
+          
