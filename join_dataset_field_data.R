@@ -84,7 +84,7 @@ all_gps2 = rbind(all_gps, gps_man)
 
 nrow(all_gps2)
 
-# Plot XY data collection on the map --------------
+# Plot XY data collection on the map ---------------------------------------------
 
 
 # get and bind country data
@@ -98,11 +98,13 @@ bav_sf <- de_sf %>%
 # Plot GPS points on the map
 ggplot() + 
   geom_sf(data = bav_sf, fill = 'grey') +
-  geom_sf(data = all_gps2, alpha = 0.5) #+
+  geom_sf(data = all_gps2, alpha = 0.5) +
+  theme_classic() +
+  theme(legend.position = 'bottom')
 
 
 
-# Make unique names for GPS points ----------------------------------------
+# Make unique names for GPS points -----------------------------------------------
 
 # Put the manes of the GPS on the same forst: 3 digits, need to add leading zero!
 sprintf("%08d", as.numeric("14"))
@@ -183,23 +185,15 @@ ggarrange(p.categ, p.species)
 
 
 df_att %>% 
-  filter(Triplet %in% c('emg pair', 'emg triplet', 'triplet')) %>% 
+  filter(Triplet %in% c('pair', 'emg pair', 'triplet', 'emg triplet')) %>% 
   filter(Species1 %in% my_species) %>% 
   group_by(Species1, Triplet, Triplet_num) %>% 
- # st_drop_geometry() %>% 
   tally() %>%
-  #print(n = 40) #
   ungroup() %>% 
   group_by(Species1, Triplet) %>% 
   tally() %>% 
-#  mutate(sampl_correct = case_when(
- #   grepl('pair',    Triplet) ~ 2,
-  #  grepl('triplet', Triplet) ~ 3) #,
-  #  #n2 = round(n/sampl_correct, 1)
-  #  ) #%>%
   tidyr::spread(Species1, n) #%>% 
-  #dplyr::select(!c(n, sampl_correct))
-  
+
   
   
 
