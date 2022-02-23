@@ -194,7 +194,26 @@ df_att %>%
   tally() %>% 
   tidyr::spread(Species1, n) #%>% 
 
-  
+
+# How to count how many categories do we have for the F-D or F-CC pairs? ---------
+head(df_att)
+
+# make a dummy example:
+dd <- data.frame(id = c(1,1,2,2,2,3,3,4, 4),
+                 cat = c('c','f','c','d','f','c','f', 'd', 'f'))
+
+
+# Convert from long to wide format
+tidyr::spread(dd, id, cat)
+
+dd %>% 
+pivot_longer(cols = c(cat)) # %>%
+
+
+# Count how many times I have combination of values?
+dd %>% 
+  group_by(id) %>% 
+  count()
   
 
 
