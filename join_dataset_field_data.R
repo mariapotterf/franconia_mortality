@@ -16,14 +16,10 @@
 rm(list=ls())
 
 # Libraries
-#library(tmap)
-#library(tmaptools)
 library(rgdal)
 library(dplyr)
 library(tidyr)
-
 library(sf)
-
 library(ggplot2)
 library(rnaturalearth) # for map data
 library(ggspatial)
@@ -49,23 +45,23 @@ gps_man <- read_sf(dsn = paste(path, "fieldData/add_GPS.shp", sep = '/')) #, lay
 df_att <- read.csv2(paste(path, 'raw/fieldWork/study_sites.csv', sep = '/'))
 # ------------------------------------------------
 
-unique(df_att$Species1)
-
-
 # Read gpx file
 #temp.gpx <- read_sf(dsn = gps_files[3], layer="waypoints")
 
 my_gpx <- lapply(gps_files, function(i) {read_sf(dsn = i, layer="waypoints")})
 
 
-# merge all GPS data in one file
+
+# Process data :
+
+# merge all GPX data in one file
 all_gps <- do.call("rbind", my_gpx)
 
 plot(all_gps)
 
 
-
 # Merge GPX and manual GPS data -------------------------------------------
+
 
 # First need to make same columns and same names
 all_gps <- 
@@ -84,8 +80,9 @@ all_gps2 = rbind(all_gps, gps_man)
 
 nrow(all_gps2)
 
-# Plot XY data collection on the map ---------------------------------------------
 
+
+# Plot XY data collection on the map ---------------------------------------------
 
 # get and bind country data
 de_sf <- ne_states(country = "germany", returnclass = "sf")
@@ -140,8 +137,6 @@ unique(merged_df$name)
 # Plot data by species -----------------------------------------------------------
 
 
-# Make a ggplot -----------------------------------------------------------
-
 # Filter firrst the data - plots by categories:
 cat_sf <- merged_df %>% 
   filter(Category %in% c('CC', 'F', "D"))
@@ -158,7 +153,7 @@ p.categ <- ggplot() +
 
 
 #  Plot by species:
-my_species = c('spruce', 'fir', 'beech', 'oak', 'pine')
+
 species_sf <- merged_df %>% 
   filter(Species1 %in% my_species)
 
@@ -175,7 +170,7 @@ p.species <- ggplot() +
 ggarrange(p.categ, p.species)
 
 
-# Get some stats ---------------------------------------------------------------
+# Get  stats ---------------------------------------------------------------
 
 # How many triplets by species we have?
 
@@ -195,19 +190,39 @@ df_att %>%
   tidyr::spread(Species1, n) #%>% 
 
 
-# How to count how many categories do we have for the F-D or F-CC pairs? ---------
+# Count how many categories do we have for the F-D or F-CC pairs? ---------
+
+library(dplyr)
+
+df_att %>% 
+  filter(Triplet %in% c('pair', 'emg pair', 'triplet', 'emg triplet')) %>% 
+  filter(Species1 %in% my_species) %>% 
+  group_by(Species1, Triplet, Triplet_num) %>% 
+  #%>% 
+  #group_by(id) %>% 
+  arrange(Category) %>% 
+  summarize(combination = paste0(Category, collapse = "-"), .groups = "drop") %>% 
+  count(combination)
+
+
+
+
 head(df_att)
 
-# make a dummy example:
-dd <- data.frame(id = c(1,1,2,2,2,3,3,4, 4),
-                 cat = c('c','f','c','d','f','c','f', 'd', 'f'))
+# make a dummy example ---------------------------------------------------------
+
+dd <- data.frame(id = c(1,1,2,2,2,3,3,4, 4, 5,5),
+                 cat = c('c','f','c','d','f','c','f', 'd', 'f', 'f', 'd'))
 
 
-# Convert from long to wide format
-tidyr::spread(dd, id, cat)
+library(dplyr)
 
 dd %>% 
-pivot_longer(cols = c(cat)) # %>%
+  arrange(cat) %>% 
+  group_by(id) %>% 
+  summarize(combination = paste0(cat, collapse = "-"), .groups = "drop") %>% 
+  count(combination)
+
 
 
 # Count how many times I have combination of values?
