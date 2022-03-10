@@ -154,6 +154,8 @@ p.categ <- ggplot() +
 
 #  Plot by species:
 
+my_species = c('spruce', 'oak', 'beech', 'pine')
+
 species_sf <- merged_df %>% 
   filter(Species1 %in% my_species)
 
