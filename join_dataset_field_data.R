@@ -85,7 +85,8 @@ nrow(all_gps2)
 # Plot XY data collection on the map ---------------------------------------------
 
 # get and bind country data
-de_sf <- ne_states(country = "germany", returnclass = "sf")
+de_sf <- ne_states(country = "germany", 
+                   returnclass = "sf")
 
 # Get only bavaria
 bav_sf <- de_sf %>% 
@@ -93,6 +94,7 @@ bav_sf <- de_sf %>%
 
 
 # Plot GPS points on the map
+windows()
 ggplot() + 
   geom_sf(data = bav_sf, fill = 'grey') +
   geom_sf(data = all_gps2, alpha = 0.5) +
@@ -153,8 +155,7 @@ p.categ <- ggplot() +
 
 
 #  Plot by species:
-
-my_species = c('spruce', 'oak', 'beech', 'pine')
+my_species = c('spruce', 'beech', 'oak', 'pine')
 
 species_sf <- merged_df %>% 
   filter(Species1 %in% my_species)
