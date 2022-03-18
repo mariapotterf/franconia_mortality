@@ -19,6 +19,10 @@ library(tidyr)
 #path = 'C:/Users/ge45lep/Documents/2021_Franconia_mortality/photo'
 path = 'C:/Users/ge45lep/Downloads/iCloud Photos/iCloud Photos'
 
+#path to Sebastian photos: unfortunately, they do not have a GPS coordinates
+#path = 'F:/Projects/FranconiaMortality/pictures/Franconia_Resilience'
+# Check the photos online: https://www.pic2map.com/photos-llokql.html
+
 setwd(path)
 
 
