@@ -43,6 +43,11 @@ gps_man <- read_sf(dsn = paste(path, "fieldData/add_GPS.shp", sep = '/')) #, lay
 
 # Get attribute table: download from teh sync and share
 df_att <- read.csv2(paste(path, 'raw/fieldWork/study_sites.csv', sep = '/'))
+
+# Replace  F (forest) by L (living) as D (Dead) is also a forest
+df_att <- df_att %>% 
+  mutate(Category = replace(Category, Category == 'F', 'L')) #%>% 
+
 # ------------------------------------------------
 
 # Read gpx file
@@ -175,6 +180,8 @@ ggarrange(p.categ, p.species)
 
 # Get  stats ---------------------------------------------------------------
 
+
+# Replace F (forest) by L (Living) as D (dead) is also a forest
 # How many triplets by species we have?
 
 # Get corrector by the number of supbplots:
@@ -183,6 +190,7 @@ ggarrange(p.categ, p.species)
 
 
 df_att %>% 
+ 
   filter(Triplet %in% c('pair', 'emg pair', 'triplet', 'emg triplet')) %>% 
   filter(Species1 %in% my_species) %>% 
   group_by(Species1, Triplet, Triplet_num) %>% 
