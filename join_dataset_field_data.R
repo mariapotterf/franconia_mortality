@@ -46,7 +46,8 @@ df_att <- read.csv2(paste(path, 'raw/fieldWork/study_sites.csv', sep = '/'))
 
 # Replace  F (forest) by L (living) as D (Dead) is also a forest
 df_att <- df_att %>% 
-  mutate(Category = replace(Category, Category == 'F', 'L')) #%>% 
+  mutate(Category = replace(Category, Category == 'F', 'L')) %>%
+  mutate(Paper_numb = as.numeric(Paper_numb))
 
 # ------------------------------------------------
 
@@ -55,7 +56,7 @@ df_att <- df_att %>%
 
 my_gpx <- lapply(gps_files, function(i) {read_sf(dsn = i, layer="waypoints")})
 
-
+as.numeric(c('1','3','2'))
 
 # Process data :
 
@@ -95,7 +96,7 @@ nrow(all_gps2)
 
 
 
-# Plot XY data collection on the map ---------------------------------------------
+# Plot XY data collection on the map (do not run) ---------------------------------------------
 
 # get and bind country data
 de_sf <- ne_states(country = "germany", 
@@ -107,7 +108,7 @@ bav_sf <- de_sf %>%
 
 
 # Plot GPS points on the map
-windows()
+#windows()
 ggplot() + 
   geom_sf(data = bav_sf, fill = 'grey') +
   geom_sf(data = all_gps2, alpha = 1) +
@@ -119,10 +120,10 @@ ggplot() +
 # Make unique names for GPS points -----------------------------------------------
 
 # Put the manes of the GPS on the same forst: 3 digits, need to add leading zero!
-sprintf("%08d", as.numeric("14"))
+#sprintf("%08d", as.numeric("14"))
 
 
-# Add padding zeros on datasets: e.g leading zeros
+# Add padding zeros on datasets: e.g leading zeros -------------------------------
 df_att <- df_att %>%
   mutate(name = sprintf("%03d", as.numeric(GPS.numb)))# %>% 
   #distinct(name)
@@ -130,11 +131,17 @@ df_att <- df_att %>%
 unique(df_att$name)
 
 
+# adjust names also in the all_gps points:
+all_gps2 <- all_gps2 %>%
+  mutate(name = sprintf("%03d", as.numeric(name)))# %>% 
+
+unique(all_gps2$name)
+
 # 
 
 # Join GPS data with attributes -------------------------------------------
 merged_df <- all_gps2  %>%                # first one needs to be sf to keep sf attributes
-  select_if(~!all(is.na(.))) %>%         # Remove all columns that are NA from the GPS data
+  #select_if(~!all(is.na(.))) %>%         # Remove all columns that are NA from the GPS data
   left_join(df_att, by = 'name')
 
 
@@ -144,11 +151,90 @@ nrow(merged_df)
 unique(merged_df$name)
 
 
+# define filters
+my_species = c('spruce', 'beech', 'oak', 'pine')
+
+
+
+# Filter data by species to share: spruce/oak ---------------------------------------------
+# this is just a general overview of triplets!
+
+triplet_sf <- merged_df %>% 
+  filter(Triplet == 'triplet' | Triplet == 'emg triplet' |  Triplet == 'pair') %>% 
+  filter(Species %in% c('spruce', 'beech') ) %>% 
+  select(name, elevation, geometry, Paper_numb, Triplet, Species, Category,
+         Forest_district, Contact)
+
+
+# Plot final triplets: Beech and spruce
+cat_sf <- triplet_sf %>% 
+  filter(Category %in% c('C', 'L', "D"))
+
+
+p.categ <- ggplot() + 
+  geom_sf(data = bav_sf, fill = 'grey') +
+  geom_sf(data = cat_sf, 
+          aes(color = Category), alpha = 0.5) + 
+  scale_color_manual(values = c('red', 'orange', 'darkgreen'),
+                     labels = c("Salvaged", 'Dead', 'Living'))+
+  theme_classic() +
+  theme(legend.position = 'bottom')
 
 
 
 
+species_sf <- triplet_sf %>% 
+  filter(Species %in% my_species)
 
+
+p.species <- ggplot() + 
+  geom_sf(data = bav_sf, fill = 'grey') +
+  geom_sf(data = species_sf, 
+          aes(color = Species)) + 
+  scale_color_viridis_d() +
+  theme_classic() +
+  theme(legend.position = 'bottom')
+
+
+ggarrange(p.categ, p.species)
+
+
+# Get stats: 
+triplet_sf %>%
+  #select(-c(geometry)) %>% 
+  as_tibble() %>%   # remove the geometry
+  filter(Triplet %in% c('triplet', 'emg triplet', 'emg pair')) %>% 
+  filter(Species %in% my_species) %>% 
+  group_by(Species, Triplet, Paper_numb ) %>% 
+  tally() %>%
+  ungroup() %>% 
+  group_by(Species, Triplet) %>% 
+  tally() %>% 
+  tidyr::spread(Species, n) #%>% 
+
+
+
+# Export the file
+st_write(triplet_sf, 'C:/Users/ge45lep/Documents/2021_Franconia_mortality/fieldData/final/filtered.gpkg',
+         layer = 'spruce_beech')
+
+
+library(data.table)
+fwrite(triplet_sf, 'C:/Users/ge45lep/Documents/2021_Franconia_mortality/fieldData/final/filtered.csv')
+
+
+
+
+# Plot data on interactive map --------------------------------------------
+
+library(mapview)
+
+# filter to commercial ports and active lighthouses
+mapview(triplet_sf, 
+        #col.regions="darkblue", 
+        cex=5, 
+        layer.name="Study sites", 
+        pch=22) 
 # Plot data by species -----------------------------------------------------------
 
 
