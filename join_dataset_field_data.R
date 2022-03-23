@@ -62,6 +62,14 @@ my_gpx <- lapply(gps_files, function(i) {read_sf(dsn = i, layer="waypoints")})
 # merge all GPX data in one file
 all_gps <- do.call("rbind", my_gpx)
 
+
+# Remove names from GPX coordinates 
+# 089 = Freising
+# 134 = Fabrikschleichach
+
+all_gps <- all_gps %>% 
+  filter(name != "089" & name != "134" ) 
+
 plot(all_gps)
 
 
@@ -102,7 +110,7 @@ bav_sf <- de_sf %>%
 windows()
 ggplot() + 
   geom_sf(data = bav_sf, fill = 'grey') +
-  geom_sf(data = all_gps2, alpha = 0.5) +
+  geom_sf(data = all_gps2, alpha = 1) +
   theme_classic() +
   theme(legend.position = 'bottom')
 
@@ -131,14 +139,14 @@ merged_df <- all_gps2  %>%                # first one needs to be sf to keep sf 
 
 
 
-# Merge GPS with attribute table ------------------------------------------
-# merged_df <- merge(all_gps, df_att,  duplicateGeoms = T) # , all.x = T  # because converting to sf does not held NA values
-
-# 
-
 nrow(merged_df)
 
 unique(merged_df$name)
+
+
+
+
+
 
 
 # Plot data by species -----------------------------------------------------------
@@ -146,7 +154,7 @@ unique(merged_df$name)
 
 # Filter firrst the data - plots by categories:
 cat_sf <- merged_df %>% 
-  filter(Category %in% c('CC', 'F', "D"))
+  filter(Category %in% c('CC', 'L', "D"))
 
 
 p.categ <- ggplot() + 
@@ -154,7 +162,7 @@ p.categ <- ggplot() +
   geom_sf(data = cat_sf, 
           aes(color = Category), alpha = 0.5) + 
   scale_color_manual(values = c('red', 'orange', 'darkgreen'),
-                     labels = c("cleared", 'uncleared', 'forest'))+
+                     labels = c("Salvaged", 'Dead', 'Living'))+
   theme_classic() +
   theme(legend.position = 'bottom')
 
@@ -190,10 +198,9 @@ ggarrange(p.categ, p.species)
 
 
 df_att %>% 
- 
   filter(Triplet %in% c('pair', 'emg pair', 'triplet', 'emg triplet')) %>% 
   filter(Species1 %in% my_species) %>% 
-  group_by(Species1, Triplet, Triplet_num) %>% 
+  group_by(Species1, Triplet, Paper_numb ) %>% 
   tally() %>%
   ungroup() %>% 
   group_by(Species1, Triplet) %>% 
