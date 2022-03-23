@@ -156,7 +156,7 @@ my_species = c('spruce', 'beech', 'oak', 'pine')
 
 
 
-# Filter data by species to share: spruce/oak ---------------------------------------------
+# Filter data by species to share: spruce/beech ---------------------------------------------
 # this is just a general overview of triplets!
 
 triplet_sf <- merged_df %>% 
