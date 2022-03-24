@@ -41,22 +41,22 @@ gps_files <- list.files(pattern = "*.gpx") #
 # get manually created missing GPS data
 gps_man <- read_sf(dsn = paste(path, "fieldData/add_GPS.shp", sep = '/')) #, layer="add_GPS.shp"
 
-# Get attribute table: download from teh sync and share
-df_att <- read.csv2(paste(path, 'raw/fieldWork/study_sites.csv', sep = '/'))
+# Get attribute table: download from teh sync and share  
+# Keep a copy just in case on online copy fail!
+df_att <- read.csv2(paste(path, 'raw/fieldWork/study_sites.csv', sep = '/'), 
+                    encoding = "UTF-8")
 
 # Replace  F (forest) by L (living) as D (Dead) is also a forest
 df_att <- df_att %>% 
   mutate(Category = replace(Category, Category == 'F', 'L')) %>%
-  mutate(Paper_numb = as.numeric(Paper_numb))
-
+  mutate(Paper_numb = as.numeric(Paper_numb)) %>%
+ # mutate()
+  drop_na(Paper_numb) # remove sites without paper indication
 # ------------------------------------------------
 
 # Read gpx file
 #temp.gpx <- read_sf(dsn = gps_files[3], layer="waypoints")
-
 my_gpx <- lapply(gps_files, function(i) {read_sf(dsn = i, layer="waypoints")})
-
-as.numeric(c('1','3','2'))
 
 # Process data :
 
@@ -69,7 +69,7 @@ all_gps <- do.call("rbind", my_gpx)
 # 134 = Fabrikschleichach
 
 all_gps <- all_gps %>% 
-  filter(name != "089" & name != "134" ) 
+  filter(!name %in% c("089", "134", "142", "143")) 
 
 plot(all_gps)
 
@@ -91,6 +91,9 @@ gps_man <-
 
 # Add rows to create a final file
 all_gps2 = rbind(all_gps, gps_man)
+
+all_gps2 <- all_gps2 %>% 
+  select(c(name, geometry))
 
 nrow(all_gps2)
 
@@ -125,15 +128,17 @@ ggplot() +
 
 # Add padding zeros on datasets: e.g leading zeros -------------------------------
 df_att <- df_att %>%
+  filter(GPS.numb != 'NA') %>% 
   mutate(name = sprintf("%03d", as.numeric(GPS.numb)))# %>% 
   #distinct(name)
   
 unique(df_att$name)
+unique(df_att$GPS.numb)
 
 
 # adjust names also in the all_gps points:
 all_gps2 <- all_gps2 %>%
-  mutate(name = sprintf("%03d", as.numeric(name)))# %>% 
+  mutate(name = sprintf("%03d", as.numeric(name))) 
 
 unique(all_gps2$name)
 
@@ -142,7 +147,7 @@ unique(all_gps2$name)
 # Join GPS data with attributes -------------------------------------------
 merged_df <- all_gps2  %>%                # first one needs to be sf to keep sf attributes
   #select_if(~!all(is.na(.))) %>%         # Remove all columns that are NA from the GPS data
-  left_join(df_att, by = 'name')
+  right_join(df_att, by = 'name')
 
 
 
@@ -161,8 +166,9 @@ my_species = c('spruce', 'beech', 'oak', 'pine')
 ##########################
 
 
+# Make maps:  -------------------------------------------------------------------
 
-# Filter firrst the data - plots by categories: -------------------------------
+# Filter first the data - plots by categories: -------------------------------
 cat_sf <- merged_df %>% 
   filter(Category %in% c('C', 'L', "D"))
 
@@ -202,13 +208,54 @@ ggarrange(p.categ, p.species)
 # Replace F (forest) by L (Living) as D (dead) is also a forest
 # How many triplets by species we have?
 
+
+
+
+# clean up the table
+df_out <- merged_df %>% 
+  dplyr::select(Date, 
+                Paper_numb, 
+                Triplet, 
+                Forest_district, 
+                Contact, 
+                Category, 
+                GPS.numb, 
+                Species, 
+                note,
+                E.Mail, 
+                Phone, 
+                geometry) %>% 
+  filter(!is.na(Triplet)) #%>% 
+
+# add each row a unique number  
+df_out <- df_out %>% 
+  mutate(id = 1:nrow(df_out))
+
+
+
+# Export the file ------------------------------------------------------------------
+st_write(df_out, paste(path, 'fieldData/final', 'all_sites.gpkg', sep = "/"),
+         layer = 'all_sites', append=FALSE)
+
+
+
+library(data.table)
+
+# fwrite does not work with the correct encoding
+# fwrite(df_out, paste(path, 'fieldData/final', 'all_sites.csv', sep = "/")) 
+write.csv2(df_out, 
+           paste(path, 'fieldData/final', 'all_sites.csv', sep = "/")) 
+
+
 # Get corrector by the number of supbplots:
 # Triplet has 3, pair has 2
 # No need if I have group them first by estimated number of teh triplet/pairs
 
 
-df_att %>% 
-  filter(Triplet %in% c('pair', 'emg pair', 'triplet', 'emg triplet')) %>% 
+#df_att %>% 
+df_out %>% 
+  as_tibble() %>% 
+  filter(!is.na(Triplet)) %>%  # %in% c('pair', 'emg pair', 'triplet', 'emg triplet')) %>% 
   filter(Species %in% my_species) %>% 
   group_by(Species, Triplet, Paper_numb ) %>% 
   tally() %>%
@@ -216,25 +263,6 @@ df_att %>%
   group_by(Species, Triplet) %>% 
   tally() %>% 
   tidyr::spread(Species, n) #%>% 
-
-
-# Count how many categories do we have for the F-D or F-CC pairs? ---------
-
-library(dplyr)
-
-df_att %>% 
-  filter(Triplet %in% c('pair', 'emg pair', 'triplet', 'emg triplet')) %>% 
-  filter(Species1 %in% my_species) %>% 
-  group_by(Species1, Triplet, Triplet_num) %>% 
-  #%>% 
-  #group_by(id) %>% 
-  arrange(Category) %>% 
-  summarize(combination = paste0(Category, collapse = "-"), .groups = "drop") %>% 
-  count(combination)
-
-
-
-
 
 
 
