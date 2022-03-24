@@ -156,11 +156,123 @@ my_species = c('spruce', 'beech', 'oak', 'pine')
 
 
 
+##############################
+# Overall table 
+##########################
+
+
+
+# Filter firrst the data - plots by categories: -------------------------------
+cat_sf <- merged_df %>% 
+  filter(Category %in% c('C', 'L', "D"))
+
+
+p.categ <- ggplot() + 
+  geom_sf(data = bav_sf, fill = 'grey') +
+  geom_sf(data = cat_sf, 
+          aes(color = Category), alpha = 0.5) + 
+  scale_color_manual(values = c('red', 'orange', 'darkgreen'),
+                     labels = c("Salvaged", 'Dead', 'Living'))+
+  theme_classic() +
+  theme(legend.position = 'bottom')
+
+
+#  Plot by species:
+my_species = c('spruce', 'beech', 'oak', 'pine')
+
+species_sf <- merged_df %>% 
+  filter(Species %in% my_species)
+
+
+p.species <- ggplot() + 
+  geom_sf(data = bav_sf, fill = 'grey') +
+  geom_sf(data = species_sf, 
+          aes(color = Species)) + 
+  scale_color_viridis_d() +
+  theme_classic() +
+  theme(legend.position = 'bottom')
+
+
+ggarrange(p.categ, p.species)
+
+
+# Get  stats ---------------------------------------------------------------
+
+
+# Replace F (forest) by L (Living) as D (dead) is also a forest
+# How many triplets by species we have?
+
+# Get corrector by the number of supbplots:
+# Triplet has 3, pair has 2
+# No need if I have group them first by estimated number of teh triplet/pairs
+
+
+df_att %>% 
+  filter(Triplet %in% c('pair', 'emg pair', 'triplet', 'emg triplet')) %>% 
+  filter(Species %in% my_species) %>% 
+  group_by(Species, Triplet, Paper_numb ) %>% 
+  tally() %>%
+  ungroup() %>% 
+  group_by(Species, Triplet) %>% 
+  tally() %>% 
+  tidyr::spread(Species, n) #%>% 
+
+
+# Count how many categories do we have for the F-D or F-CC pairs? ---------
+
+library(dplyr)
+
+df_att %>% 
+  filter(Triplet %in% c('pair', 'emg pair', 'triplet', 'emg triplet')) %>% 
+  filter(Species1 %in% my_species) %>% 
+  group_by(Species1, Triplet, Triplet_num) %>% 
+  #%>% 
+  #group_by(id) %>% 
+  arrange(Category) %>% 
+  summarize(combination = paste0(Category, collapse = "-"), .groups = "drop") %>% 
+  count(combination)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Filter data by species to share: spruce/beech ---------------------------------------------
 # this is just a general overview of triplets!
 
 triplet_sf <- merged_df %>% 
-  filter(Triplet == 'triplet' | Triplet == 'emg triplet' |  Triplet == 'pair') %>% 
+  filter(Triplet == 'triplet' | Triplet == 'emg triplet' |  Triplet == 'pair' |Triplet == 'Triplet') %>% 
   filter(Species %in% c('spruce', 'beech') ) %>% 
   select(name, elevation, geometry, Paper_numb, Triplet, Species, Category,
          Forest_district, Contact)
@@ -240,7 +352,7 @@ mapview(triplet_sf,
 
 # Filter firrst the data - plots by categories:
 cat_sf <- merged_df %>% 
-  filter(Category %in% c('CC', 'L', "D"))
+  filter(Category %in% c('C', 'L', "D"))
 
 
 p.categ <- ggplot() + 
@@ -257,13 +369,13 @@ p.categ <- ggplot() +
 my_species = c('spruce', 'beech', 'oak', 'pine')
 
 species_sf <- merged_df %>% 
-  filter(Species1 %in% my_species)
+  filter(Species %in% my_species)
 
 
 p.species <- ggplot() + 
   geom_sf(data = bav_sf, fill = 'grey') +
   geom_sf(data = species_sf, 
-          aes(color = Species1)) + 
+          aes(color = Species)) + 
   scale_color_viridis_d() +
   theme_classic() +
   theme(legend.position = 'bottom')
@@ -284,14 +396,14 @@ ggarrange(p.categ, p.species)
 
 
 df_att %>% 
-  filter(Triplet %in% c('pair', 'emg pair', 'triplet', 'emg triplet')) %>% 
-  filter(Species1 %in% my_species) %>% 
-  group_by(Species1, Triplet, Paper_numb ) %>% 
+  filter(Triplet %in% c('pair', 'emg pair', 'triplet', 'emg triplet', 'Triplet')) %>% 
+  filter(Species %in% my_species) %>% 
+  group_by(Species, Triplet, Paper_numb ) %>% 
   tally() %>%
   ungroup() %>% 
-  group_by(Species1, Triplet) %>% 
+  group_by(Species, Triplet) %>% 
   tally() %>% 
-  tidyr::spread(Species1, n) #%>% 
+  tidyr::spread(Species, n) #%>% 
 
 
 # Count how many categories do we have for the F-D or F-CC pairs? ---------
