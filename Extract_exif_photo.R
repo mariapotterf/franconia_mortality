@@ -16,8 +16,8 @@ library(leaflet)          # make maps
 library(sf)
 library(tidyr)
 
-#path = 'C:/Users/ge45lep/Documents/2021_Franconia_mortality/photo'
 path = 'C:/Users/ge45lep/Downloads/iCloud Photos/iCloud Photos'
+path = 'C:/Users/ge45lep/Downloads/rapid_assessment'
 
 #path to Sebastian photos: unfortunately, they do not have a GPS coordinates
 #path = 'F:/Projects/FranconiaMortality/pictures/Franconia_Resilience'
@@ -27,7 +27,7 @@ setwd(path)
 
 
 # Get files 
-files <- list.files(pattern = "*.JPEG") # 
+files <- list.files(pattern = "*.JPG") # 
 dat <- read_exif(files)
 
 # test if it works:
