@@ -88,6 +88,7 @@ library(ggplot2)
 dat1  <- read_excel(paste(myPath, inFolderFieldVeg, "Data Week 3.xlsx", sep = '/'))
 dat2  <- read_excel(paste(myPath, inFolderFieldVeg, "Data_Week_1-2.xlsx", sep = '/'))
 
+
 # Read New headingsL: in ENG, with unique colnames
 # this was done manually in Excell
 EN_heading <- read_excel(paste(myPath, 
@@ -122,6 +123,19 @@ EN_col_names <- gsub('\\.', '',     EN_col_names) # . means any character, so ne
 # and be able to filter throught them
 colnames(dat) <- EN_col_names
 
+
+
+
+# Correct mistakes/typos (found during processing):
+dat$triplet_no <- replace(dat$triplet_no, dat$triplet_no == 644, 64) 
+dat$Subplot_no <- replace(dat$Subplot_no, dat$Subplot_no == 24, 14) 
+
+
+# -------------------------------------------------
+#       get list of variable per columns:                 -----------------------------------------------
+# -------------------------------------------------
+
+
 # Get columsn for photos:
 photos_id <- c("North_subplot",
                "east_subplot",
@@ -141,7 +155,7 @@ plot_info <- c("ObjectID",
                "gradient",
                "exposure")
 
-# get columns for ground cover
+# get columns for ground cover: in %
 ground_cover <- c("Mature_Trees",
                   "rejuvenation",
                   "shrub_layer",
@@ -159,10 +173,28 @@ ground_cover <- c("Mature_Trees",
 # start with 'Spruce'
 
 
+# get basic statistic 
+# -------------------------------------------------
+# how my triplets?
+# type?
+# size?
+# sample patches by patch??
+
+summary(dat)
+
+
 
 # -------------------------------------------------------
 #                       Regeneration
 # -------------------------------------------------------
+
+
+# Calculate regeneration per hectar
+# needs to take into account the number of sample size per patch
+
+
+
+
 
 
 # select only columns with regeneration:
