@@ -190,7 +190,7 @@ summary(dat)
 
 
 # Calculate regeneration per hectar
-# needs to take into account the number of sample size per patch
+# needs to take into account the number of sample size per patch:
 
 
 
