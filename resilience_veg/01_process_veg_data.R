@@ -2,20 +2,24 @@
 
 # Read vegetation data 
 # collected during field work 2022
-# by Juri and Sophia
+# by Juri Majerand and Sophia Storbeck
 
 # Process: -----------------------------
 # Read the data by weeks
 # order the data by the columns by the german names: master name is Week 3 [ENG]
 # bin the data by rows
+# replace by ENG names to creates groups of data: 
+#         inner:
+#            - ground cover, regen, advanced regen
+#         outer:
+#            - diatnec to trees, tree density 
 
 # Output: ------------------------------
-# calculate the statistics per patches (relative to sample area) - sometimes 5 patches, sometimes 15,...
-# need to recalculate the values to hectare
-
-# read translation to ENG names : check if teh number of colums is table between the surveys? translate german names???
-#   to know what is what
-# process data: regenerations tree species by heights (HKX) 
+# get statistics per patches (relative to sample area) - sometimes 5 subsites, sometimes 15,...
+# recalculate the values to hectare:
+# density: regen
+#          advanced regen
+#          mature trees
 
 
 # Data structure:  
