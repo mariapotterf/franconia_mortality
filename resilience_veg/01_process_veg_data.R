@@ -12,7 +12,7 @@
 #         inner:
 #            - ground cover, regen, advanced regen
 #         outer:
-#            - diatnec to trees, tree density 
+#            - distance to trees, tree density 
 
 # Output: ------------------------------
 # get statistics per patches (relative to sample area) - sometimes 5 subsites, sometimes 15,...
@@ -22,15 +22,14 @@
 #          mature trees
 
 
-# Data structure:  
-# -----------------------------------
+# Data structure -----------------------------------
 # each record in the Table field has its own columns: ~ 600 columns
 # Regeneration: tree regeneration is split across tree species, height classes and damage
 # each tree species in height class: has 7 columns
 # 6 heights levels: 6*7 = 42 columns per species
 # 
 
-# Colnames interpretation:
+# Colnames interpretation --------------------------------------
 # if 'env' - surroundings (environment)
 # if not env - in the site 
 # completed unique names for tree, species, etc.
@@ -77,18 +76,19 @@ reg_trees_heights <- c(
 
 
 # 
-
+# Source paths and functions  ----------------------------------------------------------------------
 
 source('myPaths.R')
 
-# Loading
+
+# Read libraries  -------------------------------------------------------------------------
 library(readxl)
 library(dplyr)
 library(data.table)
 library(tidyr)
 library(ggplot2)
 
-# read data 
+# Read data 
 dat1  <- read_excel(paste(myPath, inFolderFieldVeg, "Data Week 3.xlsx", sep = '/'))
 dat2  <- read_excel(paste(myPath, inFolderFieldVeg, "Data_Week_1-2.xlsx", sep = '/'))
 
@@ -130,14 +130,13 @@ colnames(dat) <- EN_col_names
 
 
 
-# Correct mistakes/typos (found during processing):
+# Correct mistakes/typos (found during processing): --------------------------------------
 dat$triplet_no <- replace(dat$triplet_no, dat$triplet_no == 644, 64) 
 dat$Subplot_no <- replace(dat$Subplot_no, dat$Subplot_no == 24, 14) 
 
 
-# -------------------------------------------------
-#       get list of variable per columns:                 -----------------------------------------------
-# -------------------------------------------------
+
+# List important variables from raw table  -------------------------------------------
 
 
 # Get columsn for photos:
@@ -177,8 +176,7 @@ ground_cover <- c("Mature_Trees",
 # start with 'Spruce'
 
 
-# get basic statistic 
-# -------------------------------------------------
+# Get basic statistic -----------------------------------------------------------
 # how my triplets?
 # type?
 # size?
@@ -188,18 +186,7 @@ summary(dat)
 
 
 
-# -------------------------------------------------------
-#                       Regeneration
-# -------------------------------------------------------
-
-
-# Calculate regeneration per hectar
-# needs to take into account the number of sample size per patch:
-
-
-
-
-
+# Get Regeneration data  -----------------------------------------------------
 
 # select only columns with regeneration:
 # columns are in different class (logi, num, char), some contains NEIN: characters: need only counts!!!
@@ -218,10 +205,71 @@ df_regen0 <- dat %>%
 df_regen <- df_regen0 %>% 
   pivot_longer(!uniqueID, names_to = 'type', values_to = 'count') %>% 
   separate(type, c('species', 'height_class'), '_') %>% 
-  separate(uniqueID, c('trip_n', 'dom_sp', 'type', 'sub_n'), '_') #%>% 
-  #filter(count != 0)
-  #ggplot(aes(count, group = factor(height_class))) +
-  #geom_bar()
+  separate(uniqueID, c('trip_n', 'dom_sp', 'type', 'sub_n'), '_')
+
+
+# Define sample area per patch - correct the hdensity/ha estimation
+subsample_n <- df_regen %>%
+  group_by(trip_n, dom_sp, type) %>% 
+  distinct(sub_n) %>% 
+  tally() 
+
+# Get counts of trees across all heights:
+#df_reg_dens <- 
+  df_regen %>% 
+    left_join(subsample_n) %>% 
+  group_by(trip_n, dom_sp, type, n) %>% 
+  summarize(reg_count = sum(count, na.rm = T) )  %>%
+    mutate(density_ha = reg_count/n/4*10000) %>% 
+    ggplot(aes(y = density_ha,
+               x = type)) +
+    geom_boxplot() + 
+    facet_grid(~dom_sp) +
+    ylab('density \n(#trees/ha)')
+
+
+### get density/ha -----------------------------------
+### Join the number of subsamples to regen data:
+# Calculate the density from the average counts, or from the sum of the trees/sampled area???
+# check both approaches and see the difference?
+# for density estimation, ignote the height classes
+# keep the grain at the subsite lavel - to keep the variability between sites (!) 
+# Get the counts per 4 m2
+subsite_area = 4 
+ha = 10000
+
+### Calculate density ---------------------------------------------
+
+#### Now the density is split by height classes: calculate density per patch? their sum
+df_regen %>% 
+  group_by(trip_n, dom_sp, type) %>% 
+  summarize(sum_density_ha = sum(density_ha) ) %>% 
+ 
+
+
+
+
+# Get ground cover data --------------------------------------------------
+
+
+
+
+
+
+# Investigate data by plots --------------------------------------------------------------
+
+
+# Check density distribution:
+
+df_regen %>% 
+  filter(count != 0) %>% # need to filter zero counts first
+  group_by(trip_n, dom_sp, type) %>% 
+  ggplot(aes(y = density_ha,
+             x = type)) +
+  geom_boxplot() + 
+  facet_grid(~dom_sp) +
+  ylab('density \n(#trees/ha)')
+
 
 
 
