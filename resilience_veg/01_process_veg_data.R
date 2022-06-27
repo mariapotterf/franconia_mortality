@@ -41,7 +41,7 @@
 #Rowan
 #Fir
 #Oak
-#Sycamore
+#Maple
 #Birch
 #Willow
 #Pine
@@ -50,19 +50,33 @@
 #Other softwood 
 
 reg_trees <- c(
-  'Spruce',
-  'Beech',
-  'Rowan',
-  'Fir',
-  'Oak',
-  'Sycamore',
-  'Birch',
-  'Willow',
-  'Pine',
-  'Ash',
+  'Spruce',    # Picea abies
+  'Beech',     # Fagus sylvatica
+  'Rowan',     # Sorbus aucuparia ?
+  'Fir',       # Abies alba
+  'Oak',       # Quercus robur  
+  'Maple',     # Acer pseudoplatanus
+  'Birch',     # Betula pendula
+  'Willow',    # Salix caprea ??
+  'Pine',      # Pinus sylvestris
+  'Ash',       # Fraxinus excelsior 
   'OtherHardwood',
   'OtherSoftwood'
 )
+
+
+# dominant trees in germany: https://www.forstwirtschaft-in-deutschland.de/index.php?id=52&L=1
+# spruce 26
+# pine 22.9
+# beech 15.8
+# oak 10.6
+# larch 2.9
+# douglas fir 2
+# fir 1.7
+# other deciduous high life 7.2
+# other deciduous lower life: 10.8
+
+
 
 # height classes:
 reg_trees_heights <- c(
@@ -149,31 +163,45 @@ photos_id <- c("North_subplot",
 
 
 # Get columss for the site identification
-plot_info <- c("ObjectID",
-               "GlobalID",
+plot_info <- c(#"ObjectID",
+               #"GlobalID",
                "triplet_no",
                "triplet_type",
                "surface_type",
-               "Subplot_no",
-               "gradient",
-               "exposure")
+               "Subplot_no"
+               #"gradient",
+               #"exposure"
+               )
 
-# get columns for ground cover: in %
-ground_cover <- c("Mature_Trees",
-                  "rejuvenation",
-                  "shrub_layer",
-                  "mosses",
-                  "ferns",
-                  "herb_layer",
-                  "grasses",
-                  "soil/foliage",
-                  "rock",
-                  "deadwood/stumps")
+# get columns for ground cover: in %: marked by 'gc_' in names
+# ground_cover <- c("Mature_Trees",
+#                   "rejuvenation",
+#                   "shrub_layer",
+#                   "mosses",
+#                   "ferns",
+#                   "herb_layer",
+#                   "grasses",
+#                   "soil/foliage",
+#                   "rock",
+#                   "deadwood/stumps")
 
-# To get the richness per site:
-# get individual tables for each tree species, for each height
-# get counts 
-# start with 'Spruce'
+
+# Get ground cover shares ------------------------------------------------------
+df_ground0 <-   
+  dat %>% 
+  dplyr::select(matches(c(plot_info, "gc_"))) %>% 
+  mutate(uniqueID = paste(triplet_no,triplet_type,surface_type,Subplot_no, sep = '_' )) %>% 
+  dplyr::select(-c("triplet_no","triplet_type","surface_type",'Subplot_no')) 
+
+
+df_ground <- 
+  df_ground0 %>% 
+  pivot_longer(!uniqueID, names_to = 'class', values_to = 'prop') %>% 
+  mutate(class = gsub('gc_', '', class)) %>% # replace the name indicator
+  separate(uniqueID, c('trip_n', 'dom_sp', 'type', 'sub_n'), '_')
+
+
+
 
 
 # Get basic statistic -----------------------------------------------------------
@@ -194,7 +222,7 @@ summary(dat)
 
 # Sebset counts for regeneration datasets
 df_regen0 <- dat %>% 
-  dplyr::select(matches(paste(c("triplet_no","triplet_type","surface_type",'Subplot_no', reg_trees), collapse = '|'))) %>% 
+  dplyr::select(matches(paste(c(plot_info, reg_trees), collapse = '|'))) %>% 
   dplyr::select(!matches("Number")) %>% 
   mutate(uniqueID = paste(triplet_no,triplet_type,surface_type,Subplot_no, sep = '_' )) %>% 
   dplyr::select(-c("triplet_no","triplet_type","surface_type",'Subplot_no')) %>%
@@ -224,7 +252,7 @@ subsample_n <- df_regen %>%
     ggplot(aes(y = density_ha,
                x = type)) +
     geom_boxplot() + 
-    facet_grid(~dom_sp) +
+    #facet_grid(~dom_sp) +
     ylab('density \n(#trees/ha)')
 
 
