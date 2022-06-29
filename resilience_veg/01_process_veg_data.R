@@ -103,8 +103,9 @@ library(tidyr)
 library(ggplot2)
 
 # Read data 
-dat1  <- read_excel(paste(myPath, inFolderFieldVeg, "Data Week 3.xlsx", sep = '/'))
+dat1  <- read_excel(paste(myPath, inFolderFieldVeg, "Data_Week_3.xlsx", sep = '/'))
 dat2  <- read_excel(paste(myPath, inFolderFieldVeg, "Data_Week_1-2.xlsx", sep = '/'))
+dat3  <- read_excel(paste(myPath, inFolderFieldVeg, "Data_Week_4.xlsx", sep = '/'))
 
 
 # Read New headingsL: in ENG, with unique colnames
@@ -115,6 +116,7 @@ EN_heading <- read_excel(paste(myPath,
                           sheet = "en_name")  # sheet name
 # check if teh colnames are equal??
 names(dat1) == names(dat2)
+names(dat1) == names(dat3)
 
 # If the names are the same, we can bind them together
 
@@ -124,7 +126,7 @@ names(dat1) == names(dat2)
 #                               "col_names_ENG.xlsx", sep = '/'), 
 #                         sheet = "check_names_over_weeks")  # sheet name
 
-dat <- rbind(dat1, dat2)
+dat <- rbind(dat1, dat2, dat3)
 
 
 # Check if the columns lenght is the same:
@@ -145,8 +147,27 @@ colnames(dat) <- EN_col_names
 
 
 # Correct mistakes/typos (found during processing): --------------------------------------
-dat$triplet_no <- replace(dat$triplet_no, dat$triplet_no == 644, 64) 
-dat$Subplot_no <- replace(dat$Subplot_no, dat$Subplot_no == 24, 14) 
+# need for qualit data check! visually in the table, and correct in the script
+# from 06/28/2022 -> correct directly in the files
+#dat$triplet_no <- replace(dat$triplet_no, dat$triplet_no == 644, 64) 
+#dat$triplet_no <- replace(dat$triplet_no, dat$triplet_no == 35 &  dat$triplet_type == 'beech', 32) 
+#dat$triplet_no <- replace(dat$triplet_type, dat$triplet_no == 33 &  dat$triplet_type == 'spruce', 33) 
+#dat$triplet_no <- replace(dat$triplet_no, dat$triplet_no == 91, 61) 
+#dat$triplet_no <- replace(dat$triplet_no, dat$triplet_no == 2 & dat$triplet_type == 'pine', 62) 
+#dat$Subplot_no <- replace(dat$Subplot_no, dat$Subplot_no == 24, 14) 
+
+
+# Check for typos & Get basic statistic -----------------------------------------------------------
+# check for triplets numabres, number of subset per site, ...
+# sample patches by patch??
+# correct then manually in the data themselves
+dat %>% 
+  group_by(triplet_no, triplet_type) %>% 
+  tally() %>% 
+  arrange(triplet_type) %>% 
+  print(n = 40)
+
+
 
 
 
@@ -168,10 +189,10 @@ plot_info <- c(#"ObjectID",
                "triplet_no",
                "triplet_type",
                "surface_type",
-               "Subplot_no"
-               #"gradient",
-               #"exposure"
-               )
+               "Subplot_no"               )
+
+plot_geo <- c("gradient",
+              "exposure")
 
 # get columns for ground cover: in %: marked by 'gc_' in names
 # ground_cover <- c("Mature_Trees",
@@ -184,6 +205,8 @@ plot_info <- c(#"ObjectID",
 #                   "soil/foliage",
 #                   "rock",
 #                   "deadwood/stumps")
+
+
 
 
 # Get ground cover shares ------------------------------------------------------
@@ -201,24 +224,64 @@ df_ground <-
   separate(uniqueID, c('trip_n', 'dom_sp', 'type', 'sub_n'), '_')
 
 
+# get the avergae values per category, not by the subplot:
+df_ground_shann <-
+  df_ground %>% 
+  group_by(trip_n, dom_sp, type, class) %>% 
+  summarize(mean_prop = mean(prop)/100) %>%  # for shannon, the scale should be 0-1, not 0-100% !! 
+  mutate(shannon_part = replace_na(-(mean_prop)*log(mean_prop),0)) %>% 
+    ungroup() %>% 
+    group_by(trip_n, dom_sp, type) %>%
+    summarize(shannon_ground = sum(shannon_part)) %>% 
+  mutate(shannon.entropy = exp(shannon_ground))
+    # calculate shannon and replace NA vals by 0
+         #shannon = is.na())
 
-# Get basic statistic -----------------------------------------------------------
-# how my triplets?
-# type?
-# size?
-# sample patches by patch??
 
-summary(dat)
-
+df_ground_shann %>% 
+  ggplot(aes(x = factor(type),
+             y = shannon_ground,
+             fill = dom_sp)) +
+  geom_boxplot() 
 
 
-# Get Regeneration data  -----------------------------------------------------
 
-# select only columns with regeneration:
+summary(df_ground_shann)
+  
+# test shannon: ----------------------------------------------------------------
+# what is the effective number of species????
+  
+d <- data.frame(id = c(1,1,1,1),
+                spec_pi= c(30,10,5,50)/100)  # roportions ahould be scaled 0-1, not 0-100!! for shannon
+  
+d$shannon = d$spec_pi*log(d$spec_pi)  
+
+d %>% 
+  mutate(pi_ln           = abs(log(spec_pi))) %>% 
+  mutate(sp_shannon      = spec_pi*pi_ln ) %>% 
+  mutate(shannon_comun   = sum(sp_shannon)) #%>% 
+  
+    
+
+
+
+## Get Regeneration data  -----------------------------------------------------
+
+# The regeneration is combined regeneration and advanced regeneration!
+
+# Extract data in several steps:
+# for regen - seedlings
+# for advanced regen - samplings??
+# steps: 
+#     select the columns
+#     convert them from wide to long format
+
+### For regeneration: seedlings ---------------------------------------------------
+# select only columns with Regeneration:
 # columns are in different class (logi, num, char), some contains NEIN: characters: need only counts!!!
 # if the count is not present, than it is 0
 
-# Sebset counts for regeneration datasets
+# Subset counts for regeneration datasets
 df_regen0 <- dat %>% 
   dplyr::select(matches(paste(c(plot_info, reg_trees), collapse = '|'))) %>% 
   dplyr::select(!matches("Number")) %>% 
@@ -226,12 +289,53 @@ df_regen0 <- dat %>%
   dplyr::select(-c("triplet_no","triplet_type","surface_type",'Subplot_no')) %>%
   dplyr::select_if(function(col) all(col == .$uniqueID) | is.numeric(col)) # select the numeric columns and the siteID (character)
 
-
 # convert from wide to long to calculate the counts by height classes:
 df_regen <- df_regen0 %>% 
   pivot_longer(!uniqueID, names_to = 'type', values_to = 'count') %>% 
   separate(type, c('species', 'height_class'), '_') %>% 
   separate(uniqueID, c('trip_n', 'dom_sp', 'type', 'sub_n'), '_')
+
+
+### For Advanced regen: samplings  ---------------------------------------------------
+
+# Extract the columns by the '1_Advanced_' indication and then merge them into one database:
+# otherwise,not sure how to do it
+
+# subsets counts for the Advanced regeneration (>2m up to 10 cm dbh)
+# for now, max 8 advanced regen trees/subset
+
+get_adv_regen <- function(x, ...) {
+  reg_name = paste(x, '_Advanced', sep = '')
+  
+  # Create a table to subset specific columns
+  dat_reg <- dat %>% 
+    dplyr::select(matches(paste(c(plot_info, reg_name), collapse = '|'))) %>% 
+    dplyr::select(!matches(c('env_','_bin'))) %>% 
+    mutate(uniqueID = paste(triplet_no,triplet_type,surface_type,Subplot_no, sep = '_' )) %>% 
+    dplyr::select(-c("triplet_no","triplet_type","surface_type",'Subplot_no')) %>%
+    mutate(tree_numb = x)
+  
+  # Rename the columns:
+  colnames(dat_reg) <- c('tree_species', 'DBH', 'height', 'uniqueID', 'tree_numb')
+  
+  # Return the df from teh function
+  return(dat_reg)
+ # head(dat_reg)
+}
+
+# Create a vectors of values to subset columns form the datatable
+x <- c(1:8)
+# allply the function to get the whole list of the data
+ls_advanced <- lapply(x, get_adv_regen)
+
+lapply(ls_advanced, function(df) unique(df$tree_species))
+
+# Convert dataframes from list into the single dataframe
+df_advanced <- do.call(rbind, ls_advanced)
+
+
+unique(df_advanced$tree_species)
+
 
 
 # Define sample area per patch - correct the hdensity/ha estimation
