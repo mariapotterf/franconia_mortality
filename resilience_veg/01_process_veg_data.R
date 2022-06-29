@@ -313,17 +313,18 @@ get_adv_regen <- function(x, ...) {
     dplyr::select(!matches(c('env_','_bin'))) %>% 
     mutate(uniqueID = paste(triplet_no,triplet_type,surface_type,Subplot_no, sep = '_' )) %>% 
     dplyr::select(-c("triplet_no","triplet_type","surface_type",'Subplot_no')) %>%
-    mutate(tree_numb = x)
+    mutate(tree_numb = x) %>% 
+    filter(complete.cases(.)) # remove the rows that contains NA values
   
   # Rename the columns:
   colnames(dat_reg) <- c('tree_species', 'DBH', 'height', 'uniqueID', 'tree_numb')
   
   # Return the df from teh function
   return(dat_reg)
- # head(dat_reg)
+ 
 }
 
-# Create a vectors of values to subset columns form the datatable
+##### Create a vectors of values to subset columns form the datatable ----------
 x <- c(1:8)
 # allply the function to get the whole list of the data
 ls_advanced <- lapply(x, get_adv_regen)
@@ -334,7 +335,21 @@ lapply(ls_advanced, function(df) unique(df$tree_species))
 df_advanced <- do.call(rbind, ls_advanced)
 
 
-unique(df_advanced$tree_species)
+# Replace names of tree species:
+df_advanced <- df_advanced %>% 
+  mutate(tree_species = case_when(tree_species == "Esche"        ~ "Ash",
+                                  tree_species == "Sonstiges NH" ~ "OtherSoftwood",
+                                  tree_species == "Sonstiges LH" ~ "OtherHardwood",
+                                  tree_species == "Buche"        ~ "Beech" ,
+                                  tree_species == "Vogelbeere"   ~ "Rowan",
+                                  tree_species == "Bergahorn"    ~ "Maple",
+                                  tree_species == "Fichte"       ~ "Spruce",
+                                  tree_species == "Eiche"        ~ "Oak",
+                                  tree_species == "Kiefer"       ~ "Pine",
+                                  tree_species == "Birke"        ~ "Birch",
+                                  tree_species == "Weide"        ~ "Willow",
+                                  tree_species == "Tanne"        ~ "Fir"
+                                                ))
 
 
 
