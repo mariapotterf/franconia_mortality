@@ -202,8 +202,6 @@ df_ground <-
 
 
 
-
-
 # Get basic statistic -----------------------------------------------------------
 # how my triplets?
 # type?
@@ -254,6 +252,12 @@ subsample_n <- df_regen %>%
     geom_boxplot() + 
     #facet_grid(~dom_sp) +
     ylab('density \n(#trees/ha)')
+  
+  
+  
+# Get community weighted means ---------------------------------------------
+# https://rpubs.com/CPEL/cwm
+  
 
 
 ### get density/ha -----------------------------------
@@ -263,21 +267,15 @@ subsample_n <- df_regen %>%
 # for density estimation, ignote the height classes
 # keep the grain at the subsite lavel - to keep the variability between sites (!) 
 # Get the counts per 4 m2
-subsite_area = 4 
-ha = 10000
-
-### Calculate density ---------------------------------------------
-
-#### Now the density is split by height classes: calculate density per patch? their sum
-df_regen %>% 
-  group_by(trip_n, dom_sp, type) %>% 
-  summarize(sum_density_ha = sum(density_ha) ) %>% 
- 
 
 
 
+  
+  
+  
 
-# Get ground cover data --------------------------------------------------
+# Link data: ground cover (deadwood) and density? -------------------------------------------------
+
 
 
 
