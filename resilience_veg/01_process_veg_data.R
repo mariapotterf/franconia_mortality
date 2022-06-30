@@ -149,12 +149,12 @@ colnames(dat) <- EN_col_names
 # Correct mistakes/typos (found during processing): --------------------------------------
 # need for qualit data check! visually in the table, and correct in the script
 # from 06/28/2022 -> correct directly in the files
-#dat$triplet_no <- replace(dat$triplet_no, dat$triplet_no == 644, 64) 
-#dat$triplet_no <- replace(dat$triplet_no, dat$triplet_no == 35 &  dat$triplet_type == 'beech', 32) 
-#dat$triplet_no <- replace(dat$triplet_type, dat$triplet_no == 33 &  dat$triplet_type == 'spruce', 33) 
-#dat$triplet_no <- replace(dat$triplet_no, dat$triplet_no == 91, 61) 
-#dat$triplet_no <- replace(dat$triplet_no, dat$triplet_no == 2 & dat$triplet_type == 'pine', 62) 
-#dat$Subplot_no <- replace(dat$Subplot_no, dat$Subplot_no == 24, 14) 
+#dat$trip_n <- replace(dat$trip_n, dat$trip_n == 644, 64) 
+#dat$trip_n <- replace(dat$trip_n, dat$trip_n == 35 &  dat$dom_sp == 'beech', 32) 
+#dat$trip_n <- replace(dat$dom_sp, dat$trip_n == 33 &  dat$dom_sp == 'spruce', 33) 
+#dat$trip_n <- replace(dat$trip_n, dat$trip_n == 91, 61) 
+#dat$trip_n <- replace(dat$trip_n, dat$trip_n == 2 & dat$dom_sp == 'pine', 62) 
+#dat$sub_n  <- replace(dat$sub_n,  dat$sub_n == 24, 14) 
 
 
 # Check for typos & Get basic statistic -----------------------------------------------------------
@@ -162,9 +162,9 @@ colnames(dat) <- EN_col_names
 # sample patches by patch??
 # correct then manually in the data themselves
 dat %>% 
-  group_by(triplet_no, triplet_type) %>% 
+  group_by(trip_n, dom_sp) %>% 
   tally() %>% 
-  arrange(triplet_type) %>% 
+  arrange(dom_sp) %>% 
   print(n = 40)
 
 
@@ -186,10 +186,10 @@ photos_id <- c("North_subplot",
 # Get columss for the site identification
 plot_info <- c(#"ObjectID",
                #"GlobalID",
-               "triplet_no",
-               "triplet_type",
-               "surface_type",
-               "Subplot_no"               )
+               "trip_n",
+               "dom_sp",
+               "type",
+               "sub_n"               )
 
 plot_geo <- c("gradient",
               "exposure")
@@ -213,8 +213,8 @@ plot_geo <- c("gradient",
 df_ground0 <-   
   dat %>% 
   dplyr::select(matches(c(plot_info, "gc_"))) %>% 
-  mutate(uniqueID = paste(triplet_no,triplet_type,surface_type,Subplot_no, sep = '_' )) %>% 
-  dplyr::select(-c("triplet_no","triplet_type","surface_type",'Subplot_no')) 
+  mutate(uniqueID = paste(trip_n,dom_sp,type,sub_n, sep = '_' )) %>% 
+  dplyr::select(-c("trip_n","dom_sp","type",'sub_n')) 
 
 
 df_ground <- 
@@ -237,7 +237,7 @@ df_ground_shann <-
     # calculate shannon and replace NA vals by 0
          #shannon = is.na())
 
-
+# check plot:
 df_ground_shann %>% 
   ggplot(aes(x = factor(type),
              y = shannon_ground,
@@ -245,23 +245,6 @@ df_ground_shann %>%
   geom_boxplot() 
 
 
-
-summary(df_ground_shann)
-  
-# test shannon: ----------------------------------------------------------------
-# what is the effective number of species????
-  
-d <- data.frame(id = c(1,1,1,1),
-                spec_pi= c(30,10,5,50)/100)  # roportions ahould be scaled 0-1, not 0-100!! for shannon
-  
-d$shannon = d$spec_pi*log(d$spec_pi)  
-
-d %>% 
-  mutate(pi_ln           = abs(log(spec_pi))) %>% 
-  mutate(sp_shannon      = spec_pi*pi_ln ) %>% 
-  mutate(shannon_comun   = sum(sp_shannon)) #%>% 
-  
-    
 
 
 
@@ -285,8 +268,8 @@ d %>%
 df_regen0 <- dat %>% 
   dplyr::select(matches(paste(c(plot_info, reg_trees), collapse = '|'))) %>% 
   dplyr::select(!matches("Number")) %>% 
-  mutate(uniqueID = paste(triplet_no,triplet_type,surface_type,Subplot_no, sep = '_' )) %>% 
-  dplyr::select(-c("triplet_no","triplet_type","surface_type",'Subplot_no')) %>%
+  mutate(uniqueID = paste(trip_n,dom_sp,type,sub_n, sep = '_' )) %>% 
+  dplyr::select(-c("trip_n","dom_sp","type",'sub_n')) %>%
   dplyr::select_if(function(col) all(col == .$uniqueID) | is.numeric(col)) # select the numeric columns and the siteID (character)
 
 # convert from wide to long to calculate the counts by height classes:
@@ -294,6 +277,24 @@ df_regen <- df_regen0 %>%
   pivot_longer(!uniqueID, names_to = 'type', values_to = 'count') %>% 
   separate(type, c('species', 'height_class'), '_') %>% 
   separate(uniqueID, c('trip_n', 'dom_sp', 'type', 'sub_n'), '_')
+
+
+
+# Replace the regeneration height classed by estimated heights:
+
+df_regen <- df_regen %>% 
+  rename(height = height_class) %>%   # get heights in cm
+  mutate(height = case_when(height == "HK1" ~ 30,
+                            height == "HK2" ~ 50,
+                            height == "HK3" ~ 70,
+                            height == "HK4" ~ 90,
+                            height == "HK5" ~ 115,
+                            height == "HK6" ~ 175
+  )) %>% 
+  mutate(DBH = 0.05) %>% 
+  filter(!count == 0) %>% # remove if there is no species present
+  mutate(reg_height = 'seedlings')
+
 
 
 ### For Advanced regen: samplings  ---------------------------------------------------
@@ -311,67 +312,130 @@ get_adv_regen <- function(x, ...) {
   dat_reg <- dat %>% 
     dplyr::select(matches(paste(c(plot_info, reg_name), collapse = '|'))) %>% 
     dplyr::select(!matches(c('env_','_bin'))) %>% 
-    mutate(uniqueID = paste(triplet_no,triplet_type,surface_type,Subplot_no, sep = '_' )) %>% 
-    dplyr::select(-c("triplet_no","triplet_type","surface_type",'Subplot_no')) %>%
+    mutate(uniqueID = paste(trip_n,dom_sp,type,sub_n, sep = '_' )) %>% 
+    dplyr::select(-c("trip_n","dom_sp","type",'sub_n')) %>%
     mutate(tree_numb = x) %>% 
     filter(complete.cases(.)) # remove the rows that contains NA values
   
   # Rename the columns:
-  colnames(dat_reg) <- c('tree_species', 'DBH', 'height', 'uniqueID', 'tree_numb')
+  colnames(dat_reg) <- c('species', 'DBH', 'height', 'uniqueID', 'tree_numb')
   
   # Return the df from teh function
   return(dat_reg)
  
 }
 
-##### Create a vectors of values to subset columns form the datatable ----------
+##### Create a vectors of values to subset Advanced regen columns form the datatable ----------
 x <- c(1:8)
 # allply the function to get the whole list of the data
 ls_advanced <- lapply(x, get_adv_regen)
 
-lapply(ls_advanced, function(df) unique(df$tree_species))
-
-# Convert dataframes from list into the single dataframe
+# Convert dataframe from list into the single dataframe
 df_advanced <- do.call(rbind, ls_advanced)
 
 
 # Replace names of tree species:
 df_advanced <- df_advanced %>% 
-  mutate(tree_species = case_when(tree_species == "Esche"        ~ "Ash",
-                                  tree_species == "Sonstiges NH" ~ "OtherSoftwood",
-                                  tree_species == "Sonstiges LH" ~ "OtherHardwood",
-                                  tree_species == "Buche"        ~ "Beech" ,
-                                  tree_species == "Vogelbeere"   ~ "Rowan",
-                                  tree_species == "Bergahorn"    ~ "Maple",
-                                  tree_species == "Fichte"       ~ "Spruce",
-                                  tree_species == "Eiche"        ~ "Oak",
-                                  tree_species == "Kiefer"       ~ "Pine",
-                                  tree_species == "Birke"        ~ "Birch",
-                                  tree_species == "Weide"        ~ "Willow",
-                                  tree_species == "Tanne"        ~ "Fir"
+  mutate(species = case_when(species == "Esche"        ~ "Ash",
+                             species == "Sonstiges NH" ~ "OtherSoftwood",
+                             species == "Sonstiges LH" ~ "OtherHardwood",
+                             species == "Buche"        ~ "Beech" ,
+                             species == "Vogelbeere"   ~ "Rowan",
+                             species == "Bergahorn"    ~ "Maple",
+                             species == "Fichte"       ~ "Spruce",
+                             species == "Eiche"        ~ "Oak",
+                             species == "Kiefer"       ~ "Pine",
+                             species == "Birke"        ~ "Birch",
+                             species == "Weide"        ~ "Willow",
+                             species == "Tanne"        ~ "Fir"
                                                 ))
 
-# Replace tree number by 1: to be able to count how many trees I have in each subplot
-# 
+# Replace 'tree number' (originally 1-8) by 1: 
+# to corresponds to counts, not to the order of recording :
 
-# Define sample area per patch - correct the hdensity/ha estimation
-subsample_n <- df_regen %>%
-  group_by(trip_n, dom_sp, type) %>% 
-  distinct(sub_n) %>% 
-  tally() 
+# check for the low values:
+df_advanced %>% filter(height <200)  # change the values to cm in next step
 
-# Get counts of trees across all heights:
-#df_reg_dens <- 
-  df_regen %>% 
-    left_join(subsample_n) %>% 
-  group_by(trip_n, dom_sp, type, n) %>% 
+
+#   species   DBH height uniqueID      tree_numb
+#<chr>   <dbl>  <dbl> <chr>             <int>
+#  1 Beech       9     10 64_pine_l_1           1
+#  2 Beech       8     13 31_beech_c_10         1
+#  3 Beech       8     18 32_beech_d_5          1
+#  4 Beech       4      6 26_beech_c_1          2
+
+
+df_advanced2 <- 
+  df_advanced %>% 
+  # replace the values: some have been recorded in meters instead of cm
+  mutate(height = case_when(height< 200 ~ height*100,
+                            TRUE ~ height)) %>% 
+  mutate(tree_numb = 1) %>% # # Replace 'tree number' (originally 1-8) by 1: 
+                                # to corresponds to counts, not to the order of recording :
+  rename(count = tree_numb) %>% 
+  separate(uniqueID, c('trip_n', 'dom_sp', 'type', 'sub_n'), '_') %>% 
+  mutate(reg_height = 'saplings') %>% 
+  dplyr::select(colnames(df_regen))
+
+  
+
+##### Rbind regeneration data into single dataframe: --------------------------------
+df_regen_fin <- rbind(df_regen, df_advanced2)
+
+
+
+# Define sample area per patch - correct the hdensity/ha estimation----------------
+# calculate from the original data table
+subsample_n <- 
+  dat %>%
+  group_by(trip_n , dom_sp , type ) %>% 
+  distinct(sub_n ) %>% 
+  tally() %>%
+  mutate(trip_n = as.character(trip_n))
+ 
+
+# Get tree densiy/ha across all heights:
+df_reg_dens <- 
+  df_regen_fin %>% 
+  left_join(subsample_n) %>% 
+  ungroup() %>% 
+  group_by(trip_n, dom_sp, type, n, reg_height, species) %>% 
   summarize(reg_count = sum(count, na.rm = T) )  %>%
-    mutate(density_ha = reg_count/n/4*10000) %>% 
-    ggplot(aes(y = density_ha,
+    mutate(density_ha = reg_count/n/4*10000) #%>% 
+
+
+# Calculate shannon for individual patches
+# get the total density
+# calculate the share per species - pi
+# calculate Shannon: H = -sum(pi*log(pi)) for each species
+# values for Shannon have to be in 0-1 range (not 0-100)!
+df_reg_dens_shannon <- 
+  df_reg_dens %>% 
+  group_by(trip_n, dom_sp, type) %>% 
+  mutate(dens_tot = sum(density_ha),
+         sp_pi = density_ha /dens_tot,
+         shannon_part = sp_pi*log(sp_pi)) %>% 
+  summarize(shannon = -sum(shannon_part))# %>% 
+  ggplot(aes(y = shannon,
+             x = type)) +
+  geom_boxplot() + 
+ facet_grid(~dom_sp, scales = 'free') #+
+  #ylab('density \n(#trees/ha)') 
+
+ 
+
+
+
+
+
+    
+
+df_reg_dens %>% 
+ggplot(aes(y = density_ha,
                x = type)) +
     geom_boxplot() + 
-    #facet_grid(~dom_sp) +
-    ylab('density \n(#trees/ha)')
+    facet_grid(reg_height~dom_sp, scales = 'free') +
+    ylab('density \n(#trees/ha)') 
   
   
   
