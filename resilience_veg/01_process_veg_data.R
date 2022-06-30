@@ -29,7 +29,7 @@
 # 6 heights levels: 6*7 = 42 columns per species
 # 
 
-# Colnames interpretation --------------------------------------
+#### Colnames interpretation --------------------------------------
 # if 'env' - surroundings (environment)
 # if not env - in the site 
 # completed unique names for tree, species, etc.
@@ -89,20 +89,20 @@ reg_trees_heights <- c(
 )
 
 
-# 
-# Source paths and functions  ----------------------------------------------------------------------
+# Input data -------------------------------------------------------------------
+#### Source paths and functions  -----------------------------------------------
 
 source('myPaths.R')
 
 
-# Read libraries  -------------------------------------------------------------------------
+#### Read libraries  -----------------------------------------------------------
 library(readxl)
 library(dplyr)
 library(data.table)
 library(tidyr)
 library(ggplot2)
 
-# Read data 
+#### Read Regeneration data 
 dat1  <- read_excel(paste(myPath, inFolderFieldVeg, "Data_Week_3.xlsx", sep = '/'))
 dat2  <- read_excel(paste(myPath, inFolderFieldVeg, "Data_Week_1-2.xlsx", sep = '/'))
 dat3  <- read_excel(paste(myPath, inFolderFieldVeg, "Data_Week_4.xlsx", sep = '/'))
@@ -146,7 +146,7 @@ colnames(dat) <- EN_col_names
 
 
 
-# Correct mistakes/typos (found during processing): --------------------------------------
+#### Correct mistakes/typos (found during processing): --------------------------------------
 # need for qualit data check! visually in the table, and correct in the script
 # from 06/28/2022 -> correct directly in the files
 #dat$trip_n <- replace(dat$trip_n, dat$trip_n == 644, 64) 
@@ -157,7 +157,7 @@ colnames(dat) <- EN_col_names
 #dat$sub_n  <- replace(dat$sub_n,  dat$sub_n == 24, 14) 
 
 
-# Check for typos & Get basic statistic -----------------------------------------------------------
+## Check for typos & Get basic statistic -----------------------------------------------------------
 # check for triplets numabres, number of subset per site, ...
 # sample patches by patch??
 # correct then manually in the data themselves
@@ -168,10 +168,29 @@ dat %>%
   print(n = 40)
 
 
+ 
+# Get each category size:
+dat_size  <- read_excel(paste(myPath, 'fieldData/02_select_sites MP_SK/final/share', 
+                              "sites_unique_ID.xlsx", 
+                              sep = '/'))
+
+# keep only usefull columns
+dat_size <- 
+  dat_size %>% 
+  select(Name, Area_m2) %>% 
+  separate(Name, c('trip_n', 'dom_sp', 'type'), '-') %>% 
+  mutate(type = tolower(type),
+         trip_n = as.numeric(trip_n)) 
 
 
 
-# List important variables from raw table  -------------------------------------------
+# Join category size with the vegetation data  ----------------------------
+
+dat <- dat %>% 
+  left_join(dat_size)
+
+
+## List important variables from raw table  -------------------------------------------
 
 
 # Get columsn for photos:
@@ -209,7 +228,7 @@ plot_geo <- c("gradient",
 
 
 
-# Get ground cover shares ------------------------------------------------------
+# Get ground cover shares: per category ------------------------------------------------------
 df_ground0 <-   
   dat %>% 
   dplyr::select(matches(c(plot_info, "gc_"))) %>% 
@@ -233,22 +252,36 @@ df_ground_shann <-
     ungroup() %>% 
     group_by(trip_n, dom_sp, type) %>%
     summarize(shannon_ground = sum(shannon_part)) %>% 
-  mutate(shannon.entropy = exp(shannon_ground))
+  mutate(effective_n_ground = exp(shannon_ground))
     # calculate shannon and replace NA vals by 0
          #shannon = is.na())
 
 # check plot:
+windows()
+df_ground_shann %>% 
+  ggplot(aes(x = factor(type),
+             y = effective_n_ground)) +
+  geom_boxplot() +
+  geom_violin()
+
+windows()
 df_ground_shann %>% 
   ggplot(aes(x = factor(type),
              y = shannon_ground,
              fill = dom_sp)) +
-  geom_boxplot() 
+  geom_violin() 
+
+
+# Get the differences between 
+# Test: does the management type affects the diversity of th ground cover?
+# HO ; the Cleared area will be more homogenous then the Dead ones:
+# clearing homogenize teh gropund cover (prevalence of grasses, ...)
 
 
 
 
 
-## Get Regeneration data  -----------------------------------------------------
+# Get Regeneration data  -----------------------------------------------------
 
 # The regeneration is combined regeneration and advanced regeneration!
 
@@ -382,7 +415,47 @@ df_advanced2 <-
 ##### Rbind regeneration data into single dataframe: --------------------------------
 df_regen_fin <- rbind(df_regen, df_advanced2)
 
+# Calculate Shhannon per subsite?? then I can condider the individual patches as random effects in the model
+df_reg_fin_by_subsample <- 
+  df_regen_fin %>% 
+  arrange(trip_n, type) %>%
+  group_by(trip_n, dom_sp, type, sub_n) %>% 
+  mutate(dens_tot = sum(count),
+         sp_pi    = count/dens_tot,
+         shannon_part = sp_pi*log(sp_pi),
+         shannon = -sum(shannon_part),
+         eff_numb = exp(shannon))# %>% 
+  #print(n = 40) 
 
+# keep only distinct rows for mixed effects:
+
+dat <- df_reg_fin_by_subsample %>% 
+  mutate(uniqueID = factor(paste(trip_n,dom_sp,type,sub_n, sep = '_' ))) %>% 
+  dplyr::select(uniqueID, shannon, eff_numb) %>% 
+  distinct() #%>% 
+  
+
+# How does management affect the dievrsity of species composition?
+dat$type <- as.factor(dat$type)
+dat$dom_sp <- as.factor(dat$dom_sp)
+
+m1 <- lme(eff_numb~ type, random = ~1|uniqueID, data = dat)
+
+summary(m1)
+
+m2 <- lme(eff_numb~ type + dom_sp, random = ~1|uniqueID, data = dat)
+
+summary(m2)
+AIC(m1, m2)
+
+hist(dat$eff_numb)
+
+# use glm and poisson family:
+m3 <- glm(eff_numb~ type + dom_sp, family = poisson(link = "log"), # poisson family
+          data = dat)
+
+AIC(m3)
+summary(m3)
 
 # Define sample area per patch - correct the hdensity/ha estimation----------------
 # calculate from the original data table
@@ -404,7 +477,7 @@ df_reg_dens <-
     mutate(density_ha = reg_count/n/4*10000) #%>% 
 
 
-# Calculate shannon for individual patches
+# Calculate shannon for individual subsites
 # get the total density
 # calculate the share per species - pi
 # calculate Shannon: H = -sum(pi*log(pi)) for each species
@@ -415,8 +488,11 @@ df_reg_dens_shannon <-
   mutate(dens_tot = sum(density_ha),
          sp_pi = density_ha /dens_tot,
          shannon_part = sp_pi*log(sp_pi)) %>% 
-  summarize(shannon = -sum(shannon_part))# %>% 
-  ggplot(aes(y = shannon,
+  summarize(shannon = -sum(shannon_part)) %>% 
+  mutate(effective_n_sp = exp(shannon))# %>% 
+  
+df_reg_dens_shannon %>% 
+ggplot(aes(y = effective_n_sp,
              x = type)) +
   geom_boxplot() + 
  facet_grid(~dom_sp, scales = 'free') #+
@@ -424,6 +500,25 @@ df_reg_dens_shannon <-
 
  
 
+# Does the management explain the tree regen diversity?? --------------------------------------
+m1<-lm(effective_n_sp~1, df_reg_dens_shannon)  # this ignores the management, and cosider the treatmements as independent
+summary(m1)
+
+# only predict the mean effective number: 2.6351     
+coef(m1)
+# (Intercept) 
+# 2.63515 
+
+confint(m1)
+#               2.5 %   97.5 %
+#  (Intercept) 2.237458 3.032842
+
+# Mixed effect model: 
+# can I keep in the small patches, and evaluate them as a group within the treatments? e.g. subsites within the patch will
+# be more similar that patches further away
+library(nlme)
+m3 <- lme(effective_n_sp~1, df_reg_dens_shannon)
+summary(m3)
 
 
 
@@ -470,7 +565,7 @@ ggplot(aes(y = density_ha,
 
 
 
-# Investigate data by plots --------------------------------------------------------------
+# Investigate data by categories --------------------------------------------------------------
 
 
 # Check density distribution:
