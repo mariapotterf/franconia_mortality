@@ -351,7 +351,8 @@ df_advanced <- df_advanced %>%
                                   tree_species == "Tanne"        ~ "Fir"
                                                 ))
 
-
+# Replace tree number by 1: to be able to count how many trees I have in each subplot
+# 
 
 # Define sample area per patch - correct the hdensity/ha estimation
 subsample_n <- df_regen %>%
@@ -372,6 +373,10 @@ subsample_n <- df_regen %>%
     #facet_grid(~dom_sp) +
     ylab('density \n(#trees/ha)')
   
+  
+  
+
+    
   
   
 # Get community weighted means ---------------------------------------------
