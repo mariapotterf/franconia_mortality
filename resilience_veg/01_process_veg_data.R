@@ -420,12 +420,26 @@ df_reg_fin_by_subsample <-
   df_regen_fin %>% 
   arrange(trip_n, type) %>%
   group_by(trip_n, dom_sp, type, sub_n) %>% 
-  mutate(dens_tot = sum(count),
-         sp_pi    = count/dens_tot,
-         shannon_part = sp_pi*log(sp_pi),
-         shannon = -sum(shannon_part),
-         eff_numb = exp(shannon))# %>% 
+  mutate(dens_tot        = sum(count),
+         sp_pi           = count/dens_tot,
+         shannon_part_sp = sp_pi*log(sp_pi),
+         shannon_sp      = -sum(shannon_part_sp),
+         eff_numb_sp     = exp(shannon_sp))# %>% 
   #print(n = 40) 
+
+# Calculate Shannon height diversity ???
+# evaluate teh dominance of species: dominant: if more then 50% of stems
+
+
+# How does the height structure looks like?
+df_reg_fin_by_subsample %>% 
+  ggplot(aes(y = height,
+             x = factor(type),
+             fill = dom_sp)) +
+  geom_violin()
+
+
+
 
 # keep only distinct rows for mixed effects:
 
@@ -434,6 +448,8 @@ dat <- df_reg_fin_by_subsample %>%
   dplyr::select(uniqueID, shannon, eff_numb) %>% 
   distinct() #%>% 
   
+
+
 
 # How does management affect the dievrsity of species composition?
 dat$type <- as.factor(dat$type)
