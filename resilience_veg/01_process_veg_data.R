@@ -316,14 +316,14 @@ df_regen <- df_regen0 %>%
 # Replace the regeneration height classed by estimated heights:
 
 df_regen <- df_regen %>% 
-  rename(height = height_class) %>%   # get heights in cm
-  mutate(height = case_when(height == "HK1" ~ 30,
-                            height == "HK2" ~ 50,
-                            height == "HK3" ~ 70,
-                            height == "HK4" ~ 90,
-                            height == "HK5" ~ 115,
-                            height == "HK6" ~ 175
-  )) %>% 
+  #rename(height = height_class) %>%   # get heights in cm
+ # mutate(height = case_when(height == "HK1" ~ 30,
+ #                           height == "HK2" ~ 50,
+#                            height == "HK3" ~ 70,
+ #                           height == "HK4" ~ 90,
+#                            height == "HK5" ~ 115,
+ #                           height == "HK6" ~ 175
+  #)) %>% 
   mutate(DBH = 0.05) %>% 
   filter(!count == 0) %>% # remove if there is no species present
   mutate(reg_height = 'seedlings')
@@ -403,6 +403,7 @@ df_advanced2 <-
   # replace the values: some have been recorded in meters instead of cm
   mutate(height = case_when(height< 200 ~ height*100,
                             TRUE ~ height)) %>% 
+  mutate(height_class = "HK7") %>% 
   mutate(tree_numb = 1) %>% # # Replace 'tree number' (originally 1-8) by 1: 
                                 # to corresponds to counts, not to the order of recording :
   rename(count = tree_numb) %>% 
@@ -415,8 +416,28 @@ df_advanced2 <-
 ##### Rbind regeneration data into single dataframe: --------------------------------
 df_regen_fin <- rbind(df_regen, df_advanced2)
 
-# Calculate Shhannon per subsite?? then I can condider the individual patches as random effects in the model
+# Calculate Shannon per subsite?? 
+# then I can condider the individual patches as random effects in the model
 df_reg_fin_by_subsample <- 
+  df_regen_fin %>% 
+  select(-c(height_class, DBH, reg_height)) %>% 
+  arrange(trip_n, type) %>%
+  group_by(trip_n, dom_sp, type, sub_n, species) %>% 
+  summarize(count_sp        = sum(count))  %>% 
+    ungroup() %>% 
+    group_by(trip_n, dom_sp, type, sub_n) %>% 
+    mutate(dens_tot        = sum(count_sp),
+           sp_pi           = count_sp/dens_tot,
+           shannon_part_sp = sp_pi*log(sp_pi),
+           shannon_sp      = -sum(shannon_part_sp),
+           eff_numb_sp     = exp(shannon_sp))# %>%
+    print(n = 40)
+    
+    
+
+    
+ # Calculate Shannon height diversity ??? -------------
+#df_reg_fin_by_subsample_height <- 
   df_regen_fin %>% 
   arrange(trip_n, type) %>%
   group_by(trip_n, dom_sp, type, sub_n) %>% 
@@ -425,10 +446,11 @@ df_reg_fin_by_subsample <-
          shannon_part_sp = sp_pi*log(sp_pi),
          shannon_sp      = -sum(shannon_part_sp),
          eff_numb_sp     = exp(shannon_sp))# %>% 
-  #print(n = 40) 
 
-# Calculate Shannon height diversity ???
+
+
 # evaluate teh dominance of species: dominant: if more then 50% of stems
+
 
 
 # How does the height structure looks like?
