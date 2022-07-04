@@ -19,7 +19,17 @@
 # recalculate the values to hectare:
 # density: regen
 #          advanced regen
-#          mature trees
+#          get the share of teh planted
+#          share of damaged and location of damage
+# density:
+#          mature trees: calculate based on the distance to nearest tree
+# 
+# 
+# photo indication: north subplot
+#                   south subplot
+#                   north, east, south, west environment
+# video indication:  north, east, south, west environment
+# export individual dataframes for subsequent processing: shannon, ...
 
 
 # Data structure -----------------------------------
@@ -33,6 +43,11 @@
 # if 'env' - surroundings (environment)
 # if not env - in the site 
 # completed unique names for tree, species, etc.
+
+
+# remove all previous data from R memory
+rm(list=ls())
+
 
 # Regeneration Tree species (12 species in total):
 # 
@@ -65,28 +80,6 @@ reg_trees <- c(
 )
 
 
-# dominant trees in germany: https://www.forstwirtschaft-in-deutschland.de/index.php?id=52&L=1
-# spruce 26
-# pine 22.9
-# beech 15.8
-# oak 10.6
-# larch 2.9
-# douglas fir 2
-# fir 1.7
-# other deciduous high life 7.2
-# other deciduous lower life: 10.8
-
-
-
-# height classes:
-reg_trees_heights <- c(
-  'HK1', # 0.2-0.4 m 
-  'HK2', # 0.4-0.6 m
-  'HK3', # 0.6-0.8 m
-  'HK4', # 0.8-1.0 m
-  'HK5', # 1.0-1.3 m
-  'HK6'  # 1.3-2.0 m
-)
 
 
 # Input data -------------------------------------------------------------------
@@ -102,14 +95,25 @@ library(data.table)
 library(tidyr)
 library(ggplot2)
 
-#### Read Regeneration data 
+
+
+#### Read Regeneration data -----------------------------------------------------
 dat1  <- read_excel(paste(myPath, inFolderFieldVeg, "Data_Week_3.xlsx", sep = '/'))
 dat2  <- read_excel(paste(myPath, inFolderFieldVeg, "Data_Week_1-2.xlsx", sep = '/'))
 dat3  <- read_excel(paste(myPath, inFolderFieldVeg, "Data_Week_4.xlsx", sep = '/'))
 
 
-# Read New headingsL: in ENG, with unique colnames
-# this was done manually in Excell
+#### Get output tables
+outRegen  = paste(myPath, outTable, 'df_regen.csv' , sep = '/')
+outGround = paste(myPath, outTable, 'df_ground.csv', sep = '/')
+outVideo  = paste(myPath, outTable, 'df_video.csv' , sep = '/')
+outPhoto  = paste(myPath, outTable, 'df_photo.csv' , sep = '/')
+  
+
+
+## Clean input data -------------------------------------------------------------
+# Read New headingsL: in ENG, with unique colnames 
+# this was done manually in Excel
 EN_heading <- read_excel(paste(myPath, 
                                inFolderFieldVeg, 
                                 "col_names_ENG.xlsx", sep = '/'), 
@@ -147,7 +151,7 @@ colnames(dat) <- EN_col_names
 
 
 #### Correct mistakes/typos (found during processing): --------------------------------------
-# need for qualit data check! visually in the table, and correct in the script
+# need for quality data check! visually in the table, and correct in the script
 # from 06/28/2022 -> correct directly in the files
 #dat$trip_n <- replace(dat$trip_n, dat$trip_n == 644, 64) 
 #dat$trip_n <- replace(dat$trip_n, dat$trip_n == 35 &  dat$dom_sp == 'beech', 32) 
@@ -189,12 +193,19 @@ dat_size <-
 dat <- dat %>% 
   left_join(dat_size)
 
+dat_size %>% 
+  ggplot(aes(Area_m2/10000), fill = 'white', col = 'black') +
+  geom_histogram(bins = 100) +
+  theme_bw() +
+  facet_grid(.~type)
+  
 
-## List important variables from raw table  -------------------------------------------
+
+## List important column names from raw table  -------------------------------------------
 
 
 # Get columsn for photos:
-photos_id <- c("North_subplot",
+photos_id <- c("north_subplot",
                "east_subplot",
                "north_environment",
                "east_environment",
@@ -213,6 +224,7 @@ plot_info <- c(#"ObjectID",
 plot_geo <- c("gradient",
               "exposure")
 
+
 # get columns for ground cover: in %: marked by 'gc_' in names
 # ground_cover <- c("Mature_Trees",
 #                   "rejuvenation",
@@ -227,8 +239,7 @@ plot_geo <- c("gradient",
 
 
 
-
-# Get ground cover shares: per category ------------------------------------------------------
+#### Get ground cover shares: per category ------------------------------------------------------
 df_ground0 <-   
   dat %>% 
   dplyr::select(matches(c(plot_info, "gc_"))) %>% 
@@ -243,7 +254,12 @@ df_ground <-
   separate(uniqueID, c('trip_n', 'dom_sp', 'type', 'sub_n'), '_')
 
 
-# get the avergae values per category, not by the subplot:
+#### Save the table ------------------------------------------------------------------
+fwrite(df_ground, outGround)
+
+
+
+# get the average values per category, not by the subplot:
 df_ground_shann <-
   df_ground %>% 
   group_by(trip_n, dom_sp, type, class) %>% 
@@ -252,11 +268,12 @@ df_ground_shann <-
     ungroup() %>% 
     group_by(trip_n, dom_sp, type) %>%
     summarize(shannon_ground = sum(shannon_part)) %>% 
-  mutate(effective_n_ground = exp(shannon_ground))
+    mutate(effective_n_ground = exp(shannon_ground))
     # calculate shannon and replace NA vals by 0
          #shannon = is.na())
 
-# check plot:
+
+##### check plot: ---------------------------------------------------------------------
 windows()
 df_ground_shann %>% 
   ggplot(aes(x = factor(type),
@@ -416,6 +433,11 @@ df_advanced2 <-
 ##### Rbind regeneration data into single dataframe: --------------------------------
 df_regen_fin <- rbind(df_regen, df_advanced2)
 
+# Save teh table 
+fwrite(df_regen_fin, outRegen)
+
+
+
 # Calculate Shannon per subsite?? 
 # then I can condider the individual patches as random effects in the model
 df_reg_fin_by_subsample <- 
@@ -431,7 +453,7 @@ df_reg_fin_by_subsample <-
            shannon_part_sp = sp_pi*log(sp_pi),
            shannon_sp      = -sum(shannon_part_sp),
            eff_numb_sp     = exp(shannon_sp))# %>%
-    print(n = 40)
+ #   print(n = 40)
     
     
 
