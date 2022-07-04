@@ -320,13 +320,46 @@ df_regen0 <- dat %>%
   dplyr::select(!matches("Number")) %>% 
   mutate(uniqueID = paste(trip_n,dom_sp,type,sub_n, sep = '_' )) %>% 
   dplyr::select(-c("trip_n","dom_sp","type",'sub_n')) %>%
-  dplyr::select_if(function(col) all(col == .$uniqueID) | is.numeric(col)) # select the numeric columns and the siteID (character)
-
-# convert from wide to long to calculate the counts by height classes:
-df_regen <- df_regen0 %>% 
+  dplyr::select_if(function(col) all(col == .$uniqueID) | is.numeric(col)) %>%  # select the numeric columns and the siteID (character)
   pivot_longer(!uniqueID, names_to = 'type', values_to = 'count') %>% 
   separate(type, c('species', 'height_class'), '_') %>% 
-  separate(uniqueID, c('trip_n', 'dom_sp', 'type', 'sub_n'), '_')
+  separate(uniqueID, c('trip_n', 'dom_sp', 'type', 'sub_n'), '_') %>% 
+  mutate(origin = 'natural')
+
+
+
+
+
+# Get regeneration data: counts for planted
+df_regen_planted <- 
+  dat %>% 
+  dplyr::select(matches(paste(c(plot_info, 'Planted'), collapse = '|'))) %>%
+  mutate(uniqueID = paste(trip_n,dom_sp,type,sub_n, sep = '_' )) %>% 
+  dplyr::select(-c("trip_n","dom_sp","type",'sub_n')) %>%
+  dplyr::select_if(function(col) all(col == .$uniqueID) | is.numeric(col)) %>% # select the numeric columns and the siteID (character)
+  pivot_longer(!uniqueID, names_to = 'type', values_to = 'count') %>%          # convert to long format
+  mutate(type = gsub('Number_of_planted_individuals', 'planted', type)) %>% 
+  separate(type, c('species', 'height_class', 'origin'), '_') %>% 
+  separate(uniqueID, c('trip_n', 'dom_sp', 'type', 'sub_n'), '_') %>% 
+  filter(complete.cases(.)) 
+  
+ 
+# Get the damage data: where it happened?
+#df_regen_damaged <-
+  dat %>% 
+  dplyr::select(matches(paste(c(plot_info, 'Damage'), collapse = '|'))) %>%
+  mutate(uniqueID = paste(trip_n,dom_sp,type,sub_n, sep = '_' )) %>% 
+  dplyr::select(-c("trip_n","dom_sp","type",'sub_n')) %>%
+    dplyr::select_if(function(col) all(col == .$uniqueID) | is.numeric(col)) %>% # select the numeric columns and the siteID (character)
+    pivot_longer(!uniqueID, names_to = 'type', values_to = 'count')  %>%          # convert to long format
+    mutate(damage_type = case_when(type ))
+  distinct(type) %>% 
+    print(n = 300)
+ 
+
+
+
+
 
 
 
