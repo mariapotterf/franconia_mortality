@@ -219,8 +219,9 @@ plot_info <- c(#"ObjectID",
                "trip_n",
                "dom_sp",
                "type",
-               "sub_n"               )
+               "sub_n"               )  
 
+# get geographic information
 plot_geo <- c("gradient",
               "exposure")
 
@@ -236,6 +237,42 @@ plot_geo <- c("gradient",
 #                   "soil/foliage",
 #                   "rock",
 #                   "deadwood/stumps")
+
+
+
+# Export tables for videos & photos ---------------------------------------
+
+# Get ID with indication of teh photo number
+df_photo <-   
+  dat %>% 
+  dplyr::select(matches(c(plot_info, photos_id))) %>% 
+  mutate(uniqueID = paste(trip_n,dom_sp,type,sub_n, sep = '_' )) %>% 
+  dplyr::select(-plot_info)  %>%
+  pivot_longer(!uniqueID, names_to = 'class', values_to = 'photo_number')  %>%
+  separate(class, c('orientation', 'site'), '_') %>% 
+  separate(uniqueID, all_of(plot_info), '_')
+
+
+#### Save the table ------------------------------------------------------------------
+fwrite(df_photo, outPhoto)
+
+
+# Get ID with indication of teh photo number
+df_video <-   
+  dat %>% 
+  dplyr::select(matches(paste(c(plot_info, 'Video'), collapse = '|'))) %>% 
+  mutate(uniqueID = paste(trip_n,dom_sp,type,sub_n, sep = '_' )) %>% 
+  dplyr::select(-c("trip_n","dom_sp","type",'sub_n'))  %>%
+  dplyr::select_if(function(col) all(col == .$uniqueID) | is.numeric(col)) %>%  # select uniqueID and only numeric columns
+  pivot_longer(!uniqueID, names_to = 'class', values_to = 'video_number')  %>%
+  filter(complete.cases(.)) %>%  # remove the rows that contains NA values 
+  separate(class, c('rec_type', 'site', 'orientation'), '_') %>% 
+  separate(uniqueID, c('trip_n', 'dom_sp', 'type', 'sub_n'), '_')
+
+#### Save the table ------------------------------------------------------------------
+fwrite(df_video, outVideo)
+
+
 
 
 
@@ -298,6 +335,8 @@ df_ground_shann %>%
 
 
 
+
+
 # Get Regeneration data  -----------------------------------------------------
 
 # The regeneration is combined regeneration and advanced regeneration!
@@ -344,7 +383,26 @@ df_regen_planted <-
   filter(complete.cases(.)) 
   
  
+
+d <- data.frame(nam = c('aaa_string', 'bb_salala', 'cc_bububub'))
+d$nam %>% 
+  # mutate(type = ) 
+ # mutate(nam = str_replace_all(c("aaa" = "1", "bb" = "2", "cc" = "33")))
+str_replace_all(c("aaa" = "1", "bb" = "2", "cc" = "33"))
+
+
+
+d %>% 
+  # mutate(type = ) 
+  # mutate(nam = str_replace_all(c("aaa" = "1", "bb" = "2", "cc" = "33")))
+  mutate(nam = str_replace_all(c("aaa" = "1", "bb" = "2", "cc" = "33")))
+replace(nam = str_replace_all(c("aaa" = "1", "bb" = "2", "cc" = "33")))
+
+
+
+
 # Get the damage data: where it happened?
+library(stringr)  # replace teh values following regex expressions
 #df_regen_damaged <-
   dat %>% 
   dplyr::select(matches(paste(c(plot_info, 'Damage'), collapse = '|'))) %>%
@@ -352,7 +410,12 @@ df_regen_planted <-
   dplyr::select(-c("trip_n","dom_sp","type",'sub_n')) %>%
     dplyr::select_if(function(col) all(col == .$uniqueID) | is.numeric(col)) %>% # select the numeric columns and the siteID (character)
     pivot_longer(!uniqueID, names_to = 'type', values_to = 'count')  %>%          # convert to long format
-    mutate(damage_type = case_when(type ))
+  #mutate(type = str_replace(type, case_when(grepl("leading_drive_damage", type) ~ 'leader',
+  #                                          grepl("other_damage", type) ~ 'other',
+  #                                          grepl("combined_damage", type) ~ 'combined')) )%>% 
+    mutate(dam_type = case_when(grepl("leading_drive_damage", type) ~ 'leader',
+                                grepl("other_damage", type) ~ 'other',
+                                grepl("combined_damage", type) ~ 'combined')) # %>% 
   distinct(type) %>% 
     print(n = 300)
  
