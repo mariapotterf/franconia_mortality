@@ -181,7 +181,7 @@ dat %>%
 
  
 # Get each category size ----------------------------------------------------------------
-dat_size  <- read_excel(paste(myPath, 'fieldData/02_select_sites MP_SK/final/share', 
+dat_size  <- read_excel(paste(myPath, 'fieldData/sites_identification/final/share', 
                               "sites_unique_ID.xlsx", 
                               sep = '/'))
 
@@ -245,7 +245,7 @@ df_photo <-
   separate(uniqueID, all_of(plot_info), '_')
 
 
-#### Save the table ------------------------------------------------------------------
+#### Save the table 
 fwrite(df_photo, outPhoto)
 
 
@@ -261,14 +261,16 @@ df_video <-
   separate(uniqueID, c('trip_n', 'dom_sp', 'manag', 'sub_n'), '_')
 
 
-#### Save the video df ------------------------------------------------------------------
+#### Save the video df 
 fwrite(df_video, outVideo)
 
 
 
 
 
-#### Get ground cover shares: per category ------------------------------------------------------
+
+
+# Get ground cover shares: per category ------------------------------------------------------
 df_ground <-   
   dat %>% 
   dplyr::select(matches(c(plot_info, "gc_", 'uniqueID'))) %>% 
@@ -278,7 +280,7 @@ df_ground <-
   separate(uniqueID, all_of(plot_info), '_')
 
 
-#### Save the ground cover table ------------------------------------------------------------------
+#### Save the ground cover table 
 fwrite(df_ground, outGround)
 
 
@@ -321,7 +323,7 @@ df_regen <- dat %>%
 
 
 
-# Counts for planted data   -----------------------------------------------------
+## Counts for planted data   -----------------------------------------------------
 # counts of planted data is the part of total counts:
 # make sure that is true! the number of planted should never be higher than count_tot = total number of regeneration
 df_regen_planted <- 
@@ -337,7 +339,7 @@ df_regen_planted <-
   filter(complete.cases(.)) 
   
 
-# Get the damage data & position:
+## Get the damage data & position:
 # can I see if teh damage was on planted or on naturally regenerated one?
 df_regen_damaged <-
   dat %>% 
@@ -375,29 +377,12 @@ df_reg_full %>%
   
 
 # Export df regeneration --------------------------------------------------
-#### Save the ground cover table ------------------------------------------------------------------
 fwrite(df_reg_full, outRegen)
  
 
 
 
 
-
-
-# Replace the regeneration height classed by estimated heights:
-
-df_regen <- df_regen %>% 
-  #rename(height = height_class) %>%   # get heights in cm
- # mutate(height = case_when(height == "HK1" ~ 30,
- #                           height == "HK2" ~ 50,
-#                            height == "HK3" ~ 70,
- #                           height == "HK4" ~ 90,
-#                            height == "HK5" ~ 115,
- #                           height == "HK6" ~ 175
-  #)) %>% 
-  mutate(DBH = 0.05) %>% 
-  filter(!count == 0) %>% # remove if there is no reg_species present
-  mutate(reg_height = 'seedlings')
 
 
 
@@ -489,6 +474,44 @@ df_advanced2 <-
 
 # Export the advanced regeneration table 
 fwrite(df_advanced2, outRegenAdvanced )
+
+
+
+
+
+
+
+# Get pre-disturbance stand density ---------------------------------------
+
+
+#df_mature_trees <-
+  dat %>% 
+  dplyr::select(matches(paste(c(plot_info, 'env_'), collapse = '|'))) %>%
+  dplyr::select(matches(paste(c(plot_info, 'MatureTree'), collapse = '|'))) %>%
+  dplyr::select(-c("env_MatureTree_present_the_sectors" )) %>% 
+  rename(c(plot_info, 'sector', 'tree_species', 'DBH', 'distance', 'edge_tree' ))
+  #dplyr::select(matches("MatureTree"| uniqueID)) # %>%
+  mutate(uniqueID = paste(trip_n,dom_sp,manag,sub_n, sep = '_' ))# %>% 
+  dplyr::select(-all_of(plot_info)) #%>% 
+  #dplyr::select_if(function(col) all(col == .$uniqueID) | is.numeric(col)) %>% # select the numeric columns and the siteID (character)
+  pivot_longer(!uniqueID, 
+               names_to = 'obj_type', 
+               values_to = 'distance')  %>%          # convert to long format
+  dplyr::mutate(obj_type = gsub('env_Distance_', '', obj_type)) %>% 
+    dplyr::mutate(obj_type = gsub('next_', '', obj_type)) %>% 
+ # distinct(obj_type)
+
+  dplyr::mutate(obj_type = gsub('_', '', obj_type)) #%>% 
+  separate(uniqueID, c('trip_n', 'dom_sp', 'manag', 'sub_n'), '_') %>% 
+  #separate(dam_manag, c('reg_species', 'height_class', 'damage_place'), '_')  %>%
+  filter(complete.cases(.)) %>% 
+  filter(n_damage !=0)
+
+
+
+
+
+
 
 
 
