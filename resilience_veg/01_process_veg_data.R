@@ -105,8 +105,9 @@ dat3  <- read_excel(paste(myPath, inFolderFieldVeg, "Data_Week_4.xlsx", sep = '/
 
 
 #### Get output tables
-outRegen          = paste(myPath, outTable, 'df_regen.csv' , sep = '/')  # contains infor of plantation& damage
+outRegen          = paste(myPath, outTable, 'df_regen.csv'          , sep = '/')  # contains infor of plantation& damage
 outRegenAdvanced  = paste(myPath, outTable, 'df_regen_advanced.csv' , sep = '/')
+outMature         = paste(myPath, outTable, 'df_mature_trees.csv'   , sep = '/')
 
 outGround = paste(myPath, outTable, 'df_ground.csv', sep = '/')
 outVideo  = paste(myPath, outTable, 'df_video.csv' , sep = '/')
@@ -481,34 +482,32 @@ fwrite(df_advanced2, outRegenAdvanced )
 
 
 
-# Get pre-disturbance stand density ---------------------------------------
+# Get pre-disturbance stand density -------------------------------------------------
 
 
-#df_mature_trees <-
+df_mature_trees <-
   dat %>% 
   dplyr::select(matches(paste(c(plot_info, 'env_'), collapse = '|'))) %>%
   dplyr::select(matches(paste(c(plot_info, 'MatureTree'), collapse = '|'))) %>%
   dplyr::select(-c("env_MatureTree_present_the_sectors" )) %>% 
-  rename(c(plot_info, 'sector', 'tree_species', 'DBH', 'distance', 'edge_tree' ))
-  #dplyr::select(matches("MatureTree"| uniqueID)) # %>%
-  mutate(uniqueID = paste(trip_n,dom_sp,manag,sub_n, sep = '_' ))# %>% 
-  dplyr::select(-all_of(plot_info)) #%>% 
-  #dplyr::select_if(function(col) all(col == .$uniqueID) | is.numeric(col)) %>% # select the numeric columns and the siteID (character)
-  pivot_longer(!uniqueID, 
-               names_to = 'obj_type', 
-               values_to = 'distance')  %>%          # convert to long format
-  dplyr::mutate(obj_type = gsub('env_Distance_', '', obj_type)) %>% 
-    dplyr::mutate(obj_type = gsub('next_', '', obj_type)) %>% 
- # distinct(obj_type)
-
-  dplyr::mutate(obj_type = gsub('_', '', obj_type)) #%>% 
-  separate(uniqueID, c('trip_n', 'dom_sp', 'manag', 'sub_n'), '_') %>% 
-  #separate(dam_manag, c('reg_species', 'height_class', 'damage_place'), '_')  %>%
-  filter(complete.cases(.)) %>% 
-  filter(n_damage !=0)
+  setnames(c(plot_info, 'sector', 'tree_species', 'DBH', 'distance', 'edge_tree' )) %>% 
+  mutate(tree_species = case_when(tree_species == "Esche"        ~ "Ash",
+                                 tree_species == "Sonstiges NH" ~ "OtherSoftwood",
+                                 tree_species == "Sonstiges LH" ~ "OtherHardwood",
+                                 tree_species == "Buche"        ~ "Beech" ,
+                                 tree_species == "Vogelbeere"   ~ "Rowan",
+                                 tree_species == "Bergahorn"    ~ "Maple",
+                                 tree_species == "Fichte"       ~ "Spruce",
+                                 tree_species == "Eiche"        ~ "Oak",
+                                 tree_species == "Kiefer"       ~ "Pine",
+                                 tree_species == "Birke"        ~ "Birch",
+                                 tree_species == "Weide"        ~ "Willow",
+                                 tree_species == "Tanne"        ~ "Fir"))
 
 
 
+#### Save the mature trees dataset -------------------------------------------------
+fwrite(df_mature_trees, outMature )
 
 
 
