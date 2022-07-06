@@ -107,7 +107,7 @@ dat3  <- read_excel(paste(myPath, inFolderFieldVeg, "Data_Week_4.xlsx", sep = '/
 #### Get output tables
 outRegen          = paste(myPath, outTable, 'df_regen.csv'          , sep = '/')  # contains infor of plantation& damage
 outRegenAdvanced  = paste(myPath, outTable, 'df_regen_advanced.csv' , sep = '/')
-outMature         = paste(myPath, outTable, 'df_mature_trees.csv'   , sep = '/')
+outMatureENV         = paste(myPath, outTable, 'df_mature_trees_env.csv'   , sep = '/')
 
 outGround = paste(myPath, outTable, 'df_ground.csv', sep = '/')
 outVideo  = paste(myPath, outTable, 'df_video.csv' , sep = '/')
@@ -485,7 +485,7 @@ fwrite(df_advanced2, outRegenAdvanced )
 # Get pre-disturbance stand density -------------------------------------------------
 
 
-df_mature_trees <-
+df_mature_trees_env <-
   dat %>% 
   dplyr::select(matches(paste(c(plot_info, 'env_'), collapse = '|'))) %>%
   dplyr::select(matches(paste(c(plot_info, 'MatureTree'), collapse = '|'))) %>%
@@ -507,7 +507,7 @@ df_mature_trees <-
 
 
 #### Save the mature trees dataset -------------------------------------------------
-fwrite(df_mature_trees, outMature )
+fwrite(df_mature_trees_env, outMatureENV )
 
 
 
