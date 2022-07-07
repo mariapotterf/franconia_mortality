@@ -1,10 +1,14 @@
-# Analayse the data;
+# Analyse the data:
 
 # get data about community structure
 # ecological traits
 # shanon diversity
 # test different categories and community resemblance?
 # remove all previous data from R memory
+# Convert the regeneration counst into density/ha - takes into account the difference in sampling plot!
+#  need to do the slope correction?
+# http://wiki.awf.forst.uni-goettingen.de/wiki/index.php/Slope_correction
+
 rm(list=ls())
 
 load(file = "vegData.Rdata")
@@ -40,10 +44,12 @@ trees_lat <- c('Picea abies',
           'Fagus sylvatica',
           'Sorbus aucuparia',
           'Abies alba',
-          'Quercus petraea',  # Quercus can be later updated!
+          'Quercus petraea',  # Quercus will be averaged later
+          'Quercus robur',
           'Acer pseudoplatanus',
           'Betula pendula',
-          'Salix caprea',     # Salix can be later updated!
+          'Salix caprea',     # Salix will be averaged later
+          'Salix alba',
           'Pinus sylvestris',
           'Fraxinus excelsior') 
 
