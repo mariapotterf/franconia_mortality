@@ -238,7 +238,7 @@ plot_geo <- c("gradient",
 df_photo <-   
   dat %>% 
   dplyr::select(matches(c(plot_info, photos_id, 'uniqueID'))) %>% 
-  dplyr::select(-plot_info)  %>%
+  dplyr::select(-all_of(plot_info))  %>%
   pivot_longer(!uniqueID, names_to = 'class', values_to = 'photo_number')  %>%
   separate(class, c('orientation', 'site'), '_') %>% 
   separate(uniqueID, all_of(plot_info), '_')
@@ -309,12 +309,17 @@ fwrite(df_ground, outGround)
 
 # Subset counts for regeneration dataset
 # this number indicates all of teh regeneration: included planted individuals
-df_regen <- dat %>% 
-  dplyr::select(matches(paste(c(plot_info, reg_trees, 'uniqueID'), collapse = '|'))) %>% 
-  dplyr::select(!matches("Number")) %>% 
+df_regen <- 
+  dat %>% 
+  dplyr::select(matches(paste(c(plot_info, reg_trees, plot_geo, 'uniqueID'), collapse = '|'))) %>% 
+  dplyr::select(!matches("Number")) %>%   
   dplyr::select(-all_of(plot_info)) %>% 
-  dplyr::select_if(function(col) all(col == .$uniqueID) | is.numeric(col)) %>%  # select the numeric columns and the siteID (character)
-  pivot_longer(!uniqueID, names_to = 'manag', values_to = 'n_total') %>% 
+  dplyr::select_if(function(col) all(
+    col == .$uniqueID | 
+    col == .$gradient | 
+    col ==.$exposure | 
+    is.numeric(col))) %>%  # select the numeric columns and the siteID (character)
+  pivot_longer(!c(uniqueID, gradient, exposure), names_to = 'manag', values_to = 'n_total') %>% 
   separate(manag, c('reg_species', 'height_class'), '_') %>% 
   separate(uniqueID, all_of(plot_info), '_') #%>%
   #filter(n_total !=0)  # keep 0s to have the all oiverview of the total species
@@ -327,10 +332,15 @@ df_regen <- dat %>%
 # make sure that is true! the number of planted should never be higher than count_tot = total number of regeneration
 df_regen_planted <- 
   dat %>% 
-  dplyr::select(matches(paste(c(plot_info, 'Planted', 'uniqueID'), collapse = '|'))) %>%
+  dplyr::select(matches(paste(c(plot_info, plot_geo, 'Planted', 'uniqueID'), collapse = '|'))) %>%
   dplyr::select(-all_of(plot_info)) %>% 
-  dplyr::select_if(function(col) all(col == .$uniqueID) | is.numeric(col)) %>% # select the numeric columns and the siteID (character)
-  pivot_longer(!uniqueID, names_to = 'manag', values_to = 'n_planted') %>%          # convert to long format
+  dplyr::select_if(function(col) all(
+    col == .$uniqueID | 
+    col == .$gradient | 
+    col ==.$exposure | 
+    is.numeric(col))) %>% # select the numeric columns and the siteID (character)
+  pivot_longer(!c(uniqueID, gradient, exposure), 
+               names_to = 'manag', values_to = 'n_planted') %>%          # convert to long format
   mutate(manag = gsub('Number_of_planted_individuals', 'planted', manag)) %>%   # replace string pattern to simplify names
   separate(manag, c('reg_species', 'height_class', 'origin'), '_') %>% 
   dplyr::select(-c('origin')) %>% 
@@ -342,11 +352,15 @@ df_regen_planted <-
 # can I see if teh damage was on planted or on naturally regenerated one?
 df_regen_damaged <-
   dat %>% 
-  dplyr::select(matches(paste(c(plot_info, 'Damage'), collapse = '|'))) %>%
+  dplyr::select(matches(paste(c(plot_info, plot_geo, 'Damage'), collapse = '|'))) %>%
   mutate(uniqueID = paste(trip_n,dom_sp,manag,sub_n, sep = '_' )) %>% 
     dplyr::select(-all_of(plot_info)) %>% 
-    dplyr::select_if(function(col) all(col == .$uniqueID) | is.numeric(col)) %>% # select the numeric columns and the siteID (character)
-    pivot_longer(!uniqueID, 
+    dplyr::select_if(function(col) all(
+      col == .$uniqueID | 
+      col == .$gradient | 
+      col ==.$exposure | 
+      is.numeric(col))) %>% # select the numeric columns and the siteID (character)
+    pivot_longer(!c(uniqueID, gradient, exposure), 
                  names_to = 'dam_manag', 
                  values_to = 'n_damage')  %>%          # convert to long format
    dplyr::mutate(dam_manag = str_replace_all(dam_manag, 
@@ -369,10 +383,6 @@ df_reg_full <- df_regen %>%
   left_join(df_regen_damaged)  %>% 
   filter(n_total !=0)  # exclude 0 if no regeneration was collected
 
-df_reg_full %>% 
-  filter(trip_n == 24)  %>% 
-  print(n = 60)
-
   
 
 # Export df regeneration --------------------------------------------------
@@ -385,7 +395,7 @@ fwrite(df_reg_full, outRegen)
 
 
 
-### For Advanced regen: samplings  ---------------------------------------------------
+## For Advanced regen: samplings  ---------------------------------------------------
 
 # Extract the columns by the '1_Advanced_' indication and then merge them into one database:
 # otherwise,not sure how to do it
@@ -394,11 +404,12 @@ fwrite(df_reg_full, outRegen)
 # for now, max 8 advanced regen trees/subset
 
 get_adv_regen <- function(x, ...) {
+  #x = 2
   reg_name = paste(x, '_Advanced', sep = '')
   
   # Create a table to subset specific columns
   dat_reg <- dat %>% 
-    dplyr::select(matches(paste(c(plot_info, reg_name), collapse = '|'))) %>% 
+    dplyr::select(matches(paste(c(plot_info, plot_geo, reg_name), collapse = '|'))) %>% 
     dplyr::select(!matches(c('env_','_bin'))) %>% 
     mutate(uniqueID = paste(trip_n,dom_sp,manag,sub_n, sep = '_' )) %>% 
     dplyr::select(-c("trip_n","dom_sp","manag",'sub_n')) %>%
@@ -406,7 +417,7 @@ get_adv_regen <- function(x, ...) {
     filter(complete.cases(.)) # remove the rows that contains NA values
   
   # Rename the columns:
-  colnames(dat_reg) <- c('reg_species', 'DBH', 'height', 'uniqueID', 'tree_numb')
+  colnames(dat_reg) <- c('gradient', 'exposure', 'reg_species', 'DBH', 'height', 'uniqueID', 'tree_numb')
   
   # Return the df from teh function
   return(dat_reg)
@@ -415,6 +426,7 @@ get_adv_regen <- function(x, ...) {
 
 ##### Create a vectors of values to subset Advanced regen columns form the datatable ----------
 x <- c(1:8)
+
 # allply the function to get the whole list of the data
 ls_advanced <- lapply(x, get_adv_regen)
 
@@ -423,20 +435,23 @@ df_advanced <- do.call(rbind, ls_advanced)
 
 
 # Replace names of tree reg_species:
-df_advanced <- df_advanced %>% 
-  mutate(reg_species = case_when(reg_species == "Esche"        ~ "Ash",
-                             reg_species == "Sonstiges NH" ~ "OtherSoftwood",
-                             reg_species == "Sonstiges LH" ~ "OtherHardwood",
-                             reg_species == "Buche"        ~ "Beech" ,
-                             reg_species == "Vogelbeere"   ~ "Rowan",
-                             reg_species == "Bergahorn"    ~ "Maple",
-                             reg_species == "Fichte"       ~ "Spruce",
-                             reg_species == "Eiche"        ~ "Oak",
-                             reg_species == "Kiefer"       ~ "Pine",
-                             reg_species == "Birke"        ~ "Birch",
-                             reg_species == "Weide"        ~ "Willow",
-                             reg_species == "Tanne"        ~ "Fir"
-                                                ))
+df_advanced <- df_advanced %>%
+  mutate(
+    reg_species = case_when(
+      reg_species == "Esche"        ~ "Ash",
+      reg_species == "Sonstiges NH" ~ "OtherSoftwood",
+      reg_species == "Sonstiges LH" ~ "OtherHardwood",
+      reg_species == "Buche"        ~ "Beech" ,
+      reg_species == "Vogelbeere"   ~ "Rowan",
+      reg_species == "Bergahorn"    ~ "Maple",
+      reg_species == "Fichte"       ~ "Spruce",
+      reg_species == "Eiche"        ~ "Oak",
+      reg_species == "Kiefer"       ~ "Pine",
+      reg_species == "Birke"        ~ "Birch",
+      reg_species == "Weide"        ~ "Willow",
+      reg_species == "Tanne"        ~ "Fir"
+    )
+  )
 
 # Replace 'tree number' (originally 1-8) by 1: 
 # to corresponds to counts, not to the order of recording :
@@ -485,10 +500,10 @@ fwrite(df_advanced2, outRegenAdvanced )
 
 df_mature_trees_env <-
   dat %>% 
-  dplyr::select(matches(paste(c(plot_info, 'env_'), collapse = '|'))) %>%
-  dplyr::select(matches(paste(c(plot_info, 'MatureTree'), collapse = '|'))) %>%
+  dplyr::select(matches(paste(c(plot_info, plot_geo, 'env_'), collapse = '|'))) %>%
+  dplyr::select(matches(paste(c(plot_info, plot_geo, 'MatureTree'), collapse = '|'))) %>%
   dplyr::select(-c("env_MatureTree_present_the_sectors" )) %>% 
-  setnames(c(plot_info, 'sector', 'tree_species', 'DBH', 'distance', 'edge_tree' )) %>% 
+  setnames(c(plot_info, 'gradient', 'exposure', 'sector', 'tree_species', 'DBH', 'distance', 'edge_tree' )) %>% 
   mutate(tree_species = case_when(tree_species == "Esche"        ~ "Ash",
                                   tree_species == "Sonstiges NH" ~ "OtherSoftwood",
                                   tree_species == "Sonstiges LH" ~ "OtherHardwood",
