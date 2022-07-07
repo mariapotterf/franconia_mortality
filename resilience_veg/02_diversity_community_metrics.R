@@ -8,6 +8,10 @@
 # Convert the regeneration counst into density/ha - takes into account the difference in sampling plot!
 #  need to do the slope correction?
 # http://wiki.awf.forst.uni-goettingen.de/wiki/index.php/Slope_correction
+# our inclinometer suunto is in degrees: goes 0-90
+# slope correction: only needed for slopes > 10% (7 degrees) # https://www.archtoolbox.com/calculating-slope/
+# 100% slope = 45 degrees (1:1 gradient)
+# NA% slope = 90 degrees  (1:0 gradient)
 
 rm(list=ls())
 
@@ -66,6 +70,56 @@ eco_traits %>%
   filter(Data_set_1 == 'Europe') %>% 
     #print(n = 100)
   filter(Species %in% trees_lat)
+
+
+# Calculate the density per site
+
+# Slope correction factor:
+# correct the measurements in the field to the map plane projection (e.g. 'shrinks the field sampling plot')
+# need to calculate the area of the study site on the pane: will change one axis, other stays the same 
+# then need to recalculate the correction factor: at plane, the factor is 2500 (4m2 to 10000m2)
+
+ha = 10000
+trees_field = 10
+alpha = 16.7 #(has to be in degrees!)
+r = 17.84    # m
+r1 = r
+r2 = r1*cos(alpha*pi/180)   # R works in radians: to geth the value in degrees, it has to be in formm cos(angle * pi/180) 
+# https://r-lang.com/r-cos-function-with-example/
+area_field = r^2# m2
+area_plane = r1*r2
+
+# Get the correction factor:
+ideal_factor   = ha/area_field
+correct_factor = ha/area_plane
+
+# Calculate teh tree deisnity based on field, and based on corrected area:
+trees_dens_field = trees_field*ideal_factor
+trees_dens_plane = trees_field*correct_factor
+
+
+# Calculate the corrected density: my sites are in field always 4m2, only the slope changes 
+ha = 10000
+trees_field = 10
+alpha = 16.7 #(has to be in degrees!)
+r = 2    # m
+r1 = r
+r2 = r1*cos(alpha*pi/180)   # R works in radians: to geth the value in degrees, it has to be in formm cos(angle * pi/180) 
+# https://r-lang.com/r-cos-function-with-example/
+area_field = r^2# m2
+area_plane = r1*r2
+
+# expansion factor: on 
+ideal_factor   = ha/area_field
+correct_factor = ha/area_plane
+
+# Check if tree density changes? 
+trees_dens_field = trees_field*ideal_factor
+trees_dens_plane = trees_field*correct_factor
+
+
+
+
 
 
 
