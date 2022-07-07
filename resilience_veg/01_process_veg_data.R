@@ -309,44 +309,57 @@ fwrite(df_ground, outGround)
 
 # Subset counts for regeneration dataset
 # this number indicates all of teh regeneration: included planted individuals
-df_regen <- 
-  dat %>% 
-  dplyr::select(matches(paste(c(plot_info, reg_trees, plot_geo, 'uniqueID'), collapse = '|'))) %>% 
-  dplyr::select(!matches("Number")) %>%   
-  dplyr::select(-all_of(plot_info)) %>% 
-  dplyr::select_if(function(col) all(
-    col == .$uniqueID | 
-    col == .$gradient | 
-    col ==.$exposure | 
-    is.numeric(col))) %>%  # select the numeric columns and the siteID (character)
-  pivot_longer(!c(uniqueID, gradient, exposure), names_to = 'manag', values_to = 'n_total') %>% 
-  separate(manag, c('reg_species', 'height_class'), '_') %>% 
+df_regen <-
+  dat %>%
+  dplyr::select(matches(paste(
+    c(plot_info, reg_trees, plot_geo, 'uniqueID'), collapse = '|'
+  ))) %>%
+  dplyr::select(!matches("Number")) %>%
+  dplyr::select(-all_of(plot_info)) %>%
+  dplyr::select_if(function(col)
+    all(
+      col == .$uniqueID |
+        col == .$gradient |
+        col == .$exposure |
+        is.numeric(col)
+    )) %>%  # select the numeric columns and the siteID (character)
+  pivot_longer(!c(uniqueID, gradient, exposure),
+               names_to = 'manag',
+               values_to = 'n_total') %>%
+  separate(manag, c('reg_species', 'height_class'), '_') %>%
   separate(uniqueID, all_of(plot_info), '_') #%>%
-  #filter(n_total !=0)  # keep 0s to have the all oiverview of the total species
- # mutate(origin = 'natural')
+#filter(n_total !=0)  # keep 0s to have the all overview of the total species
+# mutate(origin = 'natural')
 
 
 
 ## Counts for planted data   -----------------------------------------------------
 # counts of planted data is the part of total counts:
 # make sure that is true! the number of planted should never be higher than count_tot = total number of regeneration
-df_regen_planted <- 
-  dat %>% 
-  dplyr::select(matches(paste(c(plot_info, plot_geo, 'Planted', 'uniqueID'), collapse = '|'))) %>%
-  dplyr::select(-all_of(plot_info)) %>% 
-  dplyr::select_if(function(col) all(
-    col == .$uniqueID | 
-    col == .$gradient | 
-    col ==.$exposure | 
-    is.numeric(col))) %>% # select the numeric columns and the siteID (character)
-  pivot_longer(!c(uniqueID, gradient, exposure), 
-               names_to = 'manag', values_to = 'n_planted') %>%          # convert to long format
+df_regen_planted <-
+  dat %>%
+  dplyr::select(matches(paste(
+    c(plot_info, plot_geo, 'Planted', 'uniqueID'), collapse = '|'
+  ))) %>%
+  dplyr::select(-all_of(plot_info)) %>%
+  dplyr::select_if(function(col)
+    all(
+      col == .$uniqueID |
+        col == .$gradient |
+        col == .$exposure |
+        is.numeric(col)
+    )) %>% # select the numeric columns and the siteID (character)
+  pivot_longer(!c(uniqueID, gradient, exposure),
+               names_to = 'manag',
+               values_to = 'n_planted') %>%          # convert to long format
   mutate(manag = gsub('Number_of_planted_individuals', 'planted', manag)) %>%   # replace string pattern to simplify names
-  separate(manag, c('reg_species', 'height_class', 'origin'), '_') %>% 
-  dplyr::select(-c('origin')) %>% 
-  separate(uniqueID, all_of(plot_info), '_') %>% 
-  filter(complete.cases(.)) 
-  
+  separate(manag, c('reg_species', 'height_class', 'origin'), '_') %>%
+  dplyr::select(-c('origin')) %>%
+  separate(uniqueID, all_of(plot_info), '_') %>%
+  filter(complete.cases(.))
+
+
+
 
 ## Get the damage data & position:
 # can I see if teh damage was on planted or on naturally regenerated one?
