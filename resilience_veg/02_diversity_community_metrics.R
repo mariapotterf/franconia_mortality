@@ -207,10 +207,11 @@ df_regen <- df_regen %>%
 
 
 df_regen %>% 
-ggplot(aes(x = trip_n,
+ ggplot(aes(x = trip_n,
            y = gradient)) + 
   geom_boxplot() + 
   facet_grid(~manag)
+
 
 
 
@@ -296,6 +297,17 @@ p_drought <- df_traits_cwm %>%
 ggarrange(p_shade,p_drought, ncol = 2, nrow = 1 , common.legend = TRUE  )
 
 
+
+# Compare if teh groups are differet?
+lm(drought_cwm~manag, dat = df_traits_cwm)
+
+hist(df_traits_cwm$drought_cwm)
+
+windows()
+ggplot(df_traits_cwm, aes(drought_cwm, 
+                          fill= manag)) +
+  geom_density(alpha = 0.5) +
+  facet_grid(~dom_sp)
 
 
 
