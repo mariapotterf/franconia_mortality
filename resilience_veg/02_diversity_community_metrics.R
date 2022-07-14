@@ -37,6 +37,11 @@ library(stringr)  # use regex expressions
 #library(gridExtra)
 library(ggpubr)
 
+##### Stats
+library(MuMIn)
+library(vegan)
+library(mgcv)
+library(gratia) # visualization of mcv
 
 # Get tree species traits:  ----------------------------------------------------------
 
@@ -202,7 +207,8 @@ subsample_n <-
 # So I am correcting the tree density/ha per each subsite: maybe then use teh mean/sum densities per category??? 
 df_regen <- df_regen %>% 
   mutate(manag = factor(manag, levels = c('l', 'c', 'd'),
-                        labels = c('living','cleared', 'dead')))
+                        labels = c('living','cleared', 'dead'))) %>% 
+  mutate(dom_sp = factor(dom_sp))
 
 
 
@@ -261,9 +267,6 @@ df_reg_dens_shannon %>%
 
 
 
-
-
-
 # Get community weighted means ---------------------------------------------
 # https://rpubs.com/CPEL/cwm
 
@@ -282,19 +285,436 @@ df_traits_cwm <-
 
 # Make some plots:
 p_shade <- df_traits_cwm %>% 
-  ggplot(aes(x = factor(dom_sp),
+  ggplot(aes(x = dom_sp,
              y = shade_cwm,
              fill = manag)) +
   geom_boxplot() 
 
 p_drought <- df_traits_cwm %>% 
-  ggplot(aes(x = factor(dom_sp),
+  ggplot(aes(x = dom_sp,
              y = drought_cwm,
              fill = manag)) +
   geom_boxplot()
 
 
 ggarrange(p_shade,p_drought, ncol = 2, nrow = 1 , common.legend = TRUE  )
+
+
+
+
+# Stats: ANOVA: Shannon effective numbers ------------------------------------------
+
+# two way anova, as I have two factors: 
+#  - management
+#  - dominant tree species
+
+# check frequecy tables:
+table(df_reg_dens_shannon$manag, 
+      df_reg_dens_shannon$dom_sp)
+
+# Visualize the data:
+# boxplot
+# two-way interaction plot - can show interactions
+ggboxplot(df_reg_dens_shannon, 
+          x = "manag", 
+          y = "effective_n_sp", 
+          color = "dom_sp")
+
+ggline(df_reg_dens_shannon, 
+       x = "manag", 
+       y = "effective_n_sp", 
+       color = "dom_sp",
+       add = c("mean_se", 
+               "dotplot")#,
+       #binwidth = 1/50
+       )
+
+
+# Run anova on data:
+# two way anova:
+# http://www.sthda.com/english/wiki/two-way-anova-test-in-r#what-is-two-way-anova-test
+aov1 <- aov(effective_n_sp ~ manag +dom_sp, 
+                df_reg_dens_shannon)
+summary(aov1)
+
+# on effective number of species,
+# there is higher effect of teh dominant species
+# then of teh management
+
+# can teh effect be synergic? the use * instead of +
+aov2 <- aov(effective_n_sp ~ manag*dom_sp, 
+            df_reg_dens_shannon)
+
+# the same as (here it is more explicit)
+aov2 <- aov(effective_n_sp ~ manag+dom_sp +
+            manag:dom_sp,
+            df_reg_dens_shannon)
+summary(aov2)
+plot(aov2)
+
+AICc(aov1, aov2)
+
+
+# Get summary statistics:
+df_reg_dens_shannon %>%
+  group_by(manag, dom_sp) %>%
+  summarise(
+    count = n(),
+    mean = mean(effective_n_sp, 
+                na.rm = TRUE),
+    sd = sd(effective_n_sp, 
+            na.rm = TRUE)
+  )
+
+
+# ANOVA: which groups are different???
+# need to do the pairwise comparison
+TukeyHSD(aov1)  # if teh interaction is not significant, we
+# should use only the additive anova (here aov1)
+
+res.tuk <- TukeyHSD(aov1, which = 'dom_sp') # select only significant factor
+
+# p-value is significant for each combination of spruce-otherSp
+
+plot(res.tuk, las = 1)
+
+# test validity of ANOVA use: ---------------------
+# anova assumptions: 
+#  - data are normally distributed
+#  - variance across groups are homogenous
+
+# 1. Homogeneity of variances
+plot(aov1, 1) # numbers indicate outliers: normality is heavily affected by them!
+
+# Use a test of homogeneity
+library(car)
+leveneTest(effective_n_sp ~ manag*dom_sp, 
+           data = df_reg_dens_shannon)
+
+# p-value is >0.5 - we assume the variance across groups is similar
+
+
+# 2. Cechk for normality assumtions
+plot(aov1, 2)
+
+# Run Shapiro-Wilcox test on teh ANOVA residuals
+# to check if the normality is violated:
+# Extract the residuals
+aov_residuals <- residuals(object = aov1)
+# Run Shapiro-Wilk test
+shapiro.test(x = aov_residuals )
+
+# p>0.05 - seems that they are normal
+
+
+# ANOVA for unbalanced design --------------------------
+# there are three types to aaacount for unbalanced design: 
+#   when the number of observation is not the same
+#   recommended: Type-III sums of squares
+# use car::anova()
+library(car)
+aov2 <- aov(effective_n_sp ~ manag*dom_sp, 
+            df_reg_dens_shannon)
+
+car::Anova(aov2, type = "III")
+car::Anova(aov2, type = "II")  # in this case, they have teh same results
+
+# Use kruskall wallis -------------------------------
+# http://www.sthda.com/english/wiki/kruskal-wallis-test-in-r
+
+# kruskall-wallis just test several groups, but having only one factor
+# so I can test for each factor individually (does not allow interaction)
+# or use the Ordinal logistic regression: can handle factorial structure
+# 
+# Test GAMS for densities: --------------------------------------------------
+# data: highly skewed
+df_reg_dens
+
+str(df_reg_dens)
+
+# claim factors:
+df_reg_dens <- df_reg_dens %>%
+  mutate(
+    dom_sp = factor(dom_sp),
+    manag = factor(manag),
+    trip_n = factor(trip_n)
+  )
+
+# data are not normally distributes and have many outliers
+
+# standardize teh data by z-score: ---------------------------------
+# Finding Mean
+# standardization/normalization will not change the data distribution!!!
+
+
+
+# For categorical data, the smotng is not meanings full:
+# stick with glm ------------------------------
+# categorical predictors variables: extend of ANOVA
+# # https://anamtk.github.io/GLM_tutorials/tidyTuesday_fall2020/GLM_inR_Tutorial.html#extensions
+
+library(MASS)
+library(glmmTMB)
+library(DHARMa)
+library(effects)
+
+m.sp <- glm(
+  corr_density ~ dom_sp,# +   # claim as categorical data; generates random intercept for each level of factor ,
+  # claim as random effect
+  data = df_reg_dens,
+  family = Gamma  # continuous positive data
+)
+
+m.sp.manag <- glm(
+  corr_density ~ dom_sp + manag,# +   # claim as categorical data; generates random intercept for each level of factor ,
+  # claim as random effect
+  data = df_reg_dens,
+  family = Gamma  # continuous positive data
+)
+
+m3 <- glm(
+  corr_density ~ dom_sp + manag + trip_n,# +   # claim as categorical data; generates random intercept for each level of factor ,
+  # claim as random effect
+  data = df_reg_dens,
+  family = Gamma  # continuous positive data
+)
+
+m.manag <- glm(
+  corr_density ~ manag,# +   # claim as categorical data; generates random intercept for each level of factor ,
+  # claim as random effect
+  data = df_reg_dens,
+  family = Gamma  # continuous positive data
+)
+
+m.sp.manag2 <- glm(
+  corr_density ~ dom_sp*manag,# +   # claim as categorical data; generates random intercept for each level of factor ,
+  # claim as random effect
+  data = df_reg_dens,
+  family = Gamma  # continuous positive data
+)
+
+
+
+summary(m.manag)
+summary(m.sp)
+
+AICc(m.sp, m.manag, m.sp.manag, m.sp.manag2, m3)
+
+
+simulationOutput <- simulateResiduals(fittedModel = m3, plot = T)
+testDispersion(simulationOutput)
+
+plot(m3)
+
+
+windows()
+plot(effects::allEffects(m.sp))
+windows()
+plot(effects::allEffects(m.manag))
+plot(effects::allEffects(m.sp.manag))
+plot(effects::allEffects(m.sp.manag2))
+
+df_reg_dens %>%
+  ggplot(aes(x = dom_sp, 
+             y = corr_density/10000)) +
+  #geom_point(alpha = 0.5) +
+  geom_smooth(method = "glm", 
+              formula = m.sp.manag2, 
+              se = FALSE) +
+  theme_bw() +
+  stat_summary(geom = "errorbar", aes(col = dom_sp)) +
+  stat_summary(geom = "pointrange", aes(col = dom_sp)) +
+  facet_grid(~manag) +
+  labs(y='Regeneration density*10000',
+       col = "Dominant\nspecies"
+       )
+
+
+# get summary statictics: 
+# how much regeneration is per each site? now it is splitted among several species on site
+# but it is calculated for each species as a value per hectar. So the means should be good here (accounting for species numbers)
+df_reg_dens %>% 
+  group_by(manag, dom_sp) %>% 
+  summarize(mean_dens = mean(corr_density, na.rm = T),
+            sd_dens   = sd(corr_density, na.rm = T)) %>% 
+  mutate(dens_mean_sd = stringr::str_glue("{round(mean_dens,1)}±{round(sd_dens,1)}")) %>% 
+  dplyr::select(manag, dom_sp, dens_mean_sd) %>% 
+  pivot_wider(names_from = manag, 
+              values_from = dens_mean_sd )
+
+  
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# test for z score!
+# generate random data from poisson distrib
+set.seed(2)
+a_norm <- rnorm(4000)
+a_pois <- rpois(4000, lambda = 2)
+hist(a_norm)
+hist(a_pois)
+
+a_scale <- scale(a_pois)
+
+
+
+# conversion from z score
+m<-mean(a_pois)
+
+# Finding Standard Deviation
+s<-sd(a_pois)
+a_t <- (a_pois-m)/s
+
+
+# test for normality
+shapiro.test(a_norm)
+shapiro.test(a_pois)
+shapiro.test(a_scale)
+
+
+windows()
+hist(a_t)
+hist(a_scale)
+
+
+
+m<-mean(df_reg_dens$corr_density)
+
+# Finding Standard Deviation
+s<-sd(df_reg_dens$corr_density)
+
+
+df_reg_dens <- df_reg_dens %>% 
+  mutate(dens_z = (corr_density-m)/s)
+
+ggplot(df_reg_dens) + 
+  geom_density(aes(dens_z))
+
+hist(log10(df_reg_dens$corr_density))
+hist(df_reg_dens$corr_density)
+plot(density(df_reg_dens$corr_density))
+plot(density(df_reg_dens$dens_z))
+
+
+# check frequecy tables:
+table(df_reg_dens$manag, 
+      df_reg_dens$dom_sp)
+
+# Visualize the data:
+# boxplot
+# two-way interaction plot - can show interactions
+ggboxplot(df_reg_dens, 
+          x = "manag", 
+          y = "corr_density", 
+          color = "dom_sp")
+
+ggline(df_reg_dens, 
+       x = "manag", 
+       y = "corr_density", 
+       color = "dom_sp",
+       add = c("mean_se", 
+               "jitter")#,
+       #binwidth = 1/50
+)
+
+
+# Run anova on data:
+# two way anova:
+# http://www.sthda.com/english/wiki/two-way-anova-test-in-r#what-is-two-way-anova-test
+aov1 <- aov(effective_n_sp ~ manag +dom_sp, 
+            df_reg_dens_shannon)
+summary(aov1)
+
+# on effective number of species,
+# there is higher effect of teh dominant species
+# then of teh management
+
+# can teh effect be synergic? the use * instead of +
+aov2 <- aov(effective_n_sp ~ manag*dom_sp, 
+            df_reg_dens_shannon)
+
+# the same as (here it is more explicit)
+aov2 <- aov(effective_n_sp ~ manag+dom_sp +
+              manag:dom_sp,
+            df_reg_dens_shannon)
+summary(aov2)
+plot(aov2)
+
+AICc(aov1, aov2)
+
+
+# get summary statitics:
+model.tables(aov2, 
+             type="means", se = TRUE)
+
+# Get summary statistics:
+df_reg_dens_shannon %>%
+  group_by(manag, dom_sp) %>%
+  summarise(
+    count = n(),
+    mean = mean(effective_n_sp, 
+                na.rm = TRUE),
+    sd = sd(effective_n_sp, 
+            na.rm = TRUE)
+  )
+
+
+# ANOVA: which groups are different???
+# need to do the pairwise comparison
+TukeyHSD(aov1)  # if teh interaction is not significant, we
+# should use only the additive anova (here aov1)
+
+res.tuk <- TukeyHSD(aov1, which = 'dom_sp') # select only significant factor
+
+# p-value is significant for each combination of spruce-otherSp
+
+plot(res.tuk, las = 1)
+
+# test validity of ANOVA use: ---------------------
+# anova assumptions: 
+#  - data are normally distributed
+#  - variance across groups are homogenous
+
+# 1. Homogeneity of variances
+plot(aov1, 1) # numbers indicate outliers: normality is heavily affected by them!
+
+# Use a test of homogeneity
+library(car)
+leveneTest(effective_n_sp ~ manag*dom_sp, 
+           data = df_reg_dens_shannon)
+
+# p-value is >0.5 - we assume the variance across groups is similar
+
+
+# 2. Cechk for normality assumtions
+plot(aov1, 2)
+
+# Run Shapiro-Wilcox test on teh ANOVA residuals
+# to check if the normality is violated:
+# Extract the residuals
+aov_residuals <- residuals(object = aov1)
+# Run Shapiro-Wilk test
+shapiro.test(x = aov_residuals )
+
+# p>0.05 - seems that they are normal
+
+
+
 
 
 
