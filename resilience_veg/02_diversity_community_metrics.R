@@ -207,8 +207,15 @@ subsample_n <-
   group_by(trip_n , dom_sp , manag ) %>% 
   distinct(sub_n ) %>% 
   tally() %>%
-  mutate(trip_n = as.character(trip_n)) %>% 
-  rename(n_subsites = n)
+  mutate(trip_n = as.character(trip_n),
+         dom_sp = factor(dom_sp),
+         manag = factor(manag)) %>% 
+  mutate(manag = case_when(manag == 'c' ~ 'cleared',
+                           manag == 'l' ~ 'living',
+                           manag == 'd' ~ 'dead'#,
+                           )) %>%   #Species == "Fagus sylvatica"       ~ "Beech" ,))
+  rename(n_subsites = n) %>% 
+  as.data.frame()
 
 
 
@@ -224,9 +231,12 @@ df_regen <- df_regen %>%
 
 
 # Get tree density/ha across all heights, correct the density by slope per each subsite
+# but it is calculated for each species as a value per hectar. 
+# need to account for the different number of subsites: 5-15
+# calculate the sums and then divide by number of subsamples
 df_reg_dens <- 
   df_regen %>% 
-  left_join(subsample_n) %>% 
+  dplyr::left_join(subsample_n, by = c('trip_n', 'manag', 'dom_sp')) %>% #, 'dom_sp', 'manag' 
   ungroup() %>% 
   group_by(trip_n, dom_sp, manag, n_subsites, height_class, reg_species)  %>% 
     mutate(length_corr = 2*cos(gradient*pi/180),
@@ -236,7 +246,7 @@ df_reg_dens <-
     filter(corr_density != 0) %>% 
   ungroup(.) #%>% 
 
-# Get summary statistics: Reg density -------------------------------------------
+# Get summary statistics: Triplets -------------------------------------------
 dat %>% 
   group_by(dom_sp) %>% 
   distinct(trip_n) %>% 
@@ -245,7 +255,7 @@ dat %>%
 
 # Reg.density: summary statictics: --------------------------
 # how much regeneration is per each site? now it is splitted among several species on site
-# but it is calculated for each species as a value per hectar. So the means should be good here (accounting for species numbers)
+
 df_reg_dens %>% 
   group_by(manag, dom_sp) %>% 
   summarize(mean_dens = mean(corr_density, na.rm = T),
@@ -264,7 +274,8 @@ df_reg_dens %>%
   stat_summary(geom = "errorbar", 
                width = 0.3,
                aes(col = dom_sp)) +
-  stat_summary(geom = "pointrange", aes(col = dom_sp)) +
+  stat_summary(geom = "pointrange", 
+               aes(col = dom_sp)) +
   scale_colour_manual(values=cols, 
                       name="Dominant\nspecies") + 
   facet_grid(~manag) +
@@ -337,10 +348,9 @@ df_traits_cwm <-
   left_join(trait_df) %>% 
   ungroup(.) %>% 
   group_by(trip_n, dom_sp, manag) %>% 
-  summarize(shade_cwm = weighted.mean(Shade_tolerance,     mean_dens, na.rm = TRUE  ),
+  summarize(shade_cwm   = weighted.mean(Shade_tolerance,   mean_dens, na.rm = TRUE  ),
             drought_cwm = weighted.mean(Drought_tolerance, mean_dens, na.rm = TRUE  )) %>% 
   mutate(manag = factor(manag, 
-                        #levels = c('l', 'c', 'd'),
                         levels = c('living','cleared', 'dead')))
 
 # Make some plots:
@@ -545,7 +555,7 @@ df_reg_dens <- df_reg_dens %>%
 
 
 
-# For categorical data, the smotng is not meanings full:
+# For categorical data, the smotng is not meanings full: -------------------
 # stick with glm ------------------------------
 # categorical predictors variables: extend of ANOVA
 # # https://anamtk.github.io/GLM_tutorials/tidyTuesday_fall2020/GLM_inR_Tutorial.html#extensions
@@ -613,17 +623,158 @@ plot(effects::allEffects(m.sp.manag2))
 
 
 
+
+
+
+# Reorganization: composition ---------------------------------------------
+# classify if the dominant species prevails in 
+# regeneration? how often they fit the dominant species?
+head(df_reg_dens )
+
+# Calculate % of  regeneration species from total density
+df_dens_species <- 
+  df_reg_dens %>% 
+  group_by(trip_n, dom_sp, manag, reg_species) %>% 
+  summarize(ds_species = sum(corr_density, na.rm = T)/n_subsites) %>% # divide by number of subsites!!
+    distinct() 
+
+df_dens_sum <- df_dens_species %>%  # keep only unique rows
+  group_by(trip_n, dom_sp, manag) %>% 
+  summarize(ds_sum = sum(ds_species, na.rm = T))
+
+# Merge to original table to calaulctate shares by reg_species:
+df_density_change <- df_dens_species %>% 
+  left_join(df_dens_sum) %>% 
+  mutate(ds_spec_share = ds_species  /ds_sum*100) %>% 
+ # filter(reg_species %in% c("Spruce", 'Beech', 'Pine', 'Oak' )) %>% 
+  mutate(cl_change = case_when(dom_sp == 'spruce' & reg_species == 'Spruce' & ds_spec_share > 50 ~ 'resilience',
+                               dom_sp == 'spruce' & reg_species == 'Spruce' & ds_spec_share <= 50 & ds_spec_share > 25  ~ 'decrease',
+                               dom_sp == 'spruce' & reg_species == 'Spruce' & ds_spec_share <= 25 & ds_spec_share > 0  ~ 'reduction',
+                               dom_sp == 'beech'  & reg_species == 'Beech'  & ds_spec_share > 50 ~ 'resilience',
+                               dom_sp == 'beech'  & reg_species == 'Beech'  & ds_spec_share <= 50 & ds_spec_share > 25  ~ 'decrease',
+                               dom_sp == 'beech'  & reg_species == 'Beech'  & ds_spec_share <= 25 & ds_spec_share > 0  ~ 'reduction',
+                               dom_sp == 'pine' & reg_species == 'Pine' & ds_spec_share > 50 ~ 'resilience',
+                               dom_sp == 'pine' & reg_species == 'Pine' & ds_spec_share <= 50 & ds_spec_share > 25  ~ 'decrease',
+                               dom_sp == 'pine' & reg_species == 'Pine' & ds_spec_share <= 25 & ds_spec_share > 0  ~ 'reduction',
+                               dom_sp == 'oak'  & reg_species == 'Oak'  & ds_spec_share > 50 ~ 'resilience',
+                               dom_sp == 'oak'  & reg_species == 'Oak'  & ds_spec_share <= 50 & ds_spec_share > 25  ~ 'decrease',
+                               dom_sp == 'aok'  & reg_species == 'Oak'  & ds_spec_share <= 25 & ds_spec_share > 0  ~ 'reduction',
+                               TRUE ~ 'species_change')) %>%
+  ungroup(.) #%>% 
   
 
+# filter data to have only one change group per site & management:
+df_dens_flow <- df_density_change %>% 
+  group_by(trip_n, dom_sp, manag) %>% 
+  top_n(1, ds_spec_share) %>%  # select the highest share per species and category
+  ungroup(.) %>% 
+  dplyr::select(dom_sp, manag, cl_change) %>%
+  group_by(dom_sp, manag, cl_change) %>% 
+  count()
+  
+#count()
 
-# Make alluvian/Sanky plot ------------------------------------------------
+
+# alternative alluvial diagram: scale_viridis and 3 axis:
+# create alternative alluvial diagram
+library(ggplot2)
+library(ggalluvial)
+ggplot(df_dens_flow,
+       aes(axis1 = dom_sp ,
+           axis2 = manag,
+           axis3 = cl_change,
+           y = n)) +
+  geom_alluvium(aes(fill = dom_sp)) +
+  geom_stratum() +
+  geom_text(stat = "stratum", 
+            #label.strata = TRUE
+            aes(label = after_stat(stratum))) +
+  scale_x_discrete(limits = c("dom_sp", "manag", "cl_change"),
+                   expand = c(.1, .1)) +
+  scale_fill_viridis_d() +
+ # labs(title = "Titanic data",
+ #      subtitle = "stratified by class, sex, and survival",
+ #      y = "Frequency") +
+  theme_minimal() +
+  theme(legend.position = "none") 
+
+
+
+
+
+
+
+
+
+
+# Make alluvial/Sanky plot ------------------------------------------------
 
 # illustrate the flow between categorical categories
+# https://rkabacoff.github.io/datavis/Other.html#
+
+# input data
+library(readr)
+titanic <- read_csv("titanic.csv")
+
+# summarize data
+library(dplyr)
+titanic_table <- titanic %>%
+  group_by(Class, Sex, Survived) %>%
+  count()
+
+titanic_table$Survived <- factor(titanic_table$Survived, 
+                                 levels = c("Yes", "No"))
+
+head(titanic_table)
 
 
 
 
 
+# create alluvial diagram
+library(ggplot2)
+library(ggalluvial)
+
+
+
+ggplot(titanic_table,
+       aes(axis1 = Class,
+           axis2 = Survived,
+           y = n)) +
+  geom_alluvium(aes(fill = Sex)) +
+  geom_stratum() +
+  geom_text(stat = "stratum", 
+            label.strata = TRUE) +
+  scale_x_discrete(limits = c("Class", "Survived"),
+                   expand = c(.1, .1)) +
+  labs(title = "Titanic data",
+       subtitle = "stratified by class, sex, and survival",
+       y = "Frequency") +
+  theme_minimal()
+
+
+
+# alternative alluvial diagram: scale_viridis and 3 axis:
+# create alternative alluvial diagram
+library(ggplot2)
+library(ggalluvial)
+ggplot(titanic_table,
+       aes(axis1 = Class,
+           axis2 = Sex,
+           axis3 = Survived,
+           y = n)) +
+  geom_alluvium(aes(fill = Class)) +
+  geom_stratum() +
+  geom_text(stat = "stratum", 
+            label.strata = TRUE) +
+  scale_x_discrete(limits = c("Class", "Sex", "Survived"),
+                   expand = c(.1, .1)) +
+  scale_fill_viridis_d() +
+  labs(title = "Titanic data",
+       subtitle = "stratified by class, sex, and survival",
+       y = "Frequency") +
+  theme_minimal() +
+  theme(legend.position = "none") 
 
 
 
@@ -707,7 +858,7 @@ ggline(df_reg_dens,
 )
 
 
-# Run anova on data:
+# Run anova on data:--------------------------------------------------
 # two way anova:
 # http://www.sthda.com/english/wiki/two-way-anova-test-in-r#what-is-two-way-anova-test
 aov1 <- aov(effective_n_sp ~ manag +dom_sp, 
@@ -823,7 +974,7 @@ df_ground_shann <-
 #shannon = is.na())
 
 
-#### Shannon check plot: ---------------------------------------------------------------------
+#### Ground Shannon check plot: ---------------------------------------------------------------------
 windows()
 df_ground_shann %>% 
   ggplot(aes(x = factor(manag),
