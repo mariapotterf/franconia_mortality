@@ -8,7 +8,7 @@
 # Convert the regeneration counst into density/ha - takes into account the difference in sampling plot!
 #  need to do the slope correction?
 # http://wiki.awf.forst.uni-goettingen.de/wiki/index.php/Slope_correction
-# our inclinometer suunto is in degrees: goes 0-90
+# our inclinometer Suunto is in degrees: goes 0-90
 # slope correction: only needed for slopes > 10% (7 degrees) # https://www.archtoolbox.com/calculating-slope/
 # 100% slope = 45 degrees (1:1 gradient)
 # NA% slope = 90 degrees  (1:0 gradient)
@@ -42,6 +42,13 @@ library(MuMIn)
 library(vegan)
 library(mgcv)
 library(gratia) # visualization of mcv
+
+
+## Colors
+cols = c('#0072B2', # strict reserves
+         '#E69F00', # buffer 500
+         '#F0E442', # buffer 2000
+         '#000000') # control
 
 # Get tree species traits:  ----------------------------------------------------------
 
@@ -143,15 +150,18 @@ trait_df <- trait_df %>%
 # Slope correction factor:------------------------------------------------------
 # correct the measurements in the field to the map plane projection (e.g. 'shrinks the field sampling plot')
 # need to calculate the area of the study site on the pane: will change one axis, other stays the same 
-# then need to recalculate the correction factor: at plane, the factor is 2500 (4m2 to 10000m2)
+# then need to recalculate the correction factor: at plane, the factor is 2500 (4m2 to 10000m2); 
+#                                                 at slope it varies
 
+# Example of slope correction calculation of tree density:
 ha = 10000
 trees_field = 10
-gradient = 16.7 #(has to be in degrees!)
+gradient = 16.7  #(has to be in degrees!)
 
+# area of the subsite: 2x2 m
 r = 2    # m
 r1 = r
-r2 = r1*cos(gradient*pi/180)   # R works in radians: to geth the value in degrees, it has to be in formm cos(angle * pi/180) 
+r2 = r1*cos(gradient*pi/180)   # R works in radians: to get the value in degrees, it has to be in form cos(angle * pi/180) 
 # https://r-lang.com/r-cos-function-with-example/
 area_field = r^2# m2
 area_plane = r1*r2
@@ -204,7 +214,8 @@ subsample_n <-
 
 # The correction of the counts: need to do it on the level of individual subsites:
 # as there is high variation in slopes ('gradient') between the subsites
-# So I am correcting the tree density/ha per each subsite: maybe then use teh mean/sum densities per category??? 
+# So I am correcting the tree density/ha per each subsite: 
+# maybe then use teh mean/sum densities per category??? 
 df_regen <- df_regen %>% 
   mutate(manag = factor(manag, levels = c('l', 'c', 'd'),
                         labels = c('living','cleared', 'dead'))) %>% 
@@ -212,17 +223,7 @@ df_regen <- df_regen %>%
 
 
 
-df_regen %>% 
- ggplot(aes(x = trip_n,
-           y = gradient)) + 
-  geom_boxplot() + 
-  facet_grid(~manag)
-
-
-
-
-
-# Get tree density/ha across all heights, correct the density by slope
+# Get tree density/ha across all heights, correct the density by slope per each subsite
 df_reg_dens <- 
   df_regen %>% 
   left_join(subsample_n) %>% 
@@ -235,6 +236,41 @@ df_reg_dens <-
     filter(corr_density != 0) %>% 
   ungroup(.) #%>% 
 
+# Get summary statistics: Reg density -------------------------------------------
+dat %>% 
+  group_by(dom_sp) %>% 
+  distinct(trip_n) %>% 
+  tally()
+
+
+# Reg.density: summary statictics: --------------------------
+# how much regeneration is per each site? now it is splitted among several species on site
+# but it is calculated for each species as a value per hectar. So the means should be good here (accounting for species numbers)
+df_reg_dens %>% 
+  group_by(manag, dom_sp) %>% 
+  summarize(mean_dens = mean(corr_density, na.rm = T),
+            sd_dens   = sd(corr_density, na.rm = T)) %>% 
+  mutate(dens_mean_sd = stringr::str_glue("{round(mean_dens,1)}±{round(sd_dens,1)}")) %>% 
+  dplyr::select(manag, dom_sp, dens_mean_sd) %>% 
+  pivot_wider(names_from = manag, 
+              values_from = dens_mean_sd )
+
+# Reg.density: plot ---------------------------------
+
+df_reg_dens %>%
+  ggplot(aes(x = dom_sp, 
+             y = corr_density/10000)) +
+  theme_bw() +
+  stat_summary(geom = "errorbar", 
+               width = 0.3,
+               aes(col = dom_sp)) +
+  stat_summary(geom = "pointrange", aes(col = dom_sp)) +
+  scale_colour_manual(values=cols, 
+                      name="Dominant\nspecies") + 
+  facet_grid(~manag) +
+  labs(y='Regeneration density*10000')
+
+
 
 # Get Shannon: ------------------------------------------------------------
 # - get the total density
@@ -245,7 +281,7 @@ df_reg_dens <-
 df_reg_dens_shannon <-
   df_reg_dens %>%
   group_by(trip_n, dom_sp, manag, reg_species) %>%
-  summarize(mean_dens = mean(corr_density)) %>%
+  summarize(mean_dens = mean(corr_density)) %>% # means first I have values for individual species and subsites!
   mutate(
     dens_tot = sum(mean_dens),
     sp_pi = mean_dens / dens_tot,
@@ -255,20 +291,44 @@ df_reg_dens_shannon <-
   mutate(effective_n_sp = exp(shannon))# %>%
 
 
+# summary table shannon 
+df_reg_dens_shannon %>%
+  group_by(manag, dom_sp) %>%
+  summarise(
+    count = n(),
+    mean = mean(effective_n_sp, 
+                na.rm = TRUE),
+    sd = sd(effective_n_sp, 
+            na.rm = TRUE)
+  )
 
 
 
+# get plots Shannon Effective number of species -----------------------------------
 df_reg_dens_shannon %>% 
   ggplot(aes(y = effective_n_sp,
-             x = manag)) +
-  geom_boxplot() + 
-  facet_grid(~dom_sp, scales = 'free') #+
+             x = dom_sp)) +
+#  geom_boxplot() + 
+  theme_bw() +
+  stat_summary(geom = "errorbar",
+               width=0.5,
+               aes(col = dom_sp)) +
+  stat_summary(geom = "pointrange", 
+               aes(col = dom_sp)) +
+  scale_colour_manual(values=cols, 
+                      name="Dominant\nspecies") + 
+  
+  facet_grid(~manag, scales = 'free') 
+#+
 #ylab('density \n(#trees/ha)') 
-
-
-
-# Get community weighted means ---------------------------------------------
 # https://rpubs.com/CPEL/cwm
+
+
+
+
+
+
+# Community weighted means ---------------------------------------------
 
 df_traits_cwm <- 
   df_reg_dens %>%
@@ -284,20 +344,67 @@ df_traits_cwm <-
                         levels = c('living','cleared', 'dead')))
 
 # Make some plots:
-p_shade <- df_traits_cwm %>% 
-  ggplot(aes(x = dom_sp,
-             y = shade_cwm,
-             fill = manag)) +
-  geom_boxplot() 
+# set desired dodge width
+pd <- position_dodge(width = 0.4)
 
-p_drought <- df_traits_cwm %>% 
-  ggplot(aes(x = dom_sp,
-             y = drought_cwm,
-             fill = manag)) +
-  geom_boxplot()
+p_shade <- 
+  df_traits_cwm %>%
+  ggplot(aes(x = manag,
+             y = shade_cwm))  +
+  theme_bw() +
+  stat_summary(#geom = "mean", 
+    geom = "line", 
+    size=0.5, 
+    aes(colour = dom_sp, 
+        group = dom_sp,
+        lty = dom_sp),
+    position = pd) +
+  stat_summary(geom = "errorbar", 
+               width = 0.3,
+               aes(col = dom_sp), 
+               position = pd) +
+  stat_summary(geom = "pointrange", 
+               aes(col = dom_sp),
+               position = pd) +
+  scale_colour_manual(values=cols, 
+                      name="Dominant\nspecies") + 
+  scale_shape_manual(values=cols, 
+                     name="Dominant\nspecies") + 
+  #facet_grid(~manag) +
+  labs(y='Shade tolerance')
+
+# 
+
+p_drought <- 
+  df_traits_cwm %>%
+  ggplot(aes(x = manag,
+             y = drought_cwm))  +
+  theme_bw() +
+  stat_summary(#geom = "mean", 
+               geom = "line", 
+               size=0.5, 
+               aes(colour = dom_sp, 
+                   group = dom_sp,
+                   lty = dom_sp),
+               position = pd) +
+  stat_summary(geom = "errorbar", 
+               width = 0.3,
+               aes(col = dom_sp), 
+               position = pd) +
+  stat_summary(geom = "pointrange", 
+               aes(col = dom_sp),
+               position = pd) +
+  scale_colour_manual(values=cols, 
+                      name="Dominant\nspecies") + 
+  scale_shape_manual(values=cols, 
+                      name="Dominant\nspecies") + 
+  labs(y='Drought tolerance')
 
 
-ggarrange(p_shade,p_drought, ncol = 2, nrow = 1 , common.legend = TRUE  )
+
+
+ggarrange(p_shade,p_drought, ncol = 2, nrow = 1 , 
+          common.legend = TRUE  )
 
 
 
@@ -330,8 +437,7 @@ ggline(df_reg_dens_shannon,
        )
 
 
-# Run anova on data:
-# two way anova:
+## two way anova Effective numbers -----------------------------------------------
 # http://www.sthda.com/english/wiki/two-way-anova-test-in-r#what-is-two-way-anova-test
 aov1 <- aov(effective_n_sp ~ manag +dom_sp, 
                 df_reg_dens_shannon)
@@ -355,16 +461,7 @@ plot(aov2)
 AICc(aov1, aov2)
 
 
-# Get summary statistics:
-df_reg_dens_shannon %>%
-  group_by(manag, dom_sp) %>%
-  summarise(
-    count = n(),
-    mean = mean(effective_n_sp, 
-                na.rm = TRUE),
-    sd = sd(effective_n_sp, 
-            na.rm = TRUE)
-  )
+
 
 
 # ANOVA: which groups are different???
@@ -426,7 +523,7 @@ car::Anova(aov2, type = "II")  # in this case, they have teh same results
 # so I can test for each factor individually (does not allow interaction)
 # or use the Ordinal logistic regression: can handle factorial structure
 # 
-# Test GAMS for densities: --------------------------------------------------
+# Test GAMS for tree reg densities: --------------------------------------------------
 # data: highly skewed
 df_reg_dens
 
@@ -514,37 +611,14 @@ plot(effects::allEffects(m.manag))
 plot(effects::allEffects(m.sp.manag))
 plot(effects::allEffects(m.sp.manag2))
 
-df_reg_dens %>%
-  ggplot(aes(x = dom_sp, 
-             y = corr_density/10000)) +
-  #geom_point(alpha = 0.5) +
-  geom_smooth(method = "glm", 
-              formula = m.sp.manag2, 
-              se = FALSE) +
-  theme_bw() +
-  stat_summary(geom = "errorbar", aes(col = dom_sp)) +
-  stat_summary(geom = "pointrange", aes(col = dom_sp)) +
-  facet_grid(~manag) +
-  labs(y='Regeneration density*10000',
-       col = "Dominant\nspecies"
-       )
 
-
-# get summary statictics: 
-# how much regeneration is per each site? now it is splitted among several species on site
-# but it is calculated for each species as a value per hectar. So the means should be good here (accounting for species numbers)
-df_reg_dens %>% 
-  group_by(manag, dom_sp) %>% 
-  summarize(mean_dens = mean(corr_density, na.rm = T),
-            sd_dens   = sd(corr_density, na.rm = T)) %>% 
-  mutate(dens_mean_sd = stringr::str_glue("{round(mean_dens,1)}±{round(sd_dens,1)}")) %>% 
-  dplyr::select(manag, dom_sp, dens_mean_sd) %>% 
-  pivot_wider(names_from = manag, 
-              values_from = dens_mean_sd )
 
   
-  
 
+
+# Make alluvian/Sanky plot ------------------------------------------------
+
+# illustrate the flow between categorical categories
 
 
 
