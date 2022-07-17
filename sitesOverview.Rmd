@@ -21,11 +21,10 @@ The number of samples triplets by dominant tree species. Each triplet has 3 mana
 ```{r read-libs, eval = TRUE, echo=FALSE, include = FALSE, warning = FALSE, error = FALSE }
 rm(list=ls())
 
-
-
 # Input data -------------------------------------------------------------------
 
-load(file = "vegData.Rdata")
+#load(file = "vegData.Rdata")
+load(file = "dataToPlot.Rdata")
 
 
 #### Source paths and functions  -----------------------------------------------
@@ -87,14 +86,13 @@ out_summary %>% knitr::kable("markdown")
 ####  Variables:
 
 - forest structure: 
-
   - density of regeneration (here less< 2m height)
-  - height diversity
-  
+  - height diversity*to be completed (not in report)
+
 - forest composition: 
 
-  - Shannon index
-  - effective number of species
+  - Shannon index 
+  - effective number of species 
   
 - ecological traits (based on Niinements (2006)), community weighted means (CWM) 
 
@@ -104,74 +102,6 @@ out_summary %>% knitr::kable("markdown")
 
 
 ### Regeneration density 
-```{r slope-corr, include = F}
-
-# Example of slope correction calculation of tree density:
-ha = 10000
-trees_field = 10
-gradient = 16.7  #(has to be in degrees!)
-
-# area of the subsite: 2x2 m
-r = 2    # m
-r1 = r
-r2 = r1*cos(gradient*pi/180)   # R works in radians: to get the value in degrees, it has to be in form cos(angle * pi/180) 
-# https://r-lang.com/r-cos-function-with-example/
-area_field = r^2# m2
-area_plane = r1*r2
-
-# Get the correction factor:
-ideal_factor   = ha/area_field
-correct_factor = ha/area_plane
-
-# Calculate teh tree deisnity based on field, and based on corrected area:
-trees_dens_field = trees_field*ideal_factor
-trees_dens_plane = trees_field*correct_factor
-
-
-```
-
-
-```{r get-calc-dens, include = F}
-
-# Define sample area per patch - correct the density/ha estimation----------------
-# calculate from the original data table
-subsample_n <- 
-  dat %>%
-  group_by(trip_n , dom_sp , manag ) %>% 
-  distinct(sub_n ) %>% 
-  tally() %>%
-  mutate(trip_n = as.character(trip_n)) %>% 
-  rename(n_subsites = n)
-
-
-
-# The correction of the counts: need to do it on the level of individual subsites:
-# as there is high variation in slopes ('gradient') between the subsites
-# So I am correcting the tree density/ha per each subsite: 
-# maybe then use teh mean/sum densities per category??? 
-df_regen <- df_regen %>% 
-  mutate(manag = factor(manag, levels = c('l', 'c', 'd'),
-                        labels = c('living','cleared', 'dead'))) %>% 
-  mutate(dom_sp = factor(dom_sp))
-
-
-
-# Get tree density/ha across all heights, correct the density by slope per each subsite
-df_reg_dens <- 
-  df_regen %>% 
-  left_join(subsample_n) %>% 
-  ungroup() %>% 
-  group_by(trip_n, dom_sp, manag, n_subsites, height_class, reg_species)  %>% 
-    mutate(length_corr = 2*cos(gradient*pi/180),
-           area_corr   = 2*length_corr,
-           correct_factor = ha/area_corr,
-           corr_density = n_total*correct_factor)  %>% 
-    filter(corr_density != 0) %>% 
-  ungroup(.) #%>% 
-
-
-```
-
 
 
 ```{r, calc-summary-stat, include = F}
@@ -189,7 +119,7 @@ df_out <- df_reg_dens %>%
 
 ```  
 
-Regeneration density of the forest regeneration (<2m). Average values per subsites.
+Regeneration density of the forest regeneration (<2m). Each subsite have been corrected for the differences in slope. The sum values of regenerated tree species counts were divided by the number of subsites. 
 
 ```{r print-summary-dens, echo = F, include = T}
 df_out %>% knitr::kable("markdown")
@@ -197,65 +127,42 @@ df_out %>% knitr::kable("markdown")
 
 ```
 
-```{r plot-density, echo = F}
-df_reg_dens %>%
-  ggplot(aes(x = dom_sp, 
-             y = corr_density/10000)) +
-  theme_bw() +
-  stat_summary(geom = "errorbar",
-               width = 0.5,
-               aes(col = dom_sp)) +
-  stat_summary(geom = "pointrange", aes(col = dom_sp)) +
-  scale_colour_manual(values=cols, 
-                      name="Dominant\nspecies") + 
-  facet_grid(~manag) +
-  labs(y='Regeneration density*10000')
+```{r plot-density, fig.height = 5}
+
+p_density
+
+```
+
+
+Regeneration density (number of stems per site for trees > 20 cm and <2m tall). All tre species are grouped. Plots represent means +- standard error. 
+
+```{r plot-reg-density, echo = F}
+p_reg_dens
 
 ```
   
 
 
 
-#### Shannon index: effective number of species
+#### Shannon index: 
 
-```{r shannon-calc, echo = F, include = F, warning=FALSE}
-df_reg_dens_shannon <-
-  df_reg_dens %>%
-  group_by(trip_n, dom_sp, manag, reg_species) %>%
-  summarize(mean_dens = mean(corr_density)) %>% # means first I have values for individual species and subsites!
-  mutate(
-    dens_tot = sum(mean_dens),
-    sp_pi = mean_dens / dens_tot,
-    shannon_part = sp_pi * log(sp_pi)
-  ) %>%
-  summarize(shannon = -sum(shannon_part)) %>%
-  mutate(effective_n_sp = exp(shannon)) #%>%
-  
-```
-
-
+Plots represent means +- standard error. 
 
 
 ```{r plot-shannon, echo = F, include = T}
 
+p_shannon
 
-df_reg_dens_shannon %>% 
-  ggplot(aes(y = effective_n_sp,
-             x = dom_sp)) +
-#  geom_boxplot() + 
-  theme_bw() +
-  stat_summary(geom = "errorbar",
-               width=0.5,
-               aes(col = dom_sp)) +
-  stat_summary(geom = "pointrange", 
-               aes(col = dom_sp)) +
-  scale_colour_manual(values=cols, 
-                      name="Dominant\nspecies") + 
-  
-  facet_grid(~manag, scales = 'free') +
-  ylab('Effective #\nof species')
 ```
 
+#### Shannon index: effective number of species
+
+Plots represent means +- standard error. 
+
+```{r plot-eff_number, echo = F, include = T}
+
+p_eff_number
+```
 
 
 
@@ -273,177 +180,12 @@ df_reg_dens_shannon %>%
   - lower  = less (more drought sensitive, spruce)
 
 
-```{r get-traits, include = F}
 
-# Get tree species traits:  ----------------------------------------------------------
-
-eco_traits <- read_excel(paste(myPath,
-                               'notes/litterature/traits_database',  
-                               'Niinemets_2006.xls', sep = '/'),
-                         skip = 3,
-                         sheet = 'Niinemets_2006_appendix',
-                         .name_repair = function(x) gsub("\\s+", "_", x)) # replace the spaces in colnames by '_'
-
-
-
-
-# Interpretation: 
-# shade tolerance: 
-#             higher number = more tolerance (fir), 
-#             lower number = less tolarence (more sunny site, pine)
-# drought tolerance: 
-#             higher  = more tolerance (pine), 
-#             lower = less (more drought sensitive, spruce)
-
-# Filter only relevant species:  # how to handle the Other sftwoos and Other harvwood? now just skipped 
-# Any way it is likely not dominant
-trees_lat <- c(
-  'Picea abies',
-  'Fagus sylvatica',
-  'Sorbus aucuparia',
-  'Abies alba',
-  'Acer pseudoplatanus',
-  'Betula pendula',
-  'Pinus sylvestris',
-  'Fraxinus excelsior'
-) 
-
-quercus_spp <- c('Quercus petraea',  # Quercus will be averaged later
-                 'Quercus robur')
-
-salix_spp <- c('Salix caprea',     # Salix will be averaged later
-               'Salix alba')
-
-# Get Quercus spp: average the values for the :
-# Quercus petraea , Quercus robur
-# For salix: Salix alba, Salix caprea  (S. fragilis is not that common)
-
-#'OtherHardwood',
-# 'OtherSoftwood'
-
-# Filter eco traits database by species: 
-# need to do individuall for Quercis, salix and for other species 
-# that we have full name identification
-traits_Qc <- 
-  eco_traits %>% 
-  dplyr::select(c('Species','Shade_tolerance', 'Drought_tolerance')) %>% 
-  filter(Species %in% quercus_spp)  %>% 
-    mutate(Species = 'Quercus') %>% 
-    group_by(Species) %>% 
-    summarize(Shade_tolerance = mean(Shade_tolerance),
-              Drought_tolerance = mean(Drought_tolerance))
-
-traits_Sx <- 
-  eco_traits %>% 
-  dplyr::select(c('Species','Shade_tolerance', 'Drought_tolerance')) %>% 
-  filter(Species %in% salix_spp)  %>% 
-  mutate(Species = 'Salix') %>% 
-  group_by(Species) %>% 
-  summarize(Shade_tolerance   = mean(Shade_tolerance),
-            Drought_tolerance = mean(Drought_tolerance))
-
-# remianing species:
-traits_sp <- 
-  eco_traits %>% 
-  dplyr::select(c('Species','Shade_tolerance', 'Drought_tolerance')) %>% 
-  filter(Species %in% trees_lat)
-
-# Merge traits into single df
-trait_df <- rbind(traits_Qc,
-                  traits_Sx,
-                  traits_sp) 
-
-# Change naming to be able to merge them with denity dataset:
-trait_df <- trait_df %>%
-  mutate(
-    Species = case_when(
-      Species == "Fraxinus excelsior"    ~ "Ash",
-      #Species == "Sonstiges NH"         ~ "OtherSoftwood",
-      # Species == "Sonstiges LH"        ~ "OtherHardwood",
-      Species == "Fagus sylvatica"       ~ "Beech" ,
-      Species == "Sorbus aucuparia"      ~ "Rowan",
-      Species == "Acer pseudoplatanus"   ~ "Maple",
-      Species == "Picea abies"           ~ "Spruce",
-      Species == "Quercus"               ~ "Oak",
-      Species == "Pinus sylvestris"      ~ "Pine",
-      Species == "Betula pendula"        ~ "Birch",
-      Species == "Salix"                 ~ "Willow",
-      Species == "Abies alba"            ~ "Fir"
-    )
-  ) %>% 
-  rename(reg_species = Species)
-
-```
 
 ```{r plot-traits}
 # Community weighted means ---------------------------------------------
 # https://rpubs.com/CPEL/cwm
 
-df_traits_cwm <- 
-  df_reg_dens %>%
-  group_by(trip_n, dom_sp, manag, reg_species) %>%
-  summarize(mean_dens = mean(corr_density)) %>%
-  left_join(trait_df) %>% 
-  ungroup(.) %>% 
-  group_by(trip_n, dom_sp, manag) %>% 
-  summarize(shade_cwm = weighted.mean(Shade_tolerance,     mean_dens, na.rm = TRUE  ),
-            drought_cwm = weighted.mean(Drought_tolerance, mean_dens, na.rm = TRUE  )) %>% 
-  mutate(manag = factor(manag, 
-                        #levels = c('l', 'c', 'd'),
-                        levels = c('living','cleared', 'dead')))
-
-# Make some plots:
-# set desired dodge width - to keep the error lines apart
-pd <- position_dodge(width = 0.4)
-
-p_shade <- 
-  df_traits_cwm %>%
-  ggplot(aes(x = manag,
-             y = shade_cwm))  +
-  theme_bw() +
-  stat_summary(#geom = "mean", 
-    geom = "line", 
-    size=0.5, 
-    aes(colour = dom_sp, 
-        group = dom_sp,
-        lty = dom_sp),
-    position = pd) +
-  stat_summary(geom = "errorbar", 
-               width = 0.3,
-               aes(col = dom_sp), 
-               position = pd) +
-  stat_summary(geom = "pointrange", 
-               aes(col = dom_sp),
-               position = pd) +
-  scale_colour_manual(values=cols, 
-                      name="Dominant\nspecies") + 
-  #facet_grid(~manag) +
-  labs(y='Shade tolerance')
-
-# 
-
-p_drought <- 
-  df_traits_cwm %>%
-  ggplot(aes(x = manag,
-             y = drought_cwm))  +
-  theme_bw() +
-  stat_summary(#geom = "mean", 
-               geom = "line", 
-               size=0.5, 
-               aes(colour = dom_sp, 
-                   group = dom_sp,
-                   lty = dom_sp),
-               position = pd) +
-  stat_summary(geom = "errorbar", 
-               width = 0.3,
-               aes(col = dom_sp), 
-               position = pd) +
-  stat_summary(geom = "pointrange", 
-               aes(col = dom_sp),
-               position = pd) +
-  scale_colour_manual(values=cols, 
-                      name="Dominant\nspecies") + 
-  labs(y='Drought tolerance')
 
 
 
@@ -453,18 +195,42 @@ ggarrange(p_shade,p_drought, ncol = 2, nrow = 1 ,
 
 
 
+
 ```
-#### Changing status:
 
-Reorganization:
+#### Reorganization:
 
-- in structure
+- in structure* to be completed
 - in composition
 
-Outcomes:
+Outcomes for the paper:
 
 - no change -> resilience
 - in structure -> restructure
 - in composition -> reassemble
 - in structure&composition -> replace/shift
 
+Outcomes here just indicates if the regeneration species correspond to dominant species in the matre tree composition. 
+
+If the density of the regeneration tree species:
+
+ - more than 50% of stems: **resilience**
+ - if 25-50%: **decrease**
+ - if 0-25%: **species change** -> changes in compositions
+
+How do the sites change their composition?
+
+```{r plot-alluvial, fig.height=3.8, comment = F}
+
+p_alluvial
+
+```
+
+What are the species prevailing in regeneration?
+
+
+```{r plot-alluvial2, fig.height=7, comment = F}
+
+p_alluvial2
+
+```
