@@ -50,6 +50,17 @@ cols = c('#0072B2', # strict reserves
          '#F0E442', # buffer 2000
          '#000000') # control
 
+
+
+# Get summary statistics: Triplets -------------------------------------------
+dat %>% 
+  group_by(dom_sp) %>% 
+  distinct(trip_n) %>% 
+  tally()
+
+
+
+
 # Get tree species traits:  ----------------------------------------------------------
 
 eco_traits <- read_excel(paste(myPath,
@@ -230,27 +241,31 @@ df_regen <- df_regen %>%
 
 
 
-# Get tree density/ha across all heights, correct the density by slope per each subsite
+# Get tree density/ha across all heights (sums across heights),
+# correct the density by slope per each subsite
 # but it is calculated for each species as a value per hectar. 
 # need to account for the different number of subsites: 5-15
 # calculate the sums and then divide by number of subsamples
-df_reg_dens <- 
-  df_regen %>% 
-  dplyr::left_join(subsample_n, by = c('trip_n', 'manag', 'dom_sp')) %>% #, 'dom_sp', 'manag' 
-  ungroup() %>% 
-  group_by(trip_n, dom_sp, manag, n_subsites, height_class, reg_species)  %>% 
-    mutate(length_corr = 2*cos(gradient*pi/180),
-           area_corr   = 2*length_corr,
-           correct_factor = ha/area_corr,
-           corr_density = n_total*correct_factor)  %>% 
-    filter(corr_density != 0) %>% 
-  ungroup(.) #%>% 
+#df_reg_dens <-
 
-# Get summary statistics: Triplets -------------------------------------------
-dat %>% 
-  group_by(dom_sp) %>% 
-  distinct(trip_n) %>% 
-  tally()
+# Calculate the sum of tree counts per species, ignore tree heights categories!!
+df_reg_dens <- df_regen %>%
+  dplyr::select(-c(height_class)) %>%
+  dplyr::left_join(subsample_n,
+                   by = c('trip_n', 'manag', 'dom_sp')) %>% #, 'dom_sp', 'manag'
+  ungroup() %>%
+  group_by(trip_n, dom_sp, manag, reg_species,  n_subsites)  %>% #height_class,
+  summarize(dens_sum = sum(n_total, na.rm = T)/n_subsites) %>%
+  mutate(
+    length_corr = 2 * cos(gradient * pi / 180),
+    area_corr   = 2 * length_corr,
+    correct_factor = ha / area_corr,
+    corr_density = dens_sum * correct_factor
+  )  %>%
+  filter(corr_density != 0) %>%
+  ungroup(.) %>% 
+  distinct()
+
 
 
 # Reg.density: summary statictics: --------------------------
@@ -258,16 +273,32 @@ dat %>%
 
 df_reg_dens %>% 
   group_by(manag, dom_sp) %>% 
-  summarize(mean_dens = mean(corr_density, na.rm = T),
+  summarize(sum_dens = sum(corr_density, na.rm = T),
             sd_dens   = sd(corr_density, na.rm = T)) %>% 
-  mutate(dens_mean_sd = stringr::str_glue("{round(mean_dens,1)}±{round(sd_dens,1)}")) %>% 
-  dplyr::select(manag, dom_sp, dens_mean_sd) %>% 
+  mutate(dens_sum_sd = stringr::str_glue("{round(sum_dens,1)}±{round(sd_dens,1)}")) %>% 
+  dplyr::select(manag, dom_sp, dens_sum_sd) %>% 
   pivot_wider(names_from = manag, 
-              values_from = dens_mean_sd )
+              values_from = dens_sum_sd )
 
 # Reg.density: plot ---------------------------------
 
-df_reg_dens %>%
+p_density <- df_reg_dens %>% 
+  ggplot(aes(dens_sum, 
+             fill = dom_sp), alpha = 0.5) + 
+  geom_density() +
+  facet_grid(dom_sp~manag) +
+  theme_bw() +
+  scale_fill_manual(values=cols, 
+                      name="Dominant\nspecies")  +
+  ylab('Density') +
+  xlab('Stem counts') +
+  theme(legend.position = 'none')
+  
+
+
+
+
+p_reg_dens <- df_reg_dens %>%
   ggplot(aes(x = dom_sp, 
              y = corr_density/10000)) +
   theme_bw() +
@@ -275,29 +306,62 @@ df_reg_dens %>%
                width = 0.3,
                aes(col = dom_sp)) +
   stat_summary(geom = "pointrange", 
-               aes(col = dom_sp)) +
+               aes(col = dom_sp),
+               size = 0.4) +
   scale_colour_manual(values=cols, 
                       name="Dominant\nspecies") + 
   facet_grid(~manag) +
   labs(y='Regeneration density*10000')
 
+p_reg_dens
 
 
-# Get Shannon: ------------------------------------------------------------
-# - get the total density
+# Check is sums are correctly calculated:
+df_reg_dens %>% 
+  ggplot(aes(x = n_subsites,
+             y = corr_density)) + 
+  geom_point()
+
+
+df_reg_dens %>% 
+  ggplot(aes(x = n_subsites,
+             y = dens_sum)) + 
+  geom_point()
+
+# filter just hig values??? if it seems realistic?
+df_reg_dens %>% 
+  filter(dens_sum >10)
+
+# checks how many regeneration I have per sites and height classes?
+df_regen %>% 
+  ggplot(aes(n_total)) +
+  geom_histogram(binwidth =) +
+  facet_grid()
+
+
+df_regen %>% 
+  filter(n_total >20)
+
+#hist($n_total, bin = 1 )
+
+# Get Shannon: diversity -----------------------------------------------------
 # - calculate the share per reg_species: pi
 # - calculate Shannon: H = -sum(pi*log(pi)) for each reg_species
 # - values for Shannon have to be in 0-1 range (not 0-100)!
+df_reg_dens_sums <- df_reg_dens %>%
+  group_by(trip_n, dom_sp, manag) %>%
+  summarize(sum_dens = sum(corr_density, na.rm = T)) # me
 
+
+# merge the sum of all stems per site 
 df_reg_dens_shannon <-
   df_reg_dens %>%
-  group_by(trip_n, dom_sp, manag, reg_species) %>%
-  summarize(mean_dens = mean(corr_density)) %>% # means first I have values for individual species and subsites!
+  left_join(df_reg_dens_sums) %>% 
   mutate(
-    dens_tot = sum(mean_dens),
-    sp_pi = mean_dens / dens_tot,
+    sp_pi = corr_density  / sum_dens,
     shannon_part = sp_pi * log(sp_pi)
   ) %>%
+    group_by(trip_n, dom_sp, manag) %>% 
   summarize(shannon = -sum(shannon_part)) %>%
   mutate(effective_n_sp = exp(shannon))# %>%
 
@@ -316,10 +380,9 @@ df_reg_dens_shannon %>%
 
 
 # get plots Shannon Effective number of species -----------------------------------
-df_reg_dens_shannon %>% 
+p_eff_number <- df_reg_dens_shannon %>% 
   ggplot(aes(y = effective_n_sp,
              x = dom_sp)) +
-#  geom_boxplot() + 
   theme_bw() +
   stat_summary(geom = "errorbar",
                width=0.5,
@@ -328,13 +391,23 @@ df_reg_dens_shannon %>%
                aes(col = dom_sp)) +
   scale_colour_manual(values=cols, 
                       name="Dominant\nspecies") + 
-  
+  ylab('Effective # of species') +
   facet_grid(~manag, scales = 'free') 
-#+
-#ylab('density \n(#trees/ha)') 
-# https://rpubs.com/CPEL/cwm
 
 
+p_shannon <- df_reg_dens_shannon %>% 
+  ggplot(aes(y = shannon ,
+             x = dom_sp)) +
+  theme_bw() +
+  stat_summary(geom = "errorbar",
+               width=0.5,
+               aes(col = dom_sp)) +
+  stat_summary(geom = "pointrange", 
+               aes(col = dom_sp)) +
+  scale_colour_manual(values=cols, 
+                      name="Dominant\nspecies") + 
+  ylab('Shannon index') +
+  facet_grid(~manag, scales = 'free') 
 
 
 
@@ -343,13 +416,13 @@ df_reg_dens_shannon %>%
 
 df_traits_cwm <- 
   df_reg_dens %>%
-  group_by(trip_n, dom_sp, manag, reg_species) %>%
-  summarize(mean_dens = mean(corr_density)) %>%
+  #group_by(trip_n, dom_sp, manag, reg_species) %>%
+  #summarize(mean_dens = mean(corr_density)) %>%
   left_join(trait_df) %>% 
   ungroup(.) %>% 
   group_by(trip_n, dom_sp, manag) %>% 
-  summarize(shade_cwm   = weighted.mean(Shade_tolerance,   mean_dens, na.rm = TRUE  ),
-            drought_cwm = weighted.mean(Drought_tolerance, mean_dens, na.rm = TRUE  )) %>% 
+  summarize(shade_cwm   = weighted.mean(Shade_tolerance,   corr_density, na.rm = TRUE  ),
+            drought_cwm = weighted.mean(Drought_tolerance, corr_density, na.rm = TRUE  )) %>% 
   mutate(manag = factor(manag, 
                         levels = c('living','cleared', 'dead')))
 
@@ -397,11 +470,13 @@ p_drought <-
                    group = dom_sp,
                    lty = dom_sp),
                position = pd) +
-  stat_summary(geom = "errorbar", 
+  stat_summary(#fun.data = "mean_cl_normal",
+    geom = "errorbar", 
                width = 0.3,
                aes(col = dom_sp), 
                position = pd) +
-  stat_summary(geom = "pointrange", 
+  stat_summary(fun = "mean", 
+               geom = "point",
                aes(col = dom_sp),
                position = pd) +
   scale_colour_manual(values=cols, 
@@ -415,6 +490,100 @@ p_drought <-
 
 ggarrange(p_shade,p_drought, ncol = 2, nrow = 1 , 
           common.legend = TRUE  )
+
+
+
+
+
+
+
+# Reorganization: composition ---------------------------------------------
+# classify if the dominant species prevails in 
+# regeneration? how often they fit the dominant species?
+head(df_reg_dens )
+
+# Calculate % of  regeneration species from total density
+df_dens_species <- 
+  df_reg_dens %>% 
+  group_by(trip_n, dom_sp, manag, reg_species) %>% 
+  summarize(ds_species = sum(corr_density, na.rm = T)/n_subsites) %>% # divide by number of subsites!!
+  distinct() 
+
+df_dens_sum <- df_dens_species %>%  # keep only unique rows
+  group_by(trip_n, dom_sp, manag) %>% 
+  summarize(ds_sum = sum(ds_species, na.rm = T))
+
+# Merge to original table to calaulctate shares by reg_species:
+df_density_change <- df_dens_species %>% 
+  left_join(df_dens_sum) %>% 
+  mutate(ds_spec_share = ds_species  /ds_sum*100) %>% 
+  # filter(reg_species %in% c("Spruce", 'Beech', 'Pine', 'Oak' )) %>% 
+  mutate(cl_change = case_when(dom_sp == 'spruce' & reg_species == 'Spruce' & ds_spec_share > 50 ~ 'resilience',
+                               dom_sp == 'spruce' & reg_species == 'Spruce' & ds_spec_share <= 50 & ds_spec_share > 25  ~ 'decrease',
+                               dom_sp == 'spruce' & reg_species == 'Spruce' & ds_spec_share <= 25 & ds_spec_share > 0  ~ 'reduction',
+                               dom_sp == 'beech'  & reg_species == 'Beech'  & ds_spec_share > 50 ~ 'resilience',
+                               dom_sp == 'beech'  & reg_species == 'Beech'  & ds_spec_share <= 50 & ds_spec_share > 25  ~ 'decrease',
+                               dom_sp == 'beech'  & reg_species == 'Beech'  & ds_spec_share <= 25 & ds_spec_share > 0  ~ 'reduction',
+                               dom_sp == 'pine' & reg_species == 'Pine' & ds_spec_share > 50 ~ 'resilience',
+                               dom_sp == 'pine' & reg_species == 'Pine' & ds_spec_share <= 50 & ds_spec_share > 25  ~ 'decrease',
+                               dom_sp == 'pine' & reg_species == 'Pine' & ds_spec_share <= 25 & ds_spec_share > 0  ~ 'reduction',
+                               dom_sp == 'oak'  & reg_species == 'Oak'  & ds_spec_share > 50 ~ 'resilience',
+                               dom_sp == 'oak'  & reg_species == 'Oak'  & ds_spec_share <= 50 & ds_spec_share > 25  ~ 'decrease',
+                               dom_sp == 'aok'  & reg_species == 'Oak'  & ds_spec_share <= 25 & ds_spec_share > 0  ~ 'reduction',
+                               TRUE ~ 'species_change')) %>%
+  ungroup(.) #%>% 
+
+
+# filter data to have only one change group per site & management:
+df_dens_flow <- df_density_change %>% 
+  group_by(trip_n, dom_sp, manag) %>% 
+  top_n(1, ds_spec_share) %>%  # select the highest share per species and category
+  ungroup(.) %>% 
+  dplyr::select(dom_sp, manag, cl_change) %>%
+  group_by(dom_sp, manag, cl_change) %>% 
+  count()
+
+#count()
+
+
+# alternative alluvial diagram: scale_viridis and 3 axis:
+# create alternative alluvial diagram
+library(ggplot2)
+library(ggalluvial)
+p_alluvial <- ggplot(df_dens_flow,
+                     aes(axis1 = dom_sp ,
+                         axis2 = manag,
+                         axis3 = cl_change,
+                         y = n)) +
+  geom_alluvium(aes(fill = dom_sp)) +
+  geom_stratum() +
+  geom_text(stat = "stratum", 
+            #label.strata = TRUE
+            aes(label = after_stat(stratum))) +
+  scale_x_discrete(limits = c("dom_sp", "manag", "cl_change"),
+                   expand = c(.1, .1)) +
+  #scale_fill_viridis_d() +
+  scale_fill_manual(values=cols, 
+                    name="Dominant\nspecies") +
+  # labs(title = "Titanic data",
+  #      subtitle = "stratified by class, sex, and survival",
+  #      y = "Frequency") +
+  theme_minimal() +
+  theme(legend.position = "none") 
+
+
+
+
+
+
+
+
+
+# Save all dfs as R object: ------------------------------------------------------------
+save.image(file="dataToPlot.Rdata")
+
+
+
 
 
 
@@ -620,91 +789,6 @@ windows()
 plot(effects::allEffects(m.manag))
 plot(effects::allEffects(m.sp.manag))
 plot(effects::allEffects(m.sp.manag2))
-
-
-
-
-
-
-# Reorganization: composition ---------------------------------------------
-# classify if the dominant species prevails in 
-# regeneration? how often they fit the dominant species?
-head(df_reg_dens )
-
-# Calculate % of  regeneration species from total density
-df_dens_species <- 
-  df_reg_dens %>% 
-  group_by(trip_n, dom_sp, manag, reg_species) %>% 
-  summarize(ds_species = sum(corr_density, na.rm = T)/n_subsites) %>% # divide by number of subsites!!
-    distinct() 
-
-df_dens_sum <- df_dens_species %>%  # keep only unique rows
-  group_by(trip_n, dom_sp, manag) %>% 
-  summarize(ds_sum = sum(ds_species, na.rm = T))
-
-# Merge to original table to calaulctate shares by reg_species:
-df_density_change <- df_dens_species %>% 
-  left_join(df_dens_sum) %>% 
-  mutate(ds_spec_share = ds_species  /ds_sum*100) %>% 
- # filter(reg_species %in% c("Spruce", 'Beech', 'Pine', 'Oak' )) %>% 
-  mutate(cl_change = case_when(dom_sp == 'spruce' & reg_species == 'Spruce' & ds_spec_share > 50 ~ 'resilience',
-                               dom_sp == 'spruce' & reg_species == 'Spruce' & ds_spec_share <= 50 & ds_spec_share > 25  ~ 'decrease',
-                               dom_sp == 'spruce' & reg_species == 'Spruce' & ds_spec_share <= 25 & ds_spec_share > 0  ~ 'reduction',
-                               dom_sp == 'beech'  & reg_species == 'Beech'  & ds_spec_share > 50 ~ 'resilience',
-                               dom_sp == 'beech'  & reg_species == 'Beech'  & ds_spec_share <= 50 & ds_spec_share > 25  ~ 'decrease',
-                               dom_sp == 'beech'  & reg_species == 'Beech'  & ds_spec_share <= 25 & ds_spec_share > 0  ~ 'reduction',
-                               dom_sp == 'pine' & reg_species == 'Pine' & ds_spec_share > 50 ~ 'resilience',
-                               dom_sp == 'pine' & reg_species == 'Pine' & ds_spec_share <= 50 & ds_spec_share > 25  ~ 'decrease',
-                               dom_sp == 'pine' & reg_species == 'Pine' & ds_spec_share <= 25 & ds_spec_share > 0  ~ 'reduction',
-                               dom_sp == 'oak'  & reg_species == 'Oak'  & ds_spec_share > 50 ~ 'resilience',
-                               dom_sp == 'oak'  & reg_species == 'Oak'  & ds_spec_share <= 50 & ds_spec_share > 25  ~ 'decrease',
-                               dom_sp == 'aok'  & reg_species == 'Oak'  & ds_spec_share <= 25 & ds_spec_share > 0  ~ 'reduction',
-                               TRUE ~ 'species_change')) %>%
-  ungroup(.) #%>% 
-  
-
-# filter data to have only one change group per site & management:
-df_dens_flow <- df_density_change %>% 
-  group_by(trip_n, dom_sp, manag) %>% 
-  top_n(1, ds_spec_share) %>%  # select the highest share per species and category
-  ungroup(.) %>% 
-  dplyr::select(dom_sp, manag, cl_change) %>%
-  group_by(dom_sp, manag, cl_change) %>% 
-  count()
-  
-#count()
-
-
-# alternative alluvial diagram: scale_viridis and 3 axis:
-# create alternative alluvial diagram
-library(ggplot2)
-library(ggalluvial)
-ggplot(df_dens_flow,
-       aes(axis1 = dom_sp ,
-           axis2 = manag,
-           axis3 = cl_change,
-           y = n)) +
-  geom_alluvium(aes(fill = dom_sp)) +
-  geom_stratum() +
-  geom_text(stat = "stratum", 
-            #label.strata = TRUE
-            aes(label = after_stat(stratum))) +
-  scale_x_discrete(limits = c("dom_sp", "manag", "cl_change"),
-                   expand = c(.1, .1)) +
-  scale_fill_viridis_d() +
- # labs(title = "Titanic data",
- #      subtitle = "stratified by class, sex, and survival",
- #      y = "Frequency") +
-  theme_minimal() +
-  theme(legend.position = "none") 
-
-
-
-
-
-
-
-
 
 
 
