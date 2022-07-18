@@ -572,10 +572,35 @@ p_alluvial <- ggplot(df_dens_flow,
   theme(legend.position = "none") 
 
 
+# what are the resulting spcies??? -----------------
+df_dens_flow_species <- 
+  df_density_change %>% 
+  group_by(trip_n, dom_sp, manag, reg_species) %>% 
+  #top_n(1, ds_spec_share) %>%  # select the highest share per species and category
+  ungroup(.) # %>% 
+  dplyr::select(dom_sp, manag, reg_species) #%>%
+  group_by(dom_sp, manag, reg_species) %>% 
+  count()
 
 
-
-
+p_alluvial2 <- 
+  ggplot(df_dens_flow_species,
+                       aes(axis1 = dom_sp ,
+                           axis2 = manag,
+                           axis3 = reg_species ,
+                           y = ds_spec_share)) +
+    geom_alluvium(aes(fill = dom_sp)) +
+    geom_stratum() +
+    geom_text(stat = "stratum", 
+              #label.strata = TRUE
+              aes(label = after_stat(stratum))) +
+    scale_x_discrete(limits = c("dom_sp", "manag", "reg_species"),
+                     expand = c(.1, .1)) +
+    scale_fill_manual(values=cols, 
+                      name="Dominant\nspecies") +
+    theme_minimal() +
+    theme(legend.position = "none") 
+  
 
 
 
