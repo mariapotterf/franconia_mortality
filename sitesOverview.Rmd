@@ -19,12 +19,11 @@ The number of samples triplets by dominant tree species. Each triplet has 3 mana
 - Living
 
 ```{r read-libs, eval = TRUE, echo=FALSE, include = FALSE, warning = FALSE, error = FALSE }
-rm(list=ls())
+# rm(list=ls())
 
 # Input data -------------------------------------------------------------------
-
-#load(file = "vegData.Rdata")
-load(file = "dataToPlot.Rdata")
+getwd()
+load(file = paste(getwd(), "dataToPlot.Rdata", sep = '/'))
 
 
 #### Source paths and functions  -----------------------------------------------
@@ -51,10 +50,10 @@ library(gratia) # visualization of mcv
 
 
 ## Colors
-cols = c('#0072B2', # strict reserves
-         '#E69F00', # buffer 500
-         '#F0E442', # buffer 2000
-         '#000000') # control
+cols = c('#0072B2', # 
+         '#E69F00', # 
+         '#F0E442', # 
+         '#000000') # black: spruce
 
 
 ```
@@ -63,7 +62,7 @@ cols = c('#0072B2', # strict reserves
 
 ### Triplets counts
 
-Currently we have 20 triplets samples, from total of 40. Stratification by dominant tree species:
+Currently we have 42 triplets. Stratification by dominant tree species:
 
 ```{r triplet-count, echo=FALSE}
 out_summary <- dat %>% 
