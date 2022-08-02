@@ -100,9 +100,11 @@ library(stringr)  # use regex expressions
 dat1  <- read_excel(paste(myPath, inFolderFieldVeg, "Data_Week_3.xlsx", sep = '/'))
 dat2  <- read_excel(paste(myPath, inFolderFieldVeg, "Data_Week_1-2.xlsx", sep = '/'))
 dat3  <- read_excel(paste(myPath, inFolderFieldVeg, "Data_Week_4.xlsx", sep = '/'))
+dat4  <- read_excel(paste(myPath, inFolderFieldVeg, "Data_Week_5-6.xlsx", sep = '/'))
+dat5  <- read_excel(paste(myPath, inFolderFieldVeg, "Data_Week_7-8.xlsx", sep = '/'))
 
 
-#### Get output tables
+#### Name output tables
 outRegen          = paste(myPath, outTable, 'df_regen.csv'          , sep = '/')  # contains infor of plantation& damage
 outRegenAdvanced  = paste(myPath, outTable, 'df_regen_advanced.csv' , sep = '/')
 outMatureENV      = paste(myPath, outTable, 'df_mature_trees_env.csv'   , sep = '/')
@@ -114,7 +116,7 @@ outPhoto  = paste(myPath, outTable, 'df_photo.csv' , sep = '/')
 
 
 ## Clean input data -------------------------------------------------------------
-# Read New headingsL: in ENG, with unique colnames 
+# Read New headings: in ENG, with unique colnames 
 # this was done manually in Excel
 EN_heading <- read_excel(paste(myPath, 
                                inFolderFieldVeg, 
@@ -123,6 +125,8 @@ EN_heading <- read_excel(paste(myPath,
 # check if teh colnames are equal??
 names(dat1) == names(dat2)
 names(dat1) == names(dat3)
+names(dat1) == names(dat4)
+names(dat1) == names(dat5)
 
 # If the names are the same, we can bind them together
 
@@ -132,7 +136,7 @@ names(dat1) == names(dat3)
 #                               "col_names_ENG.xlsx", sep = '/'), 
 #                         sheet = "check_names_over_weeks")  # sheet name
 
-dat <- rbind(dat1, dat2, dat3)
+dat <- rbind(dat1, dat2, dat3, dat4, dat5)
 
 
 # Check if the columns lenght is the same:
@@ -175,8 +179,11 @@ dat %>%
   group_by(trip_n, dom_sp) %>% 
   tally() %>% 
   arrange(dom_sp) %>% 
-  print(n = 40)
+  arrange(trip_n) %>% 
+  print(n = 50)
 
+
+# need to check! 15 beech,  65 beech 
 
  
 # Get each category size ----------------------------------------------------------------

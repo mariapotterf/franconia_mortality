@@ -515,7 +515,7 @@ df_dens_sum <- df_dens_species %>%  # keep only unique rows
 
 # Merge to original table to calaulctate shares by reg_species:
 df_density_change <- df_dens_species %>% 
-  left_join(df_dens_sum) %>% 
+  left_join(df_dens_sum, by = c("trip_n", "dom_sp", "manag")) %>% 
   mutate(ds_spec_share = ds_species  /ds_sum*100) %>% 
   # filter(reg_species %in% c("Spruce", 'Beech', 'Pine', 'Oak' )) %>% 
   mutate(cl_change = case_when(dom_sp == 'spruce' & reg_species == 'Spruce' & ds_spec_share > 50 ~ 'resilience',
@@ -577,8 +577,8 @@ df_dens_flow_species <-
   df_density_change %>% 
   group_by(trip_n, dom_sp, manag, reg_species) %>% 
   #top_n(1, ds_spec_share) %>%  # select the highest share per species and category
-  ungroup(.) # %>% 
-  dplyr::select(dom_sp, manag, reg_species) #%>%
+  ungroup(.) %>% 
+  dplyr::select(dom_sp, manag, reg_species) %>%
   group_by(dom_sp, manag, reg_species) %>% 
   count()
 
@@ -588,7 +588,7 @@ p_alluvial2 <-
                        aes(axis1 = dom_sp ,
                            axis2 = manag,
                            axis3 = reg_species ,
-                           y = ds_spec_share)) +
+                           y = n )) +
     geom_alluvium(aes(fill = dom_sp)) +
     geom_stratum() +
     geom_text(stat = "stratum", 
