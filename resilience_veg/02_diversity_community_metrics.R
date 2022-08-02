@@ -552,8 +552,8 @@ library(ggplot2)
 library(ggalluvial)
 p_alluvial <- ggplot(df_dens_flow,
                      aes(axis1 = dom_sp ,
-                         axis2 = manag,
-                         axis3 = cl_change,
+                         axis2 = cl_change ,
+                         axis3 = manag,
                          y = n)) +
   geom_alluvium(aes(fill = dom_sp)) +
   geom_stratum() +
