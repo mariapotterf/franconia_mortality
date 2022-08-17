@@ -74,11 +74,33 @@ out_summary <- dat %>%
 
 ```
 
+
+
 ```{r print-summary, echo=F}
 # print nice table in knitr
 out_summary %>% knitr::kable("markdown")
 
 ```
+
+#### Number of sites per triplet/category: 
+
+```{r sites-count, echo=FALSE}
+n_sites <- 
+  dat %>% 
+  group_by(trip_n, dom_sp, manag, sub_n) %>% 
+  nrow() #%>% 
+  #pull()
+  #distinct() #%>% 
+  #tally() #%>% 
+  #rename(species=dom_sp,
+  #       triplets_count = n)
+
+```
+
+In total, we have `n_sites` sites (~ 10 sites per triplet& category).
+
+
+#### Species composition
 
 
 
