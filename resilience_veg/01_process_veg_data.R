@@ -130,12 +130,6 @@ names(dat1) == names(dat5)
 
 # If the names are the same, we can bind them together
 
-# check in excel??
-#EN_heading_check <- read_excel(paste(myPath, 
-#                               inFolderFieldVeg, 
-#                               "col_names_ENG.xlsx", sep = '/'), 
-#                         sheet = "check_names_over_weeks")  # sheet name
-
 dat <- rbind(dat1, dat2, dat3, dat4, dat5)
 
 
@@ -169,7 +163,10 @@ dat <- dat %>%
 #dat$trip_n <- replace(dat$trip_n, dat$trip_n == 91, 61) 
 #dat$trip_n <- replace(dat$trip_n, dat$trip_n == 2 & dat$dom_sp == 'pine', 62) 
 #dat$sub_n  <- replace(dat$sub_n,  dat$sub_n == 24, 14) 
-
+#dat$trip_n <- replace(dat$trip_n, dat$trip_n == 65 &  dat$dom_sp == 'beech', 25) 
+#dat$trip_n <- replace(dat$trip_n, dat$trip_n == 28 &  dat$dom_sp == 'beech', 25)
+#dat$trip_n <- replace(dat$trip_n, dat$trip_n == 15 & dat$dom_sp == 'beech', 'spruce') 
+#dat$trip_n <- replace(dat$trip_n, dat$trip_n == 26 , 23) 
 
 ## Check for typos & Get basic statistic ---------------------------------------
 # check for triplets numbers, number of subset per site, ...
@@ -182,8 +179,10 @@ dat %>%
   arrange(trip_n) %>% 
   print(n = 50)
 
+dat %>% 
+  filter(trip_n == 15)
 
-# need to check! 15 beech,  65 beech 
+# need to check! 15 beech,  65 beech - done
 
  
 # Get each category size ----------------------------------------------------------------
@@ -301,7 +300,7 @@ fwrite(df_ground, outGround)
 
 # Extract data in several steps:
 # for regen - seedlings
-# for advanced regen - samplings??
+# for advanced regen - saplings??
 # steps: 
 #     select the columns
 #     convert them from wide to long format
@@ -342,7 +341,7 @@ df_regen <-
 
 ## Counts for planted data   -----------------------------------------------------
 # counts of planted data is the part of total counts:
-# make sure that is true! the number of planted should never be higher than count_tot = total number of regeneration
+# the number of planted should never be higher than count_tot = total number of regeneration
 df_regen_planted <-
   dat %>%
   dplyr::select(matches(paste(
