@@ -3,9 +3,11 @@
 # get data about community structure
 # ecological traits
 # shanon diversity
+# gap fraction: how many of the 4m2 plots with no trees <10cm
+
 # test different categories and community resemblance?
 # remove all previous data from R memory
-# Convert the regeneration counst into density/ha - takes into account the difference in sampling plot!
+# Convert the regeneration counts into density/ha - takes into account the difference in sampling plot!
 #  need to do the slope correction?
 # http://wiki.awf.forst.uni-goettingen.de/wiki/index.php/Slope_correction
 # our inclinometer Suunto is in degrees: goes 0-90
@@ -14,7 +16,6 @@
 # NA% slope = 90 degrees  (1:0 gradient)
 
 rm(list=ls())
-
 
 
 # Input data -------------------------------------------------------------------
@@ -41,14 +42,14 @@ library(ggpubr)
 library(MuMIn)
 library(vegan)
 library(mgcv)
-library(gratia) # visualization of mcv
+library(gratia) # visualization of mgcv
 
 
 ## Colors
-cols = c('#0072B2', # strict reserves
+cols = c('#0072B2', # blue
          '#E69F00', # buffer 500
          '#F0E442', # buffer 2000
-         '#000000') # control
+         '#000000') # black
 
 
 
@@ -191,20 +192,20 @@ trees_dens_plane = trees_field*correct_factor
 # Density correction function --------------------------------------------------
 # the gradient is subset specific: therefore, first adjust the number of the 
 # area per subset, and teh number of densities
-slope_corr <- function(gradient, ...) {
-  
-  # get the dimension of the corrected plane sampling plot
-  r1 = 2
-  r2 = r1*cos(gradient*pi/180) 
-  
-  # calculate the expansion factor
-  correct_factor = ha/r1*r2
-  
-  # correct the number of trees/ha
-  dens_corr = trees_field*correct_factor
-  return(dens_corr)
-  
-}
+# slope_corr <- function(gradient, ...) {
+#   
+#   # get the dimension of the corrected plane sampling plot
+#   r1 = 2
+#   r2 = r1*cos(gradient*pi/180) 
+#   
+#   # calculate the expansion factor
+#   correct_factor = ha/r1*r2
+#   
+#   # correct the number of trees/ha
+#   dens_corr = trees_field*correct_factor
+#   return(dens_corr)
+#   
+# }
 
 
 
@@ -269,7 +270,7 @@ df_reg_dens <- df_regen %>%
 
 
 # Reg.density: summary statictics: --------------------------
-# how much regeneration is per each site? now it is splitted among several species on site
+# how much regeneration is per each site? now it is split among several species on site
 
 df_reg_dens %>% 
   group_by(manag, dom_sp) %>% 
