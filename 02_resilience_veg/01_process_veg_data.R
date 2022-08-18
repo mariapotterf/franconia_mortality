@@ -356,34 +356,14 @@ dd <- df_mature_plot2 %>%
 plot(dd$dbh_sum, dd$prop)
 
 
-ggplot(dd, aes(x = dbh_sum,y = prop)) +
+ggplot(dd, aes(x = dbh_sum, 
+               y = prop)) +
   geom_point() + 
   geom_smooth()
-  
-#pivot_wider(names_from = 'class', values_from = 'val') %>% 
-#print(n = 100)
-
-#  distinct(val)
-#  mutate(class = gsub('gc_', '', class)) %>% # replace the name indicator
-#  separate(uniqueID, all_of(plot_info), '_')
-
 
 #### Save the Mature trees per plot:
 fwrite(df_mature_trees_plot, outMaturePlot)
 
-
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
   
 
 
