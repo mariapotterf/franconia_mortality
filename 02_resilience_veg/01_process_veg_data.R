@@ -105,8 +105,12 @@ dat5  <- read_excel(paste(myPath, inFolderFieldVeg, "Data_Week_7-8.xlsx", sep = 
 
 
 #### Name output tables
+outDat            = paste(myPath, outTable, 'dat_full.csv'          , sep = '/')  # contains infor of plantation& damage
+
+
 outRegen          = paste(myPath, outTable, 'df_regen.csv'          , sep = '/')  # contains infor of plantation& damage
 outRegenAdvanced  = paste(myPath, outTable, 'df_regen_advanced.csv' , sep = '/')
+outMaturePlot     = paste(myPath, outTable, 'df_mature_trees_plot.csv'   , sep = '/')
 outMatureENV      = paste(myPath, outTable, 'df_mature_trees_env.csv'   , sep = '/')
 
 outGround = paste(myPath, outTable, 'df_ground.csv', sep = '/')
@@ -129,7 +133,6 @@ names(dat1) == names(dat4)
 names(dat1) == names(dat5)
 
 # If the names are the same, we can bind them together
-
 dat <- rbind(dat1, dat2, dat3, dat4, dat5)
 
 
@@ -153,6 +156,9 @@ dat <- dat %>%
   mutate(uniqueID = paste(trip_n,dom_sp,manag,sub_n, sep = '_' )) #%>%
 
 
+
+#### Export the full table in wide format
+fwrite(dat, outDat)
 
 #### Correct mistakes/typos (found during processing): --------------------------------------
 # need for quality data check! visually in the table, and correct in the script
@@ -179,6 +185,9 @@ dat %>%
   arrange(trip_n) %>% 
   print(n = 50)
 
+# total of 40: 45&65 were not sampled due to missing owner permission
+
+
 dat %>% 
   filter(trip_n == 15)
 
@@ -186,7 +195,7 @@ dat %>%
 
  
 # Get each category size ----------------------------------------------------------------
-dat_size  <- read_excel(paste(myPath, 'fieldData/sites_identification/final/share', 
+dat_size  <- read_excel(paste(myPath, '03_plot_sampling/sites_identification/final/share', 
                               "sites_unique_ID.xlsx", 
                               sep = '/'))
 
@@ -202,7 +211,7 @@ dat_size <-
 
 # Join category size with the vegetation data  -------------------------------------------
 dat <- dat %>% 
-  left_join(dat_size)
+  left_join(dat_size, by = c("trip_n", "dom_sp", "manag"))
 
 dat_size %>% 
   ggplot(aes(Area_m2/10000), fill = 'white', col = 'black') +
@@ -215,7 +224,7 @@ dat_size %>%
 ## List important column names from raw table  -------------------------------------------
 
 
-# Get columsn for photos:
+# Get columns for photos:
 photos_id <- c("north_subplot",
                "east_subplot",
                "north_environment",
@@ -224,7 +233,7 @@ photos_id <- c("north_subplot",
                "west_environment")
 
 
-# Get columss for the site identification
+# Get columns for the site identification
 plot_info <- c(#"ObjectID",
                #"GlobalID",
                "trip_n",
@@ -240,7 +249,7 @@ plot_geo <- c("gradient",
 
 # Export tables for photos & videos  --------------------------------------------------
 
-# Get ID with indication of teh photo number
+# Get ID with indication of the photo number
 df_photo <-   
   dat %>% 
   dplyr::select(matches(c(plot_info, photos_id, 'uniqueID'))) %>% 
@@ -275,7 +284,9 @@ fwrite(df_video, outVideo)
 
 
 
+
 # Get ground cover shares: per category ------------------------------------------------------
+# shows the coverage of teh individual classes: in %
 df_ground <-   
   dat %>% 
   dplyr::select(matches(c(plot_info, "gc_", 'uniqueID'))) %>% 
@@ -290,6 +301,90 @@ fwrite(df_ground, outGround)
 
 
 
+# get Mature trees on 4m2 plot (live trees > 10 cm dbh) outside of the ground cover shares [%] -------------
+# indicates number of mature trees per site (1-4), with species, dbh and height
+# at max: two mature trees per 4m2 plot (MatTree_order)
+df_mature_trees_plot <-   
+  dat %>% 
+  dplyr::select(matches(c(plot_info, '_Mature_', 'uniqueID'))) %>% 
+  dplyr::select(!matches(c('_subplot', 'gc_Mature_Trees'))) %>%  # remove cols if contains 'subplot' in colname: this only contains YES/NO information
+  dplyr::select(-all_of(plot_info)) %>% 
+  mutate(across(.fns = as.character)) %>% # convert all values to characters to be able to use pivot_longer
+  pivot_longer(!uniqueID, names_to = 'class', values_to = 'val') %>%
+  mutate(class = gsub('_Mature_Trees_', '_', class)) %>%
+  separate(class, c('MatTree_order', 'class1'), '_') %>%
+  group_by(MatTree_order , class1) %>% 
+  mutate(row = row_number()) %>%
+  tidyr::pivot_wider(names_from = class1, values_from = val) %>%
+  select(-row) %>%
+  mutate(
+    species = case_when(
+      species == "Esche"        ~ "Ash",
+      species == "Sonstiges NH" ~ "OtherSoftwood",
+      species == "Sonstiges LH" ~ "OtherHardwood",
+      species == "Buche"        ~ "Beech" ,
+      species == "Vogelbeere"   ~ "Rowan",
+      species == "Bergahorn"    ~ "Maple",
+      species == "Fichte"       ~ "Spruce",
+      species == "Eiche"        ~ "Oak",
+      species == "Kiefer"       ~ "Pine",
+      species == "Birke"        ~ "Birch",
+      species == "Weide"        ~ "Willow",
+      species == "Tanne"        ~ "Fir"
+    )) %>% 
+  mutate(DBH = as.numeric(DBH),
+         Height = as.numeric(Height)) %>% 
+  separate(uniqueID, all_of(plot_info), '_')
+
+
+
+# Check if teh higher gc_tree cover fits with the larger dbh per plot?? ------------------
+# subset first the data from both
+df_mature_plot2 <- df_mature_trees_plot %>% 
+  group_by(trip_n, dom_sp, manag, sub_n) %>% 
+  summarize(dbh_sum = sum(DBH, na.rm = T))
+
+
+df_ground2 <- df_ground %>% 
+  filter(class == 'Mature_Trees' )
+
+# merge data together
+dd <- df_mature_plot2 %>% 
+  left_join(df_ground2, by = c("trip_n", "dom_sp", "manag", "sub_n"))
+
+# check if teh higher dbh (sum if more mature trees are available on the 4m2) links with the higher ground over %
+plot(dd$dbh_sum, dd$prop)
+
+
+ggplot(dd, aes(x = dbh_sum,y = prop)) +
+  geom_point() + 
+  geom_smooth()
+  
+#pivot_wider(names_from = 'class', values_from = 'val') %>% 
+#print(n = 100)
+
+#  distinct(val)
+#  mutate(class = gsub('gc_', '', class)) %>% # replace the name indicator
+#  separate(uniqueID, all_of(plot_info), '_')
+
+
+#### Save the Mature trees per plot:
+fwrite(df_mature_trees_plot, outMaturePlot)
+
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
 
 
 
@@ -396,7 +491,7 @@ df_regen_damaged <-
 
 
 # Merge the regeneration data to know if damage was on planted/naturally regenerated trees?
-# !!! test merge data planted & total: to see if teh 'planted' counts is part of regeneration?
+# !!! test merge data planted & total: to see if the 'planted' counts is part of regeneration?
 df_reg_full <- df_regen %>% 
   left_join(df_regen_planted)  %>% 
   left_join(df_regen_damaged)  %>% 
@@ -542,7 +637,7 @@ df_mature_trees_env <-
 fwrite(df_mature_trees_env, outMatureENV )
 
 
-# Save all dfs as R object: ------------------------------------------------------------
+# Save all dfs as R object to use in further analyses: ------------------------------------------------------------
 save.image(file="vegData.Rdata")
 
   
