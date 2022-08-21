@@ -67,10 +67,10 @@ reg_trees <- c(
   'Beech',     # Fagus sylvatica
   'Rowan',     # Sorbus aucuparia ?
   'Fir',       # Abies alba
-  'Oak',       # Quercus robur  
+  'Oak',       # Quercus sp.  
   'Maple',     # Acer pseudoplatanus
   'Birch',     # Betula pendula
-  'Willow',    # Salix caprea ??
+  'Willow',    # Salix sp.
   'Pine',      # Pinus sylvestris
   'Ash',       # Fraxinus excelsior 
   'OtherHardwood',
@@ -159,6 +159,14 @@ dat <- dat %>%
 
 #### Export the full table in wide format
 fwrite(dat, outDat)
+
+
+# check !!! on Aug 19th: check the regeneration species of the 42-d-5 ??? it is spruce, but should be oak!!!
+dat %>% 
+  filter(trip_n == 42 & sub_n == 5)  %>% 
+  dplyr::select(matches(c('Spruce', 'Oak', 'uniqueID'))) #%>% replaced amnually in week 1-2! 
+
+# dat$trip_n <- replace(dat$trip_n, dat$trip_n == 35 &  dat$dom_sp == 'beech', 32) 
 
 #### Correct mistakes/typos (found during processing): --------------------------------------
 # need for quality data check! visually in the table, and correct in the script
@@ -320,8 +328,8 @@ df_mature_trees_plot <-
   mutate(
     species = case_when(
       species == "Esche"        ~ "Ash",
-      species == "Sonstiges NH" ~ "OtherSoftwood",
-      species == "Sonstiges LH" ~ "OtherHardwood",
+      species == "Sonstiges NH" ~ "O_Soft",
+      species == "Sonstiges LH" ~ "O_Hard",
       species == "Buche"        ~ "Beech" ,
       species == "Vogelbeere"   ~ "Rowan",
       species == "Bergahorn"    ~ "Maple",
@@ -472,10 +480,18 @@ df_regen_damaged <-
 
 # Merge the regeneration data to know if damage was on planted/naturally regenerated trees?
 # !!! test merge data planted & total: to see if the 'planted' counts is part of regeneration?
-df_reg_full <- df_regen %>% 
+df_reg_full <- 
+  df_regen %>% 
   left_join(df_regen_planted)  %>% 
   left_join(df_regen_damaged)  %>% 
-  filter(n_total !=0)  # exclude 0 if no regeneration was collected
+  filter(n_total !=0) %>%  # exclude 0 if no regeneration was collected
+  mutate(n_planted = replace_na(n_planted, 0)) %>% # convert all NaN to zeros
+  mutate(
+    reg_species = case_when(
+      reg_species == "OtherSoftwood" ~ "O_Soft",
+      reg_species == "OtherHardwood" ~ "O_Hard",
+      TRUE ~ reg_species
+    )) # %>% 
 
   
 
@@ -484,7 +500,9 @@ fwrite(df_reg_full, outRegen)
  
 
 
-
+# check the counts:
+df_reg_full %>% 
+  filter(n_total >30)
 
 
 
@@ -533,8 +551,8 @@ df_advanced <- df_advanced %>%
   mutate(
     reg_species = case_when(
       reg_species == "Esche"        ~ "Ash",
-      reg_species == "Sonstiges NH" ~ "OtherSoftwood",
-      reg_species == "Sonstiges LH" ~ "OtherHardwood",
+      reg_species == "Sonstiges NH" ~ "O_Soft",
+      reg_species == "Sonstiges LH" ~ "O_Hard",
       reg_species == "Buche"        ~ "Beech" ,
       reg_species == "Vogelbeere"   ~ "Rowan",
       reg_species == "Bergahorn"    ~ "Maple",
@@ -599,8 +617,8 @@ df_mature_trees_env <-
   dplyr::select(-c("env_MatureTree_present_the_sectors" )) %>% 
   setnames(c(plot_info, 'gradient', 'exposure', 'sector', 'tree_species', 'DBH', 'distance', 'edge_tree' )) %>% 
   mutate(tree_species = case_when(tree_species == "Esche"        ~ "Ash",
-                                  tree_species == "Sonstiges NH" ~ "OtherSoftwood",
-                                  tree_species == "Sonstiges LH" ~ "OtherHardwood",
+                                  tree_species == "Sonstiges NH" ~ "O_Soft",
+                                  tree_species == "Sonstiges LH" ~ "O_Hard",
                                   tree_species == "Buche"        ~ "Beech" ,
                                   tree_species == "Vogelbeere"   ~ "Rowan",
                                   tree_species == "Bergahorn"    ~ "Maple",
