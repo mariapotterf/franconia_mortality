@@ -59,10 +59,11 @@ cols = c('#0072B2', #
 ```
 
 
+## Sites overview: 
 
-### Triplets counts
+### Triplets counts:  `r length(unique(dat$trip_n))`
 
-Currently we have 42 triplets. Stratification by dominant tree species:
+Currently we have `r length(unique(dat$trip_n))` triplets. Stratification by dominant tree species:
 
 ```{r triplet-count, echo=FALSE}
 out_summary <- dat %>% 
@@ -82,7 +83,6 @@ out_summary %>% knitr::kable("markdown")
 
 ```
 
-#### Number of sites per triplet/category: 
 
 ```{r sites-count, echo=FALSE}
 n_sites <- 
@@ -97,16 +97,51 @@ n_sites <-
 
 ```
 
-In total, we have `n_sites` sites (~ 10 sites per triplet& category).
+#### Number of plots (4m2) per triplet&category : `r n_sites`
+
+In total, we have `r n_sites` sites (~ 10 plots per triplet& category).
 
 
-#### Species composition
+#### Prevalence of species in regeneration by height category:
+
+Tree regeneration heights classes:
+
+- seedlings: 0.2-2m
+- saplings: 2-5m, up to 10 cm dbh
+
+Tree regeneration notes: 
+
+- O_soft = other softwood species
+- O_hard = other hardwood species
+
+```{r p_prevalence, echo = F}
+p_prevalence
+
+```
 
 
 
-####  Variables:
+#### Species composition by dominant tree species and category
+
+```{r plot-regen-sp-categ, echo = F, fig.height=5}
+p_treeComp_categ
+
+```
+
+####  Propensity for forest reorganization:
+
+Changes in forest structure and composition: 
+
+Outcomes: !!! complete!
+
+- restructuring - changes in structure
+- reassembly    - changes in composition
+- replacement   - 
+- resilience    - no changes
+
 
 - forest structure: 
+
   - density of regeneration (here less< 2m height)
   - height diversity*to be completed (not in report)
 
