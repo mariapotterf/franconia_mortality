@@ -1,0 +1,154 @@
+---
+title: "Quantifying the propensity of forest reorganization"
+author: "Mária Potterf"
+date: "8/18/2022"
+output: bookdown::html_document2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, tidy = TRUE, tidy.opts = list(comment = FALSE), message = F)
+knitr::opts_chunk$set(fig.width=6, fig.height=2.5) 
+
+```
+
+# Background and implementation:
+
+identify the aspects of the forest reorganization:
+
+- in forest composition
+- in forest structure
+
+evaluate to understand if there are changes towards one of the axes:
+
+- reassembly
+- restructure
+- replacement
+- resilience   
+
+
+# Describe study sites: 
+
+The number of samples triplets by dominant tree species. Each triplet has 3 management categories: 
+
+- Cleared
+- Dead
+- Living
+
+
+```{r read-libs, eval = TRUE, echo=FALSE, include = FALSE, warning = FALSE, error = FALSE }
+# rm(list=ls())
+
+# Input data -------------------------------------------------------------------
+getwd()
+load(file = paste(getwd(), "dataToPlot.Rdata", sep = '/'))
+
+
+#### Source paths and functions  -----------------------------------------------
+
+source('myPaths.R')
+
+
+#### Read libraries  -----------------------------------------------------------
+library(knitr)
+library(readxl)
+library(dplyr)
+library(data.table)
+library(tidyr)
+library(ggplot2)
+library(stringr)  # use regex expressions
+#library(gridExtra)
+library(ggpubr)
+
+##### Stats
+library(MuMIn)
+library(vegan)
+library(mgcv)
+library(gratia) # visualization of mcv
+
+
+## Colors
+cols = c('#0072B2', # 
+         '#E69F00', # 
+         '#F0E442', # 
+         '#000000') # black: spruce
+
+
+```
+
+
+```{r triplet-count, echo=FALSE}
+out_summary <- dat %>% 
+  group_by(dom_sp) %>% 
+  distinct(trip_n) %>% 
+  tally() %>% 
+  rename(species=dom_sp,
+         triplets_count = n)
+
+```
+
+
+```{r sites-count, echo=FALSE}
+n_sites <- 
+  dat %>% 
+  group_by(trip_n, dom_sp, manag, sub_n) %>% 
+  nrow() 
+
+```
+
+**Sites overview:** 
+
+Triplets count:  **`r length(unique(dat$trip_n))`**
+
+Total count of plots (4m2) per triplet&category : **`r n_sites`** plots
+
+
+
+```{r print-summary, echo=F, caption = 'salala' }
+# print nice table in knitr
+out_summary %>% knitr::kable("markdown")
+
+```
+
+### Prevalence of species in regeneration by height category:
+
+Tree regeneration heights classes:
+
+- seedlings: 0.2-2m
+- saplings: 2-5m, up to 10 cm dbh
+
+Tree regeneration notes: 
+
+- O_soft = other softwood species
+- O_hard = other hardwood species
+
+```{r p_prevalence, echo = F, fig.cap = 'Fig. Average counts per tree species. Ordered by the most aboundant tree species'}
+p_prevalence
+
+```
+
+
+
+#### Species composition by dominant tree species and category (for seedlings, saplings)
+
+```{r plot-regen-sp-categ, echo = F, fig.height=5}
+p_treeComp_categ
+
+```
+
+
+### get importance value only for the regeneration?
+
+#### Novel species: Presence & absence
+Identify the tree species that are novel (appear after the disturbance) or absent (disappear) after disturbances. Compared across triplets between reference (living) and disturbed conditions.
+
+```{r p-winners-loosers, fig.height=4}
+p_win_loos_sp
+
+```
+
+
+
+
+
+#### Novel species: competition
+
