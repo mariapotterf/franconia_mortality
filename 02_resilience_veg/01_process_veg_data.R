@@ -155,6 +155,18 @@ colnames(dat) <- EN_col_names
 dat <- dat %>% 
   mutate(uniqueID = paste(trip_n,dom_sp,manag,sub_n, sep = '_' )) #%>%
 
+# total number of plots:  1244
+# some can be later removed: no vegetation, too farfrom teh near trees...
+plot_counts_df <-
+  dat %>% 
+  select(uniqueID) %>% 
+  separate(uniqueID, c('trip_n', 'dom_sp', 'manag', 'sub_n'), '_') %>% 
+  #  nrow() 
+  group_by(trip_n, dom_sp, manag) %>%
+    tally()
+ # distinct() 
+
+
 
 
 #### Export the full table in wide format
