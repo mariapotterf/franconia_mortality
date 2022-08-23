@@ -13,10 +13,16 @@ knitr::opts_chunk$set(fig.width=6, fig.height=2.5)
 
 # Background and implementation:
 
-identify the aspects of the forest reorganization:
+Identify the aspects of the forest reorganization:
 
-- in forest composition
-- in forest structure
+* in forest composition: **Reassembly**
+
+    + Novel species: Presence (RA1) - are novel species present? What is their *importance value* (IV)
+    + Novel species: Competition (RA2) - CWM of shade tolerance for novel species
+    + Competition: Dominance (RA3) - is the same species dominant before and after the disturbance? 
+    + Competition: Tree size (RA4) - is the tallest tree same under Ref and disturbed conditions?
+
+* in forest structure: **Restructuring**
 
 evaluate to understand if there are changes towards one of the axes:
 
@@ -26,13 +32,17 @@ evaluate to understand if there are changes towards one of the axes:
 - resilience   
 
 
+
+![Fig. Response pathways of Forest reorganization (Seidl & Turner 2022)](images/response_pathways.png){width=75%}
+
+
 # Describe study sites: 
 
 The number of samples triplets by dominant tree species. Each triplet has 3 management categories: 
 
-- Cleared
-- Dead
-- Living
+- Cleared - removed
+- Dead  = disturbed 
+- Living = Reference
 
 
 ```{r read-libs, eval = TRUE, echo=FALSE, include = FALSE, warning = FALSE, error = FALSE }
@@ -91,6 +101,7 @@ out_summary <- dat %>%
 n_sites <- 
   dat %>% 
   group_by(trip_n, dom_sp, manag, sub_n) %>% 
+  distinct() %>% 
   nrow() 
 
 ```
@@ -107,9 +118,78 @@ Total count of plots (4m2) per triplet&category : **`r n_sites`** plots
 # print nice table in knitr
 out_summary %>% knitr::kable("markdown")
 
+
+
+
+
+
+
+
 ```
 
-### Prevalence of species in regeneration by height category:
+## Reassembly: 
+
+Calculate **species importance value**
+from: https://kimmerer.com/trees/importance-value/
+
+**Importance Value** is a measure of how dominant a species is in a given forest area. It is a standard tool used by foresters to inventory a forest.  Foresters generally do not inventory a forest by counting all the trees, but by locating points in the forest and sampling a specified area around those points.  Three kinds of data are collected:
+
+ - *Relative frequency*, the percent of inventory points occupied by species A as a percent of the occurence of all species.  If species A is found in 5 out of 8 sample points, its relative frequency is 62.5%
+ - *Relative density*, the number of individuals per area as a percent of the number of individuals of all species.
+ - *Relative basal area*.  the total basal area of Species A as a percent of the total basal area of all species.  Basal area is the sum of the cross sectional area of all the trees of species A, measured at 4.5 ft. above ground. The forester actually measures diameter and then converts that number to basal area.
+ 
+Each of these values is expressed as a percent, and ranges from 0 to 100.
+
+The **Importance Value** is the sum of these three measures, and can range from 0 to 300.
+
+ **Importance value** calculated here considers the extent of the 4m2 plot. 
+ 
+ 
+ My data: 
+ 
+ - seedlings regeneration < 1.3 m: BA = 0, regeneration 1.3m-2 m, estimated DBH = 1 cm
+ - advanced regeneration: DBH measured for each tree
+ - mature trees: DBH measured for each tree
+ 
+ 
+ 
+ 
+```{r p_jitter_sp_IVI, echo = F, fig.cap = 'Fig. Species importance value for individual tree species per management type', fig.height=5.5, fig.width=6.5}
+p_jitter_sp_IVI
+
+```
+
+### Novel species: Presence & absence
+Identify the tree species that are novel (appear after the disturbance) or absent (disappear) after disturbances. Compared across triplets between reference (living) and disturbed conditions.
+
+```{r p-winners-loosers, echo = F, fig.height=3.5, fig.width = 3.5}
+p_win_loos_sp
+
+```
+
+Compare the average species importance value between management regimes:
+```{r p_VI_categ, echo = F, fig.height=2.8, fig.width = 3.5}
+p_VI_categ
+
+```
+
+
+Compare the average species importance value for novel and absent species:
+```{r p_VI_novel_looser_sp,echo = F, fig.height=2.8, fig.width = 3.5}
+p_VI_novel_looser_sp
+
+```
+
+
+
+#### Novel species: competition
+
+
+
+
+
+
+## Prevalence of species in regeneration by height category:
 
 Tree regeneration heights classes:
 
@@ -135,20 +215,4 @@ p_treeComp_categ
 
 ```
 
-
-### get importance value only for the regeneration?
-
-#### Novel species: Presence & absence
-Identify the tree species that are novel (appear after the disturbance) or absent (disappear) after disturbances. Compared across triplets between reference (living) and disturbed conditions.
-
-```{r p-winners-loosers, fig.height=4}
-p_win_loos_sp
-
-```
-
-
-
-
-
-#### Novel species: competition
 
