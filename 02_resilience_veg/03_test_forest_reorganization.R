@@ -40,12 +40,12 @@ head(trait_df)      # - trait values for all species: eco_traits
 #  1 24     d     Oak         novel  
 #  2 24     d     Ash         novel  
 
-# Some species have importance value NA???? how is this possible????
-df_IVI_out %>%
-  filter(trip_n == '4' & manag == 'd')
+
+# !!! in working example: 
+# Evaluate how does the 300% value changes based on the species occurence, size and prevalence??
 
 
-# Novel species: presence
+# Novel species: presence ---------------------------------------------------------
 RA1 <- 
   df_IVI_out %>% 
   left_join(df_winners) %>% 
@@ -63,6 +63,7 @@ RA1 <-
                            IVI_sum_novel < 300 ~ 0))
 
 
+
 # RA2  Community weighted means: ----------------------------------------------
 
 # Interpretation: 
@@ -73,9 +74,7 @@ RA1 <-
 #             higher  = more tolerance (pine), 
 #             lower = less (more drought sensitive, spruce)
 
-#RA2 <-
-
-df_IVI_out %>% 
+RA2 <- df_IVI_out %>% 
   left_join(df_winners, by = c("trip_n", "manag", "reg_species")) %>% 
   left_join(trait_df, by =c('reg_species')) %>% #, by = character()
   filter(manag != 'c') %>% 
@@ -85,16 +84,29 @@ df_IVI_out %>%
   group_by(trip_n, dom_sp, manag, novelty) %>% 
   summarize(shade_cwm   = weighted.mean(Shade_tolerance,   sp_count, na.rm = TRUE  ),
             drought_cwm = weighted.mean(Drought_tolerance, sp_count, na.rm = TRUE  )) %>%
-  dplyr::select(trip_n, manag, novelty, shade_cwm, drought_cwm) # %>% # how to pass the new value to the new column?
-  mutate(shade_novel = shade_cwm[novelty == 'novel',]) # !!! does not work!! 
-  print(n = 50)
-  
-  group_by(trip_n, manag) %>% 
-  summarize(IVI_sum = sum(sp_IVI, na.rm = T),
-            IVI_sum_novel = sum(sp_IVI[novelty == 'novel'])) %>%
+  dplyr::select(trip_n, dom_sp, manag, novelty, shade_cwm, drought_cwm)  %>% # how to pass the new value to the new column?
+  mutate(shade_novel = ifelse(any(novelty == "novel"), shade_cwm[novelty == "novel"] , NA)) %>% 
   mutate(RA2 = case_when(shade_novel > shade_cwm  ~ 1,
                          shade_novel <= shade_cwm ~ 0))
 
+
+# competitin: Dominance: Is the species dominating after distrbances the same that dominates under reference conditions?
+# identify species with teh highest VI bofore and after disturbance: is it still teh same species?
+RA3 <- 
+  df_IVI_out %>% 
+  filter(manag != 'c') %>% 
+    dplyr::select(trip_n, manag, reg_species, dom_sp, sp_IVI) %>%
+    filter(sp_IVI == max(sp_IVI)) %>%
+    group_by(trip_n) %>% 
+  mutate(maxIVI_l = reg_species[which(c(manag == 'l'))[1]]) %>% 
+    filter(manag == "d")  %>%  # to keep only one row per triplet
+    mutate(
+         RA3 = case_when(maxIVI_l == reg_species ~ 0,
+                         maxIVI_l != reg_species ~ 1))
+
+
+# Competition: tree size:
+RA4
 
 
 
