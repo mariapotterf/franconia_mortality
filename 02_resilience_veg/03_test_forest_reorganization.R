@@ -25,8 +25,8 @@ load(file = paste(getwd(), "dataToPlot.Rdata", sep = '/'))
 
 # Identify data to use:
 head(df_full_plot)  # - full plot based data: df_full_plot
-head(df_IVI_out)    # - df importance value: df_IVI_out
-head(df_winners)    # - novel species: df_novelty
+head(df_IVI_out)    # - df importance value:  df_IVI_out
+head(df_winners)    # - novel species:        df_novelty
 head(trait_df)      # - trait values for all species: eco_traits
 
 
@@ -92,21 +92,61 @@ RA2 <- df_IVI_out %>%
 
 # competitin: Dominance: Is the species dominating after distrbances the same that dominates under reference conditions?
 # identify species with teh highest VI bofore and after disturbance: is it still teh same species?
-RA3 <- 
-  df_IVI_out %>% 
-  filter(manag != 'c') %>% 
-    dplyr::select(trip_n, manag, reg_species, dom_sp, sp_IVI) %>%
-    filter(sp_IVI == max(sp_IVI)) %>%
-    group_by(trip_n) %>% 
-  mutate(maxIVI_l = reg_species[which(c(manag == 'l'))[1]]) %>% 
-    filter(manag == "d")  %>%  # to keep only one row per triplet
-    mutate(
-         RA3 = case_when(maxIVI_l == reg_species ~ 0,
+RA3 <-
+  df_IVI_out %>%
+  filter(manag != 'c') %>%
+  dplyr::select(trip_n, manag, reg_species, dom_sp, sp_IVI) %>%
+  filter(sp_IVI == max(sp_IVI)) %>%
+  group_by(trip_n) %>%
+  mutate(maxIVI_l = reg_species[which(c(manag == 'l'))[1]]) %>%
+  filter(manag == "d")  %>%  # to keep only one row per triplet
+  mutate(RA3 = case_when(maxIVI_l == reg_species ~ 0,
                          maxIVI_l != reg_species ~ 1))
 
+# RA4: Competition: tree size:
+# find teh species that has most often the highest DBH & largest height - split in two columns?
+d <- data.frame(trip_n = c(1,1,2,4,5),
+                sp=c('a', 'b','a','a','b'),
+                dbh = c(3,3,2,3,8))
 
-# Competition: tree size:
-RA4
+# select the the species with the highest dbh
+d %>% 
+  #filter(sp_IVI == max(sp_IVI))# %>%
+  group_by(trip_n) %>% 
+  #mutate(max_sp_dbh = sp[which.max(dbh)[1]])# %>%
+  mutate(max_sp_dbh = sp[which.max(dbh)])# %>%
+
+
+# RA4: DBH
+
+RA4_dbh <- df_full_plot %>% 
+  dplyr::select(!height_class) %>% 
+  filter(manag != 'c' ) %>% #& height_class != 'mature'
+  group_by(trip_n, dom_sp, manag, sub_n) %>% #, reg_species for each sub_plot the get prevailing species by plot
+  filter(DBH>0) %>% 
+  group_by(trip_n, manag) %>% 
+  count(reg_species) %>% 
+  slice(which.max(n)) %>% 
+  group_by(trip_n) %>% 
+  mutate(spec_l = reg_species[which(c(manag == 'l'))[1]]) %>%
+  filter(manag == "d")  %>%  # to keep only disturbed ones
+  mutate(RA4_1 = case_when(spec_l == reg_species ~ 0,  # compare with the living ones
+                           spec_l != reg_species ~ 1))
+
+
+  #top_n(1, DBH)
+  
+#RA4 ------------------------------------------
+df_full_plot %>% 
+  # find species most often the highest dbh, the largest height?
+  filter(manag != 'c' & height_class != 'mature') %>% 
+  mutate(height_class_num = as.numeric(gsub('HK', '', height_class))) %>% # change to numeric values
+  group_by(trip_n, dom_sp, manag) %>% #, reg_species
+  select(!sub_n) %>% 
+  filter(height_class_num == max(height_class_num)) %>% 
+  #mutate(max_dbh = filter(DBH == max(DBH))) %>% 
+  arrange(trip_n) 
+
 
 
 
