@@ -113,9 +113,10 @@ outRegenAdvanced  = paste(myPath, outTable, 'df_regen_advanced.csv' , sep = '/')
 outMaturePlot     = paste(myPath, outTable, 'df_mature_trees_plot.csv'   , sep = '/')
 outMatureENV      = paste(myPath, outTable, 'df_mature_trees_env.csv'   , sep = '/')
 
-outGround = paste(myPath, outTable, 'df_ground.csv', sep = '/')
-outVideo  = paste(myPath, outTable, 'df_video.csv' , sep = '/')
-outPhoto  = paste(myPath, outTable, 'df_photo.csv' , sep = '/')
+outGround                 = paste(myPath, outTable, 'df_ground.csv', sep = '/')
+outVideo                  = paste(myPath, outTable, 'df_video.csv' , sep = '/')
+outPhoto                  = paste(myPath, outTable, 'df_photo.csv' , sep = '/')
+outPhotoVideoNearestTree  = paste(myPath, outTable, 'df_photo_video_nearTree.csv' , sep = '/')
   
 
 
@@ -134,6 +135,8 @@ names(dat1) == names(dat5)
 
 # If the names are the same, we can bind them together
 dat <- rbind(dat1, dat2, dat3, dat4, dat5)
+
+
 
 
 # Check if the columns lenght is the same:
@@ -155,17 +158,15 @@ colnames(dat) <- EN_col_names
 dat <- dat %>% 
   mutate(uniqueID = paste(trip_n,dom_sp,manag,sub_n, sep = '_' )) #%>%
 
-# total number of plots:  1244
-# some can be later removed: no vegetation, too farfrom teh near trees...
+# keep all sites: total number of plots:  1244
+# some can be later removed: no vegetation, too far from the near trees (> 15 m away...)
 plot_counts_df <-
   dat %>% 
   select(uniqueID) %>% 
   separate(uniqueID, c('trip_n', 'dom_sp', 'manag', 'sub_n'), '_') %>% 
-  #  nrow() 
   group_by(trip_n, dom_sp, manag) %>%
-    tally()
- # distinct() 
-
+  tally()
+ 
 
 
 
@@ -194,6 +195,22 @@ dat %>%
 #dat$trip_n <- replace(dat$trip_n, dat$trip_n == 15 & dat$dom_sp == 'beech', 'spruce') 
 #dat$trip_n <- replace(dat$trip_n, dat$trip_n == 26 , 23) 
 
+# Change distances:
+dat$env_Distance_next_MatureTree <- replace(dat$env_Distance_next_MatureTree, 
+                                            dat$env_Distance_next_MatureTree == 25, 500) 
+dat$env_Distance_next_MatureTree <- replace(dat$env_Distance_next_MatureTree, 
+                                            dat$env_Distance_next_MatureTree == 90, 900) 
+dat$env_Distance_next_MatureTree <- replace(dat$env_Distance_next_MatureTree, 
+                                            dat$env_Distance_next_MatureTree == 14, 140) 
+dat$env_Distance_next_MatureTree <- replace(dat$env_Distance_next_MatureTree, 
+                                            dat$env_Distance_next_MatureTree == 53, 530) 
+dat$env_Distance_next_MatureTree <- replace(dat$env_Distance_next_MatureTree, 
+                                            dat$env_Distance_next_MatureTree == 52, 150) 
+dat$env_Distance_next_MatureTree <- replace(dat$env_Distance_next_MatureTree, 
+                                            dat$env_Distance_next_MatureTree == 44, 440) 
+dat$env_Distance_next_MatureTree <- replace(dat$env_Distance_next_MatureTree, 
+                                            dat$env_Distance_next_MatureTree == 11, 1100) 
+
 ## Check for typos & Get basic statistic ---------------------------------------
 # check for triplets numbers, number of subset per site, ...
 # sample patches by patch??
@@ -207,13 +224,6 @@ dat %>%
 
 # total of 40: 45&65 were not sampled due to missing owner permission
 
-
-dat %>% 
-  filter(trip_n == 15)
-
-# need to check! 15 beech,  65 beech - done
-
- 
 # Get each category size ----------------------------------------------------------------
 dat_size  <- read_excel(paste(myPath, '03_plot_sampling/sites_identification/final/share', 
                               "sites_unique_ID.xlsx", 
@@ -227,7 +237,8 @@ dat_size <-
   mutate(manag = tolower(manag),
          trip_n = as.numeric(trip_n)) 
 
-
+nrow(dat_size) # 126
+nrow(dat)      # 1244
 
 # Join category size with the vegetation data  -------------------------------------------
 dat <- dat %>% 
@@ -245,8 +256,8 @@ dat_size %>%
 
 
 # Get columns for photos:
-photos_id <- c("north_subplot",
-               "east_subplot",
+photos_id <- c("north_plot",
+               "east_plot",
                "north_environment",
                "east_environment",
                "south_environment",
@@ -272,8 +283,8 @@ plot_geo <- c("gradient",
 # Get ID with indication of the photo number
 df_photo <-   
   dat %>% 
-  dplyr::select(matches(c(plot_info, photos_id, 'uniqueID'))) %>% 
-  dplyr::select(-all_of(plot_info))  %>%
+  dplyr::select(matches(c(plot_info, photos_id, 'uniqueID'))) %>%
+   dplyr::select(-all_of(plot_info))  %>%
   pivot_longer(!uniqueID, names_to = 'class', values_to = 'photo_number')  %>%
   separate(class, c('orientation', 'site'), '_') %>% 
   separate(uniqueID, all_of(plot_info), '_')
@@ -512,12 +523,6 @@ fwrite(df_reg_full, outRegen)
  
 
 
-# check the counts:
-df_reg_full %>% 
-  filter(n_total >30)
-
-
-
 
 ## For Advanced regen: samplings  ---------------------------------------------------
 
@@ -619,15 +624,17 @@ fwrite(df_advanced2, outRegenAdvanced )
 
 
 
-# Get pre-disturbance stand density -------------------------------------------------
+# Get mature trees ENVIRONMENT -------------------------------------------------
 
 
 df_mature_trees_env <-
+#test<-
   dat %>% 
   dplyr::select(matches(paste(c(plot_info, plot_geo, 'env_'), collapse = '|'))) %>%
   dplyr::select(matches(paste(c(plot_info, plot_geo, 'MatureTree'), collapse = '|'))) %>%
-  dplyr::select(-c("env_MatureTree_present_the_sectors" )) %>% 
-  setnames(c(plot_info, 'gradient', 'exposure', 'sector', 'tree_species', 'DBH', 'distance', 'edge_tree' )) %>% 
+  dplyr::select(-c("env_MatureTree_present_the_sectors" )) %>%
+  drop_na() %>%  # some sample plots have nearest trees > 15m away 
+  setnames(c(plot_info, 'gradient', 'exposure', 'orientation', 'tree_species', 'DBH', 'distance', 'edge_tree' )) %>%
   mutate(tree_species = case_when(tree_species == "Esche"        ~ "Ash",
                                   tree_species == "Sonstiges NH" ~ "O_Soft",
                                   tree_species == "Sonstiges LH" ~ "O_Hard",
@@ -639,12 +646,71 @@ df_mature_trees_env <-
                                   tree_species == "Kiefer"       ~ "Pine",
                                   tree_species == "Birke"        ~ "Birch",
                                   tree_species == "Weide"        ~ "Willow",
-                                  tree_species == "Tanne"        ~ "Fir"))
+                                  tree_species == "Tanne"        ~ "Fir")) %>% 
+ 
+ # filter(is.na(orientation))
+  mutate(orientation = case_when(orientation == 'ost'~ 'east',
+                                 orientation == 'west'~ 'west',
+                                 orientation == 'nord'~ 'north',
+                                 orientation == 'sued'~ 'south')) %>% 
+ # distinct(orientation)
+  mutate(trip_n = as.character(trip_n),
+         sub_n = as.character(sub_n))
+
+
+
+
+df_mature_trees_env %>% 
+  left_join(df_photo) %>% 
+  filter(distance < 100 ) #%>% # & site == 'environment' 
+  select(trip_n, dom_sp, sub_n, tree_species, DBH, photo_number, distance, edge_tree)
+
 
 
 
 #### Save the mature trees dataset -------------------------------------------------
 fwrite(df_mature_trees_env, outMatureENV )
+
+
+
+# Identify which triplets have both photos and videos; 
+# find which ones have mature trees in close proximity ----------------------------------------
+head(df_photo)
+head(df_video)
+head(df_mature_trees_env)
+
+df_mature_trees_env %>% 
+  filter(distance < 100)
+
+df_photo %>% 
+  filter(trip_n == '28' & sub_n == '8')
+
+# Export table for teh sites with photos, videos and nearest distant trees
+# if nearest tree in environment is missing, then it is more then 15 m away from the plot center
+df_photo_video_nearest <- df_photo %>% 
+  filter(site == 'environment') %>%
+  mutate(site = 'Surroundings') %>% 
+  right_join(df_video, 
+             by = c("trip_n", "dom_sp", "manag", "sub_n", "orientation", "site")) %>% 
+  right_join(df_mature_trees_env, 
+             by = c("trip_n", "dom_sp", "manag", "sub_n", "orientation")) %>% 
+  drop_na()
+
+
+df_photo_video_nearest %>% 
+  filter(distance < 100)
+
+fwrite(df_photo_video_nearest, outPhotoVideoNearestTree)
+
+
+# Remove unnecessary df ------------------------------------
+rm(dat_size, 
+   dat1, dat2, dat3, dat4, dat5, 
+   dd, df_mature_plot2,
+   # df_photo, df_video, 
+   EN_heading)
+
+
 
 
 # Save all dfs as R object to use in further analyses: ------------------------------------------------------------
