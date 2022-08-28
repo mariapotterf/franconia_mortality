@@ -102,31 +102,6 @@ n_sites <-
 In total, we have `r n_sites` sites (~ 10 plots per triplet& category).
 
 
-#### Prevalence of species in regeneration by height category:
-
-Tree regeneration heights classes:
-
-- seedlings: 0.2-2m
-- saplings: 2-5m, up to 10 cm dbh
-
-Tree regeneration notes: 
-
-- O_soft = other softwood species
-- O_hard = other hardwood species
-
-```{r p_prevalence, echo = F}
-p_prevalence
-
-```
-
-
-
-#### Species composition by dominant tree species and category
-
-```{r plot-regen-sp-categ, echo = F, fig.height=5}
-p_treeComp_categ
-
-```
 
 ####  Propensity for forest reorganization:
 
