@@ -77,10 +77,10 @@ library(stringr)  # use regex expressions
 library(ggpubr)
 
 ##### Stats
-library(MuMIn)
-library(vegan)
-library(mgcv)
-library(gratia) # visualization of mgcv
+#library(MuMIn)
+#library(vegan)
+#library(mgcv)
+#library(gratia) # visualization of mgcv
 
 
 ## Colors
@@ -101,11 +101,7 @@ dat %>%
 # How many plots of 4m2 (per triplet) do we have?
 dat %>% 
   group_by(trip_n, dom_sp, manag, sub_n) %>% 
-  distinct() #%>% 
-  nrow()
- # tally() %>% 
-  #summarize(sum_n = sum(n))  
-
+  distinct() 
 
 dat %>% 
   group_by(trip_n, dom_sp, manag, sub_n) %>% 
@@ -158,7 +154,7 @@ df_regen_all2 <- df_regen_all %>%
                values_to = 'count') # %>%
 
 
-# get barplot: counts of regeneration by species:
+# get barplot: counts of regeneration by species: -----------------------------------
 p_treeComp_categ <- 
   df_regen_all2 %>% 
   ggplot(aes(x = reorder(reg_species, -count), #reg_species,
@@ -215,65 +211,7 @@ p_prevalence <- df_regen_all2 %>%
 
 
 
-# Identify novel species in the community: ----------------------------------------
-# are there any new species in the regeneration? compare the reference vs disturbed sites:
-# just identify which species are new compared to Reference (Living) conditions
-# eg ignore height's classes, counts...
-# test example for different triplet number:
-# compares the sites between themselves, not the plots:
-# first just compare the distinct species betwee sites
 
-# CHeck for specific triplet
-df_winners <- df_regen_all %>% 
-  filter(manag !='c' ) %>% # & trip_n == 11
-  group_by(trip_n, manag) %>% 
-  distinct(reg_species) %>% 
-  select(trip_n, manag, reg_species) %>% 
-  ungroup() %>% 
-  group_by(trip_n) %>% 
-  filter(manag == 'd' & !reg_species %in% reg_species[manag == 'l'] ) %>%
-  mutate(novelty = 'novel')
-
-
-# identify loosers: species that were present at reference; not present after disturbance
-df_loosers <- 
-  df_regen_all %>% 
-  filter(manag !='c') %>% 
-  group_by(trip_n, manag) %>% 
-  distinct(reg_species) %>% 
-  select(trip_n, manag, reg_species) %>% 
-  ungroup() %>% 
-  group_by(trip_n) %>% 
-  filter(manag == 'l' & !reg_species %in% reg_species[manag == 'd']) %>% 
-  mutate(novelty = 'lost')
-
-# Merge loosers and winners species together:
-df_novelty = 
-  rbind(df_winners, df_loosers) %>% 
-  group_by(reg_species, novelty) %>% 
-  tally() %>% 
-    mutate(n2 = case_when(novelty == 'lost' ~ -n,
-                         novelty == 'novel' ~ n)) #TRUE ~ reg_species
-  
-#windows()
-p_win_loos_sp <- ggplot(df_novelty, aes(x = reg_species, fill = novelty, y = n2)) +
-  geom_col(position = 'identity', col = 'black')  +
-  theme_bw() +
-  theme(axis.text = element_text(angle = 90)) 
-  #facet_wrap(vars(reg_species), strip.position = "bottom")
-
-
-p_winners <- ggplot(df_winners, aes(x = reg_species, fill = reg_species)) + 
-  geom_bar() +
-  ggtitle('Novel species', subtitle= 'Appear after disturbance)') + 
-  theme_bw()
-
-p_loosers <- ggplot(df_loosers, aes(x = reg_species, fill = reg_species)) + 
-  geom_bar() + 
-  ggtitle('Lost species', subtitle= 'Disappear after disturbance)') + 
-  theme_bw()
-
-ggarrange(p_winners, p_loosers, nrow = 2)
 
 
 
@@ -414,7 +352,7 @@ df_reg_onlyNatural2 <- df_reg_onlyNatural %>%
                              height_class == 'HK5' ~ 1.2,
                              height_class == 'HK6' ~ 1.7
                              )) %>% 
-  mutate(DBH = case_when(height == 1.7 ~ 1,  # DBH is ~ 1 cm for the HK6
+  mutate(DBH = case_when(height == 1.7 ~ 0.8,  # DBH is ~ 1 cm for the HK6
                          height != 1.7 ~ 0)) %>% 
   dplyr::select(all_of(my_cols_regen))
 
@@ -456,12 +394,12 @@ names(df_mature_trees_plot3)
 
 # Just calculate frequency, density and basal area from the species present on the plots:
 # Merge all tree data together:
-df_IVI = rbind(df_reg_onlyNatural2,
+df_full_plot = rbind(df_reg_onlyNatural2,
                df_advanced3,
                df_mature_trees_plot3)
 
 # remove any NA from teh reg_species (as a part from teh mature trees estimation):
-df_IVI <- df_IVI %>% 
+df_full_plot <- df_full_plot %>% 
   drop_na(reg_species)
 
 
@@ -484,7 +422,7 @@ df_sub_count <-
 # Calculate relative frequency: if species occurs on 5 plots ot of 8: freq = 62.5% 
 # https://stackoverflow.com/questions/73442694/calculate-the-frequency-of-species-occurrence-across-sites/73442974#73442974
 df_freq <-
-  df_IVI %>%
+  df_full_plot %>%
   drop_na(reg_species) %>%
   select(trip_n, manag, sub_n, reg_species) %>%
   distinct() %>% # just to check if teh species is present or not
@@ -497,7 +435,7 @@ df_freq <-
 # relative density: 
 # the number of individuals per area as a percent of the number of individuals of all species.
 df_rel_density <- 
-  df_IVI %>%
+  df_full_plot %>%
   group_by(trip_n, dom_sp, manag, reg_species) %>% 
   summarize(sp_count = sum(count, na.rm = T)) %>% 
     ungroup(.) %>% 
@@ -508,7 +446,7 @@ df_rel_density <-
 
 # Relative basal area.  
 # the total basal area of Species A as a percent of the total basal area of all species.  
-df_rel_BA <- df_IVI %>%
+df_rel_BA <- df_full_plot %>%
   mutate(r = DBH/2,
          BA = pi*r^2)  %>% 
   group_by(trip_n, dom_sp, manag, reg_species) %>%
@@ -516,7 +454,8 @@ df_rel_BA <- df_IVI %>%
   ungroup(.) %>% 
   group_by(trip_n, dom_sp, manag) %>% 
   mutate(all_BA = sum(sp_BA, na.rm = T),
-         rel_BA = sp_BA/all_BA*100)
+         rel_BA = sp_BA/all_BA*100) %>% 
+  mutate(rel_BA = replace_na(rel_BA, 0))  # replace NA by 0 if BA is missing
 
 
 ###################################
@@ -534,12 +473,121 @@ df_IVI_out <-
     
 
 # Explore teh species importance value: IVI
-df_IVI_out %>% 
+#windows()
+p_jitter_sp_IVI <- df_IVI_out %>% 
   ggplot(aes(y = sp_IVI,
-             x = reg_species)) +
-  geom_point(alpha = 0.5) +
+             x = reg_species,
+             col = reg_species)) +
+  geom_jitter(alpha = 0.5, width = 0.15) +
   facet_grid(dom_sp~manag) + 
-  theme( )
+  theme_bw() +
+  labs(color = 'Tree species', x = '', y = 'Importance Value [%]') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size = 8))  
+  
+
+
+#  Importance value for novel species?? -----------------------------------
+
+# Identify winners looserd from teh overall datase, not only from the regeneration:
+
+# Identify novel species in the community: ----------------------------------------
+# are there any new species in the regeneration? compare the reference vs disturbed sites:
+# just identify which species are new compared to Reference (Living) conditions
+# eg ignore height's classes, counts...
+# test example for different triplet number:
+# compares the sites between themselves, not the plots:
+# first just compare the distinct species betwee sites
+
+# CHeck for specific triplet
+df_winners <- df_full_plot %>% 
+  filter(manag !='c' ) %>% # & trip_n == 11
+  group_by(trip_n, manag) %>% 
+  distinct(reg_species) %>% 
+  select(trip_n, manag, reg_species) %>% 
+  ungroup() %>% 
+  group_by(trip_n) %>% 
+  filter(manag == 'd' & !reg_species %in% reg_species[manag == 'l'] ) %>%
+  mutate(novelty = 'novel')
+
+
+# identify loosers: species that were present at reference; not present after disturbance
+df_loosers <- 
+  df_full_plot %>% 
+  filter(manag !='c') %>% 
+  group_by(trip_n, manag) %>% 
+  distinct(reg_species) %>% 
+  select(trip_n, manag, reg_species) %>% 
+  ungroup() %>% 
+  group_by(trip_n) %>% 
+  filter(manag == 'l' & !reg_species %in% reg_species[manag == 'd']) %>% 
+  mutate(novelty = 'lost')
+
+# Merge loosers and winners species together:
+df_novelty = 
+  rbind(df_winners, df_loosers) %>% 
+  group_by(reg_species, novelty) %>% 
+  tally() %>% 
+  mutate(n2 = case_when(novelty == 'lost' ~ -n,
+                        novelty == 'novel' ~ n)) #TRUE ~ reg_species
+
+#windows()
+p_win_loos_sp <- ggplot(df_novelty, aes(x = reg_species, fill = novelty, y = n2)) +
+  geom_col(position = 'identity', col = 'black')  +
+  theme_bw() +
+  ylab('Counts (mean)') + 
+  theme(axis.text = element_text(angle = 90)) 
+#facet_wrap(vars(reg_species), strip.position = "bottom")
+
+
+p_winners <- ggplot(df_winners, aes(x = reg_species, fill = reg_species)) + 
+  geom_bar() +
+  ggtitle('Novel species', subtitle= 'Appear after disturbance)') + 
+  theme_bw()
+
+p_loosers <- ggplot(df_loosers, aes(x = reg_species, fill = reg_species)) + 
+  geom_bar() + 
+  ggtitle('Lost species', subtitle= 'Disappear after disturbance)') + 
+  theme_bw()
+
+ggarrange(p_winners, p_loosers, nrow = 2)
+
+
+
+head(df_winners)
+
+# calculate sum IV for all species for reference
+# calculate sum IV for all species for disturbed site
+# calculate sum IV for novel species? - in disturbed site
+
+# simplify teh table:
+
+df_IVI_out_simple <- df_IVI_out %>% 
+  dplyr::select(trip_n, manag, reg_species, dom_sp, sp_IVI )
+
+
+# 
+
+
+# Importance value: comparison across managemnet regime:
+p_VI_categ <- df_IVI_out_simple %>% 
+  ggplot(aes(x = factor(manag),
+             y = sp_IVI, 
+             fill = factor(manag))) + 
+  geom_boxplot() +
+  ylab('Importance value [%]') +
+  theme_bw()
+
+
+
+# get the importance value of teh novel species???
+p_VI_novel_looser_sp <- df_novelty %>% 
+  left_join(df_IVI_out_simple, 
+            by = c("trip_n", "manag", "reg_species")) %>% 
+  ggplot(aes(x = novelty,
+             y = sp_IVI,
+             fill = novelty)) + 
+  geom_boxplot() + 
+  theme_bw()
 
 
 
@@ -550,15 +598,11 @@ df_IVI_out %>%
 
 
 
-# Merge Mature tree df to regeneration values: 
-# height class == mature
-# height class dvanced regen == HK7
 
 
 
-#df_matur <- 
-  df_regen_all %>% 
-  left_join(df_mature_trees_plot) 
+
+
 
 
 
@@ -709,6 +753,9 @@ trees_dens_plane = trees_field*correct_factor
 #   return(dens_corr)
 #   
 # }
+
+
+
 
 
 
@@ -914,6 +961,11 @@ p_shannon <- df_reg_dens_shannon %>%
   facet_grid(~manag, scales = 'free') 
 
 
+# Get community weighted means for Reference and Novel species:
+
+
+
+
 
 
 # Community weighted means ---------------------------------------------
@@ -1087,26 +1139,23 @@ df_dens_flow_species <-
   count()
 
 
-p_alluvial2 <- 
-  ggplot(df_dens_flow_species,
-                       aes(axis1 = dom_sp ,
-                           axis2 = manag,
-                           axis3 = reg_species ,
-                           y = n )) +
-    geom_alluvium(aes(fill = dom_sp)) +
-    geom_stratum() +
-    geom_text(stat = "stratum", 
-              #label.strata = TRUE
-              aes(label = after_stat(stratum))) +
-    scale_x_discrete(limits = c("dom_sp", "manag", "reg_species"),
-                     expand = c(.1, .1)) +
-    scale_fill_manual(values=cols, 
-                      name="Dominant\nspecies") +
-    theme_minimal() +
-    theme(legend.position = "none") 
-  
 
+# Remove objects: ---------------------------------------------------------
+# remove all of teh values:
+# https://stackoverflow.com/questions/43626229/how-to-delete-all-values-in-rstudio-environment
 
+rm(list = ls.str(mode = 'numeric'))
+rm(list = ls.str(mode = 'character'))
+rm(list = lsf.str())
+
+# remove all objects starting with 'a'
+# rm(list = ls()[grep("A", ls())])
+
+# https://stackoverflow.com/questions/11761992/how-do-i-clear-only-a-few-specific-objects-from-the-workspace
+
+# save only specific objects instead of the whole image: !!!
+#save(list=c("temp","temp2"),file="Test.Rdata") #saves those 2 objects
+# save(list=ls(pat="temp")),file="Test2.Rdata") #saves any object with name containing "temp"
 
 # Save all dfs as R object: ------------------------------------------------------------
 save.image(file="dataToPlot.Rdata")
