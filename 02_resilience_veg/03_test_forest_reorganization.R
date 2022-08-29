@@ -24,13 +24,19 @@ getwd()
 load(file = paste(getwd(), "dataToPlot.Rdata", sep = '/'))
 
 # Identify data to use:
-head(df_full_plot)  # - full plot based data: df_full_plot
-head(df_IVI_out)    # - df importance value:  df_IVI_out
-head(df_winners)    # - novel species:        df_novelty
-head(trait_df)      # - trait values for all species: eco_traits
+head(df_full_plot)   # - full plot based data: df_full_plot
+head(df_IVI_out)     # - df importance value:  df_IVI_out
+head(df_winners)     # - novel species:        df_novelty
+head(trait_df)       # - trait values for all species: eco_traits
+head(df_ground)      # - ground cover, in classes by 5%  
+
+# Master plots:
+head(plot_counts_df) # - total count of the plots per triplets & categories: to standardize the densities...
 
 
-# Reassembly:
+
+
+# Reassembly: ------------------------------------------------------------------
 # add novelty info to the df_IVI_out:
 
 # Example of novel species:
@@ -45,7 +51,7 @@ head(trait_df)      # - trait values for all species: eco_traits
 # Evaluate how does the 300% value changes based on the species occurence, size and prevalence??
 
 
-# Novel species: presence ---------------------------------------------------------
+# RA1: Novel species: presence ---------------------------------------------------------
 RA1 <- 
   df_IVI_out %>% 
   left_join(df_winners) %>% 
@@ -64,14 +70,6 @@ RA1 <-
 
 
 # RA1 plot only communities: --------------------------------------------------
-RA1 %>%
-  ggplot(aes(x = manag,y = IVI_sum, fill=manag)) +
-  geom_boxplot() +
-  geom_point() #+ 
-  #geom_line(aes(group=paired), inherit.aes = FALSE ) +
-  #theme(legend.position = "none")
-  
-# Show only IVI of novel species?
 RA1 %>% 
   group_by(trip_n) %>% 
   mutate(IVI_sum_living = IVI_sum[manag == 'l']) %>% 
@@ -131,7 +129,7 @@ RA2 %>%
              names_to = 'type',
              values_to = 'val') %>%
   separate(type, c('trait', 'cond')) %>% 
-  #filter(trait != 'drought') %>% 
+  filter(trait != 'drought') %>% 
   ggplot(aes(cond, y = val, fill = cond)) +
   geom_boxplot() +
   geom_line(aes(group=trip_n), color = 'grey50', alpha = 0.5, lty = 'solid') +
@@ -158,26 +156,9 @@ RA3 <-
   mutate(RA3 = case_when(maxIVI_l == reg_species ~ 0,
                          maxIVI_l != reg_species ~ 1)) 
 
-# R3: Make alluvial plot ----------------------------------------
+# R3: Make barplot of species prevalence (how to do the alluvial plot?) ----------------------------------------
 
-library(ggalluvial)
-
-titanic_wide <- data.frame(Titanic)
-
-ggplot(data = titanic_wide,
-       aes(axis1 = Class, axis2 = Sex, axis3 = Age,
-           weight = Freq)) +
-  scale_x_continuous(breaks = 1:3, labels = c("Class", "Sex", "Age")) +
-  geom_alluvium(aes(fill = Survived)) +
-  geom_stratum(aes(label = after_stat(stratum))) + 
-  geom_text(stat = "stratum", 
-            #label.strata = TRUE
-            aes(label = after_stat(stratum))) +
-  theme_minimal() +
-  ggtitle("passengers on the maiden voyage of the Titanic",
-          "stratified by demographics and survival")
-
-
+#library(ggalluvial)
 
 
 RA3 %>% 
@@ -209,7 +190,7 @@ RA3 %>%
   #         "my subtitle")
 
 
-# RA4: Competition: tree size:
+# RA4: Competition: tree size: -----------------------------------------------
 # find teh species that has most often the highest DBH & largest height - split in two columns?
 RA4 <- df_full_plot %>% 
   dplyr::select(!height_class) %>% 
@@ -226,9 +207,30 @@ RA4 <- df_full_plot %>%
                            spec_l != reg_species ~ 1))
 
 
+ head(RA4)
+ 
+ 
+
+# RA4 plot ----------------------------------------------------------------
+
+ RA4 %>% 
+   pivot_longer(!c(trip_n, manag, n, RA4),
+                names_to = 'type',
+                values_to = 'species') %>%
+   mutate(type = case_when(type == 'reg_species' ~ 'Dist',
+                           type == 'spec_l' ~ 'Ref')) %>%
+   mutate(type = factor(type, levels = c('Ref', 'Dist'))) %>% 
+   group_by(species, type) %>% 
+   count(species) %>%
+   ggplot(aes(x = type,
+              y = n, 
+              fill = species)) +
+   geom_col(col = 'black') +
+   ylab('Dominant tree species (DBH)\nbefore and after disturbance [per site]')
+ 
  
   
-#RA5 height ------------------------------------------
+# RA5 Competition: tree height ------------------------------------------
 RA5 <- 
   df_full_plot %>% 
   # find species most often the tallest tree?
@@ -244,9 +246,30 @@ RA5 <-
   mutate(RA5 = case_when(spec_l == reg_species ~ 0,  # compare with the living ones
                                 spec_l != reg_species | is.na(spec_l) ~ 1)) # if the regeneration is absent-> indicates shift?
 
+ 
+
+# RA5 plot ----------------------------------------------------------------
+RA5 %>% 
+   pivot_longer(!c(trip_n, manag, n, RA4),
+                names_to = 'type',
+                values_to = 'species') %>%
+   mutate(type = case_when(type == 'reg_species' ~ 'Dist',
+                           type == 'spec_l' ~ 'Ref')) %>%
+   mutate(type = factor(type, levels = c('Ref', 'Dist'))) %>% 
+   group_by(species, type) %>% 
+   count(species) %>%
+   ggplot(aes(x = type,
+              y = n, 
+              fill = species)) +
+   geom_col(col = 'black') +
+   ylab('Dominant tree species (height)\nbefore and after disturbance [per site]')
+ 
+ 
+ 
+ 
 # checK 17-living: missing dominant tallest trees? - because not regeneration was present
 
-# Reassambly: -----------------------------------------------------------
+# RA: Reassambly: -----------------------------------------------------------
 # cbind RA tables 
 RA = select(RA1, c(trip_n, RA1)) %>%
   full_join(select(RA2, c(trip_n,  RA2))) %>%
@@ -262,3 +285,185 @@ RA = select(RA1, c(trip_n, RA1)) %>%
 RA %>% print(n = 40) # need to check why I have some many NAs!!
 
 
+
+
+
+
+# RS: Restructuring  ---------------------------------------------------------------------------------------
+
+
+# RS1: stem density: count stems across all species
+# 
+head(df_full_plot) 
+
+RS1 <-
+  df_full_plot %>%
+  filter(manag != 'c') %>%
+  group_by(trip_n, manag) %>%
+  summarize(sum_count = sum(count)) %>% # sum up all of the stems per plot
+  left_join(df_sub_count) %>%
+  mutate(rel_count = sum_count / (sub_counts * 4)) %>% # 4 = 4 m2
+  mutate(dens_ref = rel_count[which(c(manag == 'l'))[1]]) %>% ## get densities in refrenece condistions
+  filter(manag == "d")  %>%  # to keep only disturbed ones; to keep only one row having dist and ref condistions
+  mutate(RS1 = case_when(dens_ref / rel_count > 2 ~ 0,  # compare with the living ones
+                         dens_ref / rel_count <= 2 ~ 1))
+
+
+# RS1 plot: compare stem densities: ----------------------------------------------
+RS1 %>% 
+  group_by(trip_n) %>% 
+  pivot_longer(!c(trip_n, dom_sp, manag, sub_counts, sum_count, RS1), 
+               names_to = 'type',
+               values_to = 'val') %>% 
+  mutate(type = case_when(type == 'rel_count' ~ 'Dist',
+                          type == 'dens_ref' ~ 'Ref')) %>%
+  mutate(type = factor(type, levels = c('Ref', 'Dist'))) %>% 
+  
+  ggplot(aes(type, y = val, fill = type)) +
+  geom_boxplot() +
+  geom_line(aes(group=trip_n), color = 'grey50', alpha = 0.5, lty = 'solid') +
+  geom_point(color = 'grey30', alpha = 0.5)+ 
+  theme(legend.position = "none") + 
+  ylab('Stem density [n/m^2]') +
+ # scale_x_discrete(labels = c('Ref', 'Dist')) +
+  theme_bw() +
+  theme(legend.position = 'none')
+
+
+
+# RS2: Gap fraction ----------------------------------------------------------------
+# share of plots that have no trees > 10 cm dbh
+# 08/29/2022->need to checks plot master to have 1244 roas! or why it has 1241 only???
+# the master plots needs to have all needed combinations!!!
+
+# df_sub_count or plots_master, needs to have 1244 rows! total number of sites!!!
+
+RS2 <-
+  df_full_plot %>%
+  filter(DBH > 10) %>%
+  group_by(trip_n, manag) %>%
+  count() %>%
+    rename(plots_occupied = n) %>%
+  right_join(plot_counts_df_sum, by = c("trip_n", "manag")) %>%
+    rename(plots_count = n) %>%
+  mutate(gaps_share = 1 - plots_occupied / plots_count) %>%   # gap share  = 80%, e.g. occupied sites are 20%
+  mutate(gaps_share = replace_na(gaps_share, 1)) %>% # if gap is NA  = 100 % is covered by gaps
+  filter(manag != 'c') %>%
+  ungroup(.) %>%
+  group_by(trip_n) %>%
+  mutate(gaps_share_ref = gaps_share[which(c(manag == 'l'))[1]]) %>% ## get densities in referece condistions
+  filter(manag == "d")  %>%  # to keep only disturbed ones; to keep only one row having dist and ref condistions
+  mutate(RS2 = case_when(
+    gaps_share  / gaps_share_ref > 1.1 ~ 1,
+    # compare with the living ones: 
+    gaps_share  / gaps_share_ref <= 1.1 ~ 0
+  ))
+
+
+
+# RS2  plot ---------------------------------------------------------------
+
+RS2 %>% 
+  group_by(trip_n) %>% 
+  pivot_longer(!c(trip_n, manag, plots_occupied, dom_sp, plots_count, RS2), 
+               names_to = 'type',
+               values_to = 'val') %>% 
+  mutate(type = case_when(type == 'gaps_share'     ~ 'Dist',
+                          type == 'gaps_share_ref' ~ 'Ref')) %>%
+  mutate(type = factor(type, levels = c('Ref', 'Dist'))) %>% 
+  
+  ggplot(aes(type, y = val, fill = type)) +
+  geom_boxplot() +
+  geom_line(aes(group=trip_n), color = 'grey50', alpha = 0.5, lty = 'solid') +
+  geom_point(color = 'grey30', alpha = 0.5)+ 
+  theme(legend.position = "none") + 
+  ylab('Gap share [%]\nmissing trees [<10 cm ]') +
+  # scale_x_discrete(labels = c('Ref', 'Dist')) +
+  theme_bw() +
+  theme(legend.position = 'none')
+
+
+
+# RS3: Structure: Infilling
+# not clear here? just not covered by vegetation/regeneration?? 
+# if there is bare soils > 50 % of the soil is uncovered, then it can 'infill' with trees
+# compare the two: Ref and Dist
+RS3_both <- 
+  df_ground %>% 
+    filter(class == 'soil/foliage') %>% 
+    group_by(trip_n, manag) %>% 
+    summarize(mean_soil = mean(prop, na.rm=T)) %>% 
+    mutate(RS3 = case_when(mean_soil > 50 ~ 1,
+                           mean_soil <= 50 ~ 0))
+
+
+RS3_dist <- 
+  df_ground %>% 
+  filter(class == 'soil/foliage'& manag ==  'd') %>% 
+  group_by(trip_n, manag) %>% 
+  summarize(mean_soil = mean(prop, na.rm=T)) %>% 
+  mutate(RS3 = case_when(mean_soil > 50 ~ 1,
+                         mean_soil <= 50 ~ 0))
+
+
+# RS3 plot Infilling ------------------------------------------------------
+RS3 %>% 
+  filter(manag != 'c') %>% 
+  mutate(manag = case_when(manag == 'd'  ~ 'Dist',
+                           manag == 'l'  ~ 'Ref')) %>%
+  mutate(manag = factor(manag, levels = c('Ref', 'Dist'))) %>% 
+  ggplot(aes(x = manag, 
+             y = mean_soil,
+             fill = manag)) +
+  geom_boxplot() +
+  geom_line(aes(group=trip_n), color = 'grey50', alpha = 0.5, lty = 'solid') +
+  geom_point(color = 'grey30', alpha = 0.5)+ 
+  theme(legend.position = "none") + 
+  ylab('Bare soil share [%]') +
+  # scale_x_discrete(labels = c('Ref', 'Dist')) +
+  theme_bw() +
+  theme(legend.position = 'none')
+
+
+
+
+# plot distribution of all groups:
+df_ground %>% 
+  #filter(class == 'soil/foliage') %>% 
+  group_by(trip_n, manag, class) %>% 
+  filter(manag != 'c') %>% 
+  summarize(mean_prop = mean(prop, na.rm = T)) %>% 
+  ggplot(aes(x = class,
+             y = mean_prop,
+             fill =manag)) + 
+  geom_boxplot()
+  
+
+
+# RS4: diameter distribution: ------------------------------------------------------
+# is the diameter distribution homogenous or heterogenous?: only from seedlings, samplings, mature trees:
+# Ref: (dbhmax-dbhmin)/dbhmean
+dbh_ref <- df_full_plot %>% 
+  filter(height_class != 'mature') %>% 
+  filter(manag == 'l') %>% 
+  group_by(trip_n, manag) %>%
+  filter(DBH != 0) %>% 
+  summarize(dbh_min  = min(DBH, na.rm = T),
+            dbh_max  = max(DBH, na.rm = T),
+            dbh_mean = mean(DBH, na.rm = T)) %>% 
+  mutate(RS4_ref = (dbh_max-dbh_min)/dbh_mean) %>% 
+  mutate(RS4_ref = replace_na(RS4_ref, 0))
+
+# number of legacies trees: in the plots and in the surroundings?
+# take into account matures trees in surroundings and plots:
+df_mature_all %>% 
+  filter(manag == 'd') %>% 
+  group_by(trip_n) %>% 
+  count() %>% 
+  rename(legacy_trees_n = n) %>% 
+  right_join(filter(plot_counts_df_sum, manag == 'd'))
+
+
+
+# Export objects -----------------------------------------------------------
+save(list=ls(pat="R"),file="dat_restr.Rdata") 
