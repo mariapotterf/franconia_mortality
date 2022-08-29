@@ -98,17 +98,9 @@ dat %>%
   tally()  # 40
 
 
-# How many plots of 4m2 (per triplet) do we have?
-dat %>% 
-  group_by(trip_n, dom_sp, manag, sub_n) %>% 
-  distinct() 
-
-dat %>% 
-  group_by(trip_n, dom_sp, manag, sub_n) %>% 
-  distinct() %>% 
-  nrow() 
-
-
+# How many plots of 4m2 (per triplet) do we have? 1244!!!
+# saved in 
+head(plot_counts_df)
 
 
 # Explore the data: --------------------------------------------------------------
@@ -248,21 +240,14 @@ hist(df_mature_trees_env$distance )
 range(df_mature_trees_env$distance, na.rm = T) # in cm
 # [1]   11 1500
 
-# check waht do the distances mean??? if 100 = is it on the edge or 1 m from the edge???
-# I have bout 5 sites with distances less then 100 cm: add 100 to them
-# add 100 to all of teh sites, to be measured from the plot center: now oit is somethimes from the edge
-df_mature_trees_env %>% 
-  filter(distance < 50) %>%
-  select(-c(gradient, exposure)) 
-  #distinct(trip_n, manag, sub_n)
-
-#   trip_n dom_sp manag sub_n gradient exposure sector tree_species   DBH distance edge_tree
-#    <dbl> <chr>  <chr>  <dbl>    <dbl>   <dbl>  <chr>  <chr>        <dbl>    <dbl> <chr>    
-# 1     28 beech  l         8       23       80 ost    Beech           83       44 NEIN     
-# 2     26 beech  c         7        1      320 ost    O_Soft          48       11 NEIN     
-# 3     27 beech  c        12        5      230 nord   Beech           50       25 JA       
-# 4     21 beech  l        13       12       90 nord   Beech           13       14 NEIN  
-my_cols_mature = c('trip_n', 'dom_sp', 'manag', 'sub_n','tree_species', 'distance',  'DBH', 'sector')
+my_cols_mature = c('trip_n',
+                   'dom_sp',
+                   'manag',
+                   'sub_n',
+                   'tree_species',
+                   'distance',
+                   'DBH',
+                   'orientation')
 
 # Prepare mature data: from Mature on plot, in ENV
 # ENV:
@@ -271,7 +256,7 @@ df_mature_trees_env_sub <-
   mutate(distance = case_when(distance < 100 ~ distance + 100,
                               distance >= 100 ~ distance )) %>% 
   dplyr::select(all_of(my_cols_mature)) %>% 
-  mutate(sector = 'ENV')
+  mutate(orientation = 'ENV')
 
 
 # PLOT:
@@ -279,7 +264,7 @@ df_mature_trees_plot_sub <- df_mature_trees_plot %>%
   drop_na() %>% 
   ungroup(.) %>% 
   rename(tree_species = species) %>% 
-  mutate(sector = 'plot',
+  mutate(orientation = 'plot',
          distance = 40)  %>% 
   dplyr::select(my_cols_mature) 
 
@@ -295,15 +280,18 @@ df_mature_fin <-
   slice_min(order_by = distance)#  %>% # select the nearest tree
 
 
+# !!! now we will use the same table containing all sub_sites: 'plot_counts_df'
 # seems that some sites are missing?
-plots_master <- dat %>% 
-  select(trip_n, dom_sp, manag, sub_n) %>% 
-  group_by(trip_n, dom_sp, manag, sub_n) %>% 
-  distinct() 
+#plot_counts_df %>% 
+  
+#plots_master <- dat %>% 
+#  select(trip_n, dom_sp, manag, sub_n) %>% 
+#  group_by(trip_n, dom_sp, manag, sub_n) %>% 
+#  distinct() 
 
-plots_master %>% 
-filter(trip_n == 6 ) %>% 
-  print(n = 40)
+#plots_master %>% 
+#filter(trip_n == 6 ) %>% 
+#  print(n = 40)
 
 
 # Which one is missing??? !!!
@@ -407,7 +395,8 @@ df_full_plot <- df_full_plot %>%
 # Get the number of sub_n per each triplet and category: -------------------------------------
 
 df_sub_count <- 
-  plots_master %>% 
+  plot_counts_df %>% 
+  #plots_master %>% 
   group_by(trip_n, dom_sp, manag) %>% 
   count() %>% 
   rename(sub_counts = n) %>% 
@@ -576,31 +565,6 @@ p_VI_categ <- df_IVI_out_simple %>%
   geom_boxplot() +
   ylab('Importance value [%]') +
   theme_bw()
-
-
-
-# get the importance value of teh novel species???
-p_VI_novel_looser_sp <- df_novelty %>% 
-  left_join(df_IVI_out_simple, 
-            by = c("trip_n", "manag", "reg_species")) %>% 
-  ggplot(aes(x = novelty,
-             y = sp_IVI,
-             fill = novelty)) + 
-  geom_boxplot() + 
-  theme_bw()
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1106,7 +1070,8 @@ df_dens_flow <- df_density_change %>%
 # create alternative alluvial diagram
 library(ggplot2)
 library(ggalluvial)
-p_alluvial <- ggplot(df_dens_flow,
+#p_alluvial <- 
+  ggplot(df_dens_flow,
                      aes(axis1 = dom_sp ,
                          axis2 = cl_change ,
                          axis3 = manag,
@@ -1117,7 +1082,7 @@ p_alluvial <- ggplot(df_dens_flow,
             #label.strata = TRUE
             aes(label = after_stat(stratum))) +
   scale_x_discrete(limits = c("dom_sp", "manag", "cl_change"),
-                   expand = c(.1, .1)) +
+                   expand = c(.1, .1)) #+
   #scale_fill_viridis_d() +
   scale_fill_manual(values=cols, 
                     name="Dominant\nspecies") +
