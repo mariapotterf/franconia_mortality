@@ -17,20 +17,47 @@ Identify the aspects of the forest reorganization:
 
 * in forest composition: **Reassembly**
 
-    + Novel species: Presence (RA1) - are novel species present? What is their *importance value* (IV)
-    + Novel species: Competition (RA2) - CWM of shade tolerance for novel species
-    + Competition: Dominance (RA3) - is the same species dominant before and after the disturbance? 
-    + Competition: Tree size (RA4) - is the tallest tree same under Ref and disturbed conditions?
+    + **RA1**:  Novel species: Presence: Are novel species present? What is their *importance value* (IV)
+    + **RA2**: Novel species: Competition: CWM of shade tolerance for novel species
+    + **RA3**: Competition: Dominance: Is the same species dominant before and after the disturbance? 
+    + **RA4**: Competition: Tree size: Is the most frequent biggest (dbh) tree same under Ref and disturbed conditions?
+    + **RA5**: Competition: Tree size: Is the most frequent tallest tree (cm) same under Ref and disturbed conditions?
+
 
 * in forest structure: **Restructuring**
 
-evaluate to understand if there are changes towards one of the axes:
+    + **RS1**: Stem density: Are pre-disturbance stem densities possible based on the post-disturbance stem density? (> then 2 times higher?)
+    + **RS2**: Gap fraction : Share of plots per site that have no trees >10cm dbh?
+    + **RS3**: Infilling: Is there enough bare soils for next tree cohort to establish?
+    + **RS4**: Diameter distribution (RS4): Is the diameter distribution homogeneous or heterogeneous? Based on variance of DBH distribution in Ref, and number of living trees in Dist site
 
-- reassembly
-- restructure
-- replacement
-- resilience   
 
+## Composite indicators:
+
+Composite indicator for reassembly:
+
+All reassembly indicators are given equal weights in the aggregation towards a composite indicator of reassembly (RA):
+
+RA = (RA1+RA2+RA3+RA4+RA5)/5
+
+
+## Composite indicator for restructuring
+
+Early indications of restructuring (RS) are derived from the analyses of stem density (RS1), gap fraction (RS2) and diameter distribution (RS4). If there is considerable ability for infilling (RS3), the impact of reduced stem density (RS1) or increased gaps (RS2) are compensated:
+
+If RS1=1 and RS3=1 then RS1=0.5
+If RS2=1 and RS3=1 then RS2=0.5
+
+RS = (RS1+RS2+RS4)/3
+
+**Final classification of triplets**:
+
+Restructuring, reassembly, replacement, resilience:
+
+ - If RS≤0.5 and RA≤0.5 → Resilience
+ - If RS>0.5 and RA≤0.5 → Restructuring
+ - If RS≤0.5 and RA>0.5 → Reassembly
+ - If RS>0.5 and RA>0.5 → Replacement
 
 
 ![Fig. Response pathways of Forest reorganization (Seidl & Turner 2022)](images/response_pathways.png){width=75%}
@@ -40,9 +67,8 @@ evaluate to understand if there are changes towards one of the axes:
 
 The number of samples triplets by dominant tree species. Each triplet has 3 management categories: 
 
-- Cleared - removed
-- Dead  = disturbed 
-- Living = Reference
+- Ref  - reference, undisturbed sites
+- Dist - disturbed sites by drought, uncleared
 
 
 ```{r read-libs, eval = TRUE, echo=FALSE, include = FALSE, warning = FALSE, error = FALSE }
@@ -51,6 +77,7 @@ The number of samples triplets by dominant tree species. Each triplet has 3 mana
 # Input data -------------------------------------------------------------------
 getwd()
 load(file = paste(getwd(), "dataToPlot.Rdata", sep = '/'))
+load(file = paste(getwd(), "dat_restr.Rdata", sep = '/'))
 
 
 #### Source paths and functions  -----------------------------------------------
@@ -70,10 +97,10 @@ library(stringr)  # use regex expressions
 library(ggpubr)
 
 ##### Stats
-library(MuMIn)
-library(vegan)
-library(mgcv)
-library(gratia) # visualization of mcv
+#library(MuMIn)
+#library(vegan)
+#library(mgcv)
+#library(gratia) # visualization of mcv
 
 
 ## Colors
@@ -87,12 +114,13 @@ cols = c('#0072B2', #
 
 
 ```{r triplet-count, echo=FALSE}
+print(getwd())
 out_summary <- dat %>% 
-  group_by(dom_sp) %>% 
-  distinct(trip_n) %>% 
-  tally() %>% 
-  rename(species=dom_sp,
-         triplets_count = n)
+ group_by(dom_sp) %>%
+ distinct(trip_n) %>%
+ tally() %>%
+ rename(species=dom_sp,
+        triplets_count = n)
 
 ```
 
@@ -127,7 +155,7 @@ out_summary %>% knitr::kable("markdown")
 
 ```
 
-## Reassembly: 
+## Species importance value
 
 Calculate **species importance value**
 from: https://kimmerer.com/trees/importance-value/
@@ -152,14 +180,10 @@ The **Importance Value** is the sum of these three measures, and can range from 
  - mature trees: DBH measured for each tree
  
  
- 
- 
-```{r p_jitter_sp_IVI, echo = F, fig.cap = 'Fig. Species importance value for individual tree species per management type', fig.height=5.5, fig.width=6.5}
-p_jitter_sp_IVI
-
-```
+## Species composition: Overview
 
 ### Novel species: Presence & absence
+
 Identify the tree species that are novel (appear after the disturbance) or absent (disappear) after disturbances. Compared across triplets between reference (living) and disturbed conditions.
 
 ```{r p-winners-loosers, echo = F, fig.height=3.5, fig.width = 3.5}
@@ -167,29 +191,7 @@ p_win_loos_sp
 
 ```
 
-Compare the average species importance value between management regimes:
-```{r p_VI_categ, echo = F, fig.height=2.8, fig.width = 3.5}
-p_VI_categ
-
-```
-
-
-Compare the average species importance value for novel and absent species:
-```{r p_VI_novel_looser_sp,echo = F, fig.height=2.8, fig.width = 3.5}
-p_VI_novel_looser_sp
-
-```
-
-
-
-#### Novel species: competition
-
-
-
-
-
-
-## Prevalence of species in regeneration by height category:
+### Prevalence of species in regeneration by height category:
 
 Tree regeneration heights classes:
 
@@ -214,5 +216,358 @@ p_prevalence
 p_treeComp_categ
 
 ```
+
+
+# Quantify forest reorganization
+
+
+## RA1: Novel species: competition:
+
+Are novel species (i.e., species that are not present under reference conditions) present after disturbance?
+
+- Ref: Calculate the importance value (IV) of all species in the reference stands from stem density and basal area shares of all tree species across all sample plots per site. 
+- Dist: Calculate the importance value of all species in the disturbed stands from stem density shares of all tree species across all sample plots per site and multiply by two .
+- I: Sum the IV of all species in Dist that are not present in Ref
+- If  I>1 then RA1 = 1 else RA=0 
+
+
+```{r plot-RA1, echo = F, fig.height=3, fig.width=3}
+
+RA1_plot %>% 
+  group_by(trip_n) %>% 
+  mutate(IVI_sum_living = IVI_sum[manag == 'l']) %>% 
+  filter(manag != 'l') %>% 
+  pivot_longer(!c(trip_n, manag, RA1), 
+               names_to = 'type',
+               values_to = 'IVI') %>% 
+  filter(type != 'IVI_sum') %>% 
+  ggplot(aes(type, y = IVI, fill = type)) +
+  geom_boxplot() +
+  geom_line(aes(group=trip_n), color = 'grey50', alpha = 0.5, lty = 'solid') +
+  geom_point(color = 'grey30', alpha = 0.5)+ 
+  theme(legend.position = "none") + 
+  ylab('Species importance values [sum]') +
+  scale_x_discrete(labels = c('Ref', 'Novel')) +
+  theme_bw() +
+  theme(legend.position = 'bottom')
+   
+
+```
+
+## RA2: Novel species: Competition 
+
+Are the novel tree species  present after disturbance likely to outcompete the tree species under reference conditions or hinder their establishment?
+
+ - Ref: Community-weighted mean   shade tolerance of the species present under reference conditions (across all plots per site)
+ - Dist: Community-weighted mean shade tolerance of the species present after disturbance that are not present under reference conditions (across all plots per site)
+ - If Dist > Ref  then RA2=1 else RA2=0
+
+
+```{r plot-RA2, echo = F, fig.height=3, fig.width=3}
+
+RA2 %>% 
+  pivot_longer(!c(trip_n, dom_sp, manag, novelty, RA2), 
+             names_to = 'type',
+             values_to = 'val') %>%
+  separate(type, c('trait', 'cond')) %>% 
+  filter(trait != 'drought') %>% 
+  ggplot(aes(cond, y = val, fill = cond)) +
+  geom_boxplot() +
+  geom_line(aes(group=trip_n), color = 'grey50', alpha = 0.5, lty = 'solid') +
+  geom_point(color = 'grey30', alpha = 0.5)+ 
+  facet_grid(.~trait) +
+  theme(legend.position = "none") + 
+  ylab('Ecological trait [cwm]') +
+  scale_x_discrete(labels = c('Ref', 'Novel')) +
+  theme_bw() +
+  theme(legend.position = 'bottom') 
+
+```
+
+
+## RA3: Competition: Dominance
+
+Is the species dominating after disturbance the same that dominates under reference conditions?
+
+ - Ref: Species with highest IV under reference conditions (across all plots per site)
+ - Dist: Species with highest IV post disturbance (across all plots per site)
+ - If Ref=Dist then RA3=0 else RA3=1
+
+```{r plot-RA3, echo = F, fig.height=3, fig.width=3}
+
+RA3 %>% 
+  pivot_longer(!c(trip_n, manag, sp_IVI, RA3),
+               names_to = 'type',
+               values_to = 'species') %>%
+  mutate(type = case_when(type == 'reg_species' ~ 'Dist',
+                          type == 'maxIVI_l' ~ 'Ref')) %>%
+  mutate(type = factor(type, levels = c('Ref', 'Dist'))) %>% 
+  group_by(species, type) %>% 
+  count(species) %>%
+  ggplot(aes(x = type,
+             y = n, 
+             fill = species)) +
+  geom_col(col = 'black') +
+  ylab('Dominant tree species\nbefore and after disturbance [per site]')
+
+```
+
+
+## RA4: Competition: Tree size: dbh
+
+Is the species winning the local competition in the regeneration the same that dominates under reference conditions? Based on dbh.
+
+ - Ref: Determine the most frequent tree species with highest dbh under reference conditions per sitefor each plot, then determine the species that has most often the largest trees across plots
+ - Dist: Determine the most frequent tree species with the highest dbh under disturbed conditions of the tallest individual tree <10 cm dbh per 4m² plot, then determine the species that is most often the tallest tree across plots
+ - If Ref=Dist then RA4=0 else RA4=1
+
+
+```{r plot-RA4, echo = F, fig.height=3, fig.width=3}
+RA4 %>% 
+   pivot_longer(!c(trip_n, manag, n, RA4),
+                names_to = 'type',
+                values_to = 'species') %>%
+   mutate(type = case_when(type == 'reg_species' ~ 'Dist',
+                           type == 'spec_l' ~ 'Ref')) %>%
+   mutate(type = factor(type, levels = c('Ref', 'Dist'))) %>% 
+   group_by(species, type) %>% 
+   count(species) %>%
+   ggplot(aes(x = type,
+              y = n, 
+              fill = species)) +
+   geom_col(col = 'black') +
+   ylab('Dominant tree species (DBH)\nbefore and after disturbance [per site]')
+
+
+```
+
+## RA5: Competition: Tree size: height
+
+Is the species winning the local competition in the regeneration the same that dominates under reference conditions? Based on height classes.
+
+ - Ref: Determine the species that has most often the largest trees across plots
+ - Dist: Determine the species that is most often the largest tree across plots
+ - If Ref=Dist then RA5=0 else RA5=1
+
+
+```{r plot-RA5, echo = F, fig.height=3, fig.width=3}
+RA5 %>% 
+   pivot_longer(!c(trip_n, manag, n, RA5),
+                names_to = 'type',
+                values_to = 'species') %>%
+   mutate(type = case_when(type == 'reg_species' ~ 'Dist',
+                           type == 'spec_l' ~ 'Ref')) %>%
+   mutate(type = factor(type, levels = c('Ref', 'Dist'))) %>% 
+   group_by(species, type) %>% 
+   count(species) %>%
+   ggplot(aes(x = type,
+              y = n, 
+              fill = species)) +
+   geom_col(col = 'black') +
+   ylab('Dominant tree species (height)\nbefore and after disturbance [per site]')
+ 
+ 
+
+```
+
+
+# Restructuring
+
+## RS1: Stem density
+
+Are pre-disturbance stem densities possible based on the post-disturbance stem density?
+Indicator: Regeneration sStem density in regeneration disturbed site divided by stem density in reference
+
+ - Ref: Stem density under reference conditions (across all plots per site)
+ - Dist: Stem density after disturbance (across all plots per site)
+ - I: Dist / Ref
+ - If I>2  then RS1=0 else RS1=1
+
+
+```{r plot-RS1, echo = F, fig.height=3, fig.width=3}
+RS1 %>% 
+  group_by(trip_n) %>% 
+  pivot_longer(!c(trip_n, dom_sp, manag, sub_counts, sum_count, RS1), 
+               names_to = 'type',
+               values_to = 'val') %>% 
+  mutate(type = case_when(type == 'rel_count' ~ 'Dist',
+                          type == 'dens_ref' ~ 'Ref')) %>%
+  mutate(type = factor(type, levels = c('Ref', 'Dist'))) %>% 
+  
+  ggplot(aes(type, y = val, fill = type)) +
+  geom_boxplot() +
+  geom_line(aes(group=trip_n), color = 'grey50', alpha = 0.5, lty = 'solid') +
+  geom_point(color = 'grey30', alpha = 0.5)+ 
+  theme(legend.position = "none") + 
+  ylab('Stem density [n/m^2]') +
+ # scale_x_discrete(labels = c('Ref', 'Dist')) +
+  theme_bw() +
+  theme(legend.position = 'none')
+
+
+ 
+
+```
+
+
+## Gap fraction (RS2)
+
+Is the spatial structure in terms of gaps similar pre- and post-disturbance?
+
+ - Ref: Share of plots per site that have no trees >10cm dbh per site under reference conditions
+ - Dist: Share of plots per site that have no trees > 10cm dbh per site after disturbance
+ - I: Dist / Ref 
+ - If **I>1.1**  then RS2=1 else RS2=0  !!! change here from the Protocol!! (was 2 instead of 1.1)
+
+
+```{r plot-RS2, echo = F, fig.height=3, fig.width=3}
+RS2 %>% 
+  group_by(trip_n) %>% 
+  pivot_longer(!c(trip_n, manag, plots_occupied, dom_sp, plots_count, RS2), 
+               names_to = 'type',
+               values_to = 'val') %>% 
+  mutate(type = case_when(type == 'gaps_share'     ~ 'Dist',
+                          type == 'gaps_share_ref' ~ 'Ref')) %>%
+  mutate(type = factor(type, levels = c('Ref', 'Dist'))) %>% 
+  
+  ggplot(aes(type, y = val, fill = type)) +
+  geom_boxplot() +
+  geom_line(aes(group=trip_n), color = 'grey50', alpha = 0.5, lty = 'solid') +
+  geom_point(color = 'grey30', alpha = 0.5)+ 
+  theme(legend.position = "none") + 
+  ylab('Gap share [%]\nmissing trees [<10 cm ]') +
+  # scale_x_discrete(labels = c('Ref', 'Dist')) +
+  theme_bw() +
+  theme(legend.position = 'none')
+
+
+
+ 
+
+```
+
+
+## Infilling (RS3) 
+
+Is infilling likely possible? 
+
+ - Dist: Share of 4m² plot that is not covered by vegetation (across all plots per site)
+ - If Dist>0.5 then RS3=1 else RS3=0
+
+
+```{r plot-RS3, echo = F, fig.height=3, fig.width=3}
+
+RS3_both %>% 
+  filter(manag != 'c') %>% 
+  mutate(manag = case_when(manag == 'd'  ~ 'Dist',
+                           manag == 'l'  ~ 'Ref')) %>%
+  mutate(manag = factor(manag, levels = c('Ref', 'Dist'))) %>% 
+  ggplot(aes(x = manag, 
+             y = mean_soil,
+             fill = manag)) +
+  geom_boxplot() +
+  geom_line(aes(group=trip_n), color = 'grey50', alpha = 0.5, lty = 'solid') +
+  geom_point(color = 'grey30', alpha = 0.5)+ 
+  theme(legend.position = "none") + 
+  ylab('Bare soil share [%]') +
+  # scale_x_discrete(labels = c('Ref', 'Dist')) +
+  theme_bw() +
+  theme(legend.position = 'none')
+
+ 
+
+```
+
+*Plot all ground cover categories*
+
+```{r plot-RS3-all, echo = F, fig.height=3, fig.width=7}
+
+df_ground %>% 
+  #filter(class == 'soil/foliage') %>% 
+  group_by(trip_n, manag, class) %>% 
+  filter(manag != 'c') %>% 
+  summarize(mean_prop = mean(prop, na.rm = T)) %>% 
+  ggplot(aes(x = class,
+             y = mean_prop,
+             fill =manag)) + 
+  geom_boxplot() + 
+  theme_bw() + 
+  theme(legend.position = 'bottom',
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size = 8))
+  
+
+```
+
+
+## RS4: Diameter distribution
+
+Is the diameter distribution homogeneous or heterogeneous?
+
+ –	Ref : (dbhmax – dbhmin)/dbhmean in reference stands
+ –	Dist: Number of live legacy trees >10cm dbh [n per ha]
+
+ - If Ref>1 and Dist>10  then RS4=0
+ - If Ref≤1 and Dist≤10  then RS4=0
+ - If Ref>1 and Dist≤10  then RS4=1
+ - If Ref≤1 and Dist >10 then RS4=1
+
+ - Interpretation: is there are more mature trees (Dist>10/ha), the heterogeneity is higher?
+ 
+ 
+```{r plot-RS4, echo = F, fig.height=3, fig.width=7}
+ggarrange(p_RS4_ref, p_RS4_dist)
+
+```
+
+
+# Restructuring, reassembly, replacement, resilience
+
+Classify the values:
+
+ - If RS≤0.5 and RA≤0.5 → Resilience
+ - If RS>0.5 and RA≤0.5 → Restructuring
+ - If RS≤0.5 and RA>0.5 → Reassembly
+ - If RS>0.5 and RA>0.5 → Replacement
+ 
+```{r plot-Reorganization-tree, echo = F, fig.height=3, fig.width=3}
+library(treemapify)
+
+out_reorg %>% 
+  group_by(reorganization) %>% 
+  count()  %>%
+  ggplot(aes(area = n, 
+             fill = reorganization, 
+             label = n)) +
+  geom_treemap(color = 'black') +
+  geom_treemap_text()
+
+
+```
+
+
+Visualize the count of the study sites by bar plot:
+
+```{r plot-Reorganization-bar, echo = F, fig.height=3, fig.width=3}
+
+out_reorg %>% 
+  mutate(reorganization = factor(reorganization, levels = c('resilience',
+                                                            'reassembly',
+                                                            'restructuring',
+                                                            'replacement'))) %>%
+  
+  group_by(reorganization) %>% 
+  count()  %>%
+  ggplot(aes(x = reorganization, 
+             y = n,
+             fill = reorganization)) +
+  geom_col(color = 'black')
+
+
+
+
+```
+
+
+
 
 
