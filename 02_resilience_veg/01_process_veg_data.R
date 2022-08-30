@@ -160,14 +160,16 @@ dat <- dat %>%
 
 # keep all sites: total number of plots:  1244
 # some can be later removed: no vegetation, too far from the near trees (> 15 m away...)
+# get master table containing all combination of the plots per sites: 
 plot_counts_df <-
   dat %>% 
   select(uniqueID) %>% 
-  separate(uniqueID, c('trip_n', 'dom_sp', 'manag', 'sub_n'), '_') %>% 
+  separate(uniqueID, c('trip_n', 'dom_sp', 'manag', 'sub_n'), '_') 
+ 
+# get their sums: how many plots per site?
+plot_counts_df_sum <- plot_counts_df %>% 
   group_by(trip_n, dom_sp, manag) %>%
   tally()
- 
-
 
 
 #### Export the full table in wide format
@@ -663,7 +665,7 @@ df_mature_trees_env <-
 df_mature_trees_env %>% 
   left_join(df_photo) %>% 
   filter(distance < 100 ) #%>% # & site == 'environment' 
-  select(trip_n, dom_sp, sub_n, tree_species, DBH, photo_number, distance, edge_tree)
+ # select(trip_n, dom_sp, sub_n, tree_species, DBH, photo_number, distance, edge_tree)
 
 
 
