@@ -34,7 +34,8 @@ head(df_ground)      # - ground cover, in classes by 5%
 head(plot_counts_df) # - total count of the plots per triplets & categories: to standardize the densities...
 
 
-
+# overview of full triplets:
+master_tripl <- distinct(select(plot_counts_df_sum, trip_n))
 
 # Reassembly: ------------------------------------------------------------------
 # add novelty info to the df_IVI_out:
@@ -52,25 +53,34 @@ head(plot_counts_df) # - total count of the plots per triplets & categories: to 
 
 
 # RA1: Novel species: presence ---------------------------------------------------------
-RA1 <- 
+RA1_plot <- 
   df_IVI_out %>% 
+  filter(manag != 'c') %>% 
   left_join(df_winners) %>% 
     ungroup(.) %>% 
-    filter(manag != 'c') %>% 
     mutate(novelty = case_when(is.na(novelty) ~ 'present',
                                novelty == 'novel' ~ novelty),
            sp_IVI = case_when(manag == 'd' ~ sp_IVI*2, # if disturbed, multiply by *2 (need more trees to re-populate disturbed areas that it was before)
                               manag == 'l' ~ sp_IVI)) %>% 
+  #mutate(IVI_sum_living = IVI_sum[manag == 'l']) %>% 
     dplyr::select(trip_n, manag, reg_species, sp_IVI, novelty) %>%
+    #filter(manag == 'd') %>% 
     group_by(trip_n, manag) %>% 
     summarize(IVI_sum = sum(sp_IVI, na.rm = T),
               IVI_sum_novel = sum(sp_IVI[novelty == 'novel'])) %>%
     mutate(RA1 = case_when(IVI_sum_novel > 150 ~ 1,
-                           IVI_sum_novel < 150 ~ 0))
+                           IVI_sum_novel < 150 ~ 0)) #%>%
 
+
+# Get RA1 only for the 
+RA1 <- RA1_plot %>% 
+  filter(manag == 'd') %>% 
+  right_join(master_tripl) %>%  # fill in all triplets categories
+  mutate(RA1 = replace_na(RA1, 0))  # if the novel species are not important: no change
+  
 
 # RA1 plot only communities: --------------------------------------------------
-RA1 %>% 
+RA1_plot %>% 
   group_by(trip_n) %>% 
   mutate(IVI_sum_living = IVI_sum[manag == 'l']) %>% 
   filter(manag != 'l') %>% 
@@ -99,6 +109,7 @@ RA1 %>%
 # drought tolerance: 
 #             higher  = more tolerance (pine), 
 #             lower = less (more drought sensitive, spruce)
+# if no novel species => no change (NA == 0)
 
 RA2 <- 
   df_IVI_out %>% 
@@ -119,8 +130,8 @@ RA2 <-
                               drought_cwm[novelty == "present"])) %>%
   filter(manag != 'd') %>% 
   mutate(RA2 = case_when(shade_novel > shade_cwm  ~ 1,
-                         shade_novel <= shade_cwm ~ 0)) # is there is NA - no change
-
+                         shade_novel <= shade_cwm ~ 0)) %>%  # is there is NA - no change
+  mutate(RA2 = replace_na(RA2, 0))
 
 
 # RA2 plot ----------------------------------------------------------------
@@ -145,6 +156,7 @@ RA2 %>%
 
 # competitin: Dominance: Is the species dominating after distrubances the same that dominates under reference conditions?
 # identify species with teh highest VI bofore and after disturbance: is it still teh same species?
+# NA = interpret as change = 1 -> if teh species is missing, means that it is differenyt from reference
 RA3 <-
   df_IVI_out %>%
   filter(manag != 'c') %>%
@@ -154,7 +166,10 @@ RA3 <-
   mutate(maxIVI_l = reg_species[which(c(manag == 'l'))[1]]) %>%
   filter(manag == "d")  %>%  # to keep only one row per triplet
   mutate(RA3 = case_when(maxIVI_l == reg_species ~ 0,
-                         maxIVI_l != reg_species ~ 1)) 
+                         maxIVI_l != reg_species ~ 1)) %>% 
+  right_join(master_tripl) %>%  # fill in all triplets categories
+  mutate(RA3 = replace_na(RA3, 1))  # if the regeneration is missing, it is a change! so put as 1
+
 
 # R3: Make barplot of species prevalence (how to do the alluvial plot?) ----------------------------------------
 
@@ -167,6 +182,7 @@ RA3 %>%
                values_to = 'species') %>%
   mutate(type = case_when(type == 'reg_species' ~ 'Dist',
                           type == 'maxIVI_l' ~ 'Ref')) %>%
+  drop_na() %>% 
   mutate(type = factor(type, levels = c('Ref', 'Dist'))) %>% 
   group_by(species, type) %>% 
   count(species) %>%
@@ -175,24 +191,16 @@ RA3 %>%
              fill = species)) +
   geom_col(col = 'black') +
   ylab('Dominant tree species\nbefore and after disturbance [per site]')
-  
-  # #pivot_wider(names_from = type,
-  # #            values_from = n) %>% 
-  # ggplot(aes(axis1 = species, 
-  #            axis2 = type,
-  #            weight = n)) +
-  # geom_alluvium(aes(fill = species)) +
-  # geom_stratum() + 
-  #   geom_text(stat = "stratum", 
-  #             aes(label = after_stat(stratum))) +
-  #     theme_minimal() +
-  # ggtitle("Tree species composition",
-  #         "my subtitle")
+
 
 
 # RA4: Competition: tree size: -----------------------------------------------
 # find teh species that has most often the highest DBH & largest height - split in two columns?
-RA4 <- df_full_plot %>% 
+# NA = missing values = there is a change  = 1
+# tre species are missing in 'dead' category, present in living: triplets: 10,2, 27, 4,61
+# considering as change!  = 1
+RA4 <- 
+  df_full_plot %>% 
   dplyr::select(!height_class) %>% 
   filter(manag != 'c' ) %>% #& height_class != 'mature'
   group_by(trip_n, dom_sp, manag, sub_n) %>% #, reg_species for each sub_plot the get prevailing species by plot
@@ -200,26 +208,29 @@ RA4 <- df_full_plot %>%
   group_by(trip_n, manag) %>% 
   count(reg_species) %>% 
   slice(which.max(n)) %>% # idetify the most frequent species with max dbh per site
+ # print(n = 90)  
   group_by(trip_n) %>% 
   mutate(spec_l = reg_species[which(c(manag == 'l'))[1]]) %>% # get prevailing species in ref conditios 
   filter(manag == "d")  %>%  # to keep only disturbed ones
   mutate(RA4 = case_when(spec_l == reg_species ~ 0,  # compare with the living ones
-                           spec_l != reg_species ~ 1))
+                           spec_l != reg_species ~ 1)) %>% 
+  right_join(master_tripl) %>%  # by = c("trip_n", "manag")) %>%
+  mutate(RA4 = replace_na(RA4, 1))  # if the regeneration is missing, it is a change! so put as 1
+  
 
-
- head(RA4)
  
  
 
 # RA4 plot ----------------------------------------------------------------
 
- RA4 %>% 
+RA4 %>% 
    pivot_longer(!c(trip_n, manag, n, RA4),
                 names_to = 'type',
                 values_to = 'species') %>%
    mutate(type = case_when(type == 'reg_species' ~ 'Dist',
                            type == 'spec_l' ~ 'Ref')) %>%
    mutate(type = factor(type, levels = c('Ref', 'Dist'))) %>% 
+  drop_na() %>% 
    group_by(species, type) %>% 
    count(species) %>%
    ggplot(aes(x = type,
@@ -231,6 +242,7 @@ RA4 <- df_full_plot %>%
  
   
 # RA5 Competition: tree height ------------------------------------------
+# if NA -> the dominant tree species is different -> evaluate as change (NA -> 1)
 RA5 <- 
   df_full_plot %>% 
   # find species most often the tallest tree?
@@ -244,18 +256,22 @@ RA5 <-
   mutate(spec_l = reg_species[which(c(manag == 'l'))[1]]) %>% # get prevailing species in ref conditios 
  filter(manag == "d")  %>%  # to keep only disturbed ones
   mutate(RA5 = case_when(spec_l == reg_species ~ 0,  # compare with the living ones
-                                spec_l != reg_species | is.na(spec_l) ~ 1)) # if the regeneration is absent-> indicates shift?
+                                spec_l != reg_species | is.na(spec_l) ~ 1)) %>%  # if the regeneration is absent-> indicates shift?
+  right_join(master_tripl) %>%  # by = c("trip_n", "manag")) %>%
+  mutate(RA5 = replace_na(RA5, 1))  # if the regeneration is missing, it is a change! so put as 1
+
 
  
 
 # RA5 plot ----------------------------------------------------------------
 RA5 %>% 
-   pivot_longer(!c(trip_n, manag, n, RA4),
+   pivot_longer(!c(trip_n, manag, n, RA5),
                 names_to = 'type',
                 values_to = 'species') %>%
    mutate(type = case_when(type == 'reg_species' ~ 'Dist',
                            type == 'spec_l' ~ 'Ref')) %>%
    mutate(type = factor(type, levels = c('Ref', 'Dist'))) %>% 
+  drop_na() %>% 
    group_by(species, type) %>% 
    count(species) %>%
    ggplot(aes(x = type,
@@ -276,13 +292,9 @@ RA = select(RA1, c(trip_n, RA1)) %>%
   full_join(select(RA3, c(trip_n, RA3))) %>% #,
   full_join(select(RA4, c(trip_n, RA4))) %>%
   full_join(select(RA5, c(trip_n,  RA5))) %>% 
- # filter(manag != 'l') %>% 
-  distinct() %>% 
-  mutate(RA = (RA1+ RA2+RA3+RA4+RA5)/5) %>% 
-  group_by(trip_n) %>% 
-  summarize(RA_mean = mean(RA, na.rm = T))
+  mutate(RA = (RA1+ RA2+RA3+RA4+RA5)/5) 
 
-RA %>% print(n = 40) # need to check why I have some many NAs!!
+RA %>% print(n = 40) 
 
 
 
@@ -306,10 +318,14 @@ RS1 <-
   mutate(dens_ref = rel_count[which(c(manag == 'l'))[1]]) %>% ## get densities in refrenece condistions
   filter(manag == "d")  %>%  # to keep only disturbed ones; to keep only one row having dist and ref condistions
   mutate(RS1 = case_when(dens_ref / rel_count > 2 ~ 0,  # compare with the living ones
-                         dens_ref / rel_count <= 2 ~ 1))
+                         dens_ref / rel_count <= 2 ~ 1)) %>% 
+  right_join(master_tripl) %>%  # by = c("trip_n", "manag")) %>%
+  mutate(RS1 = replace_na(RS1, 1))  # if the regeneration is missing, it is a change! so put as 1
+
 
 
 # RS1 plot: compare stem densities: ----------------------------------------------
+# NA = no present data = change => 1
 RS1 %>% 
   group_by(trip_n) %>% 
   pivot_longer(!c(trip_n, dom_sp, manag, sub_counts, sum_count, RS1), 
@@ -318,7 +334,7 @@ RS1 %>%
   mutate(type = case_when(type == 'rel_count' ~ 'Dist',
                           type == 'dens_ref' ~ 'Ref')) %>%
   mutate(type = factor(type, levels = c('Ref', 'Dist'))) %>% 
-  
+  drop_na() %>% 
   ggplot(aes(type, y = val, fill = type)) +
   geom_boxplot() +
   geom_line(aes(group=trip_n), color = 'grey50', alpha = 0.5, lty = 'solid') +
@@ -337,7 +353,7 @@ RS1 %>%
 # the master plots needs to have all needed combinations!!!
 
 # df_sub_count or plots_master, needs to have 1244 rows! total number of sites!!!
-
+# !!! the threshold is 1.1!!!
 RS2 <-
   df_full_plot %>%
   filter(DBH > 10) %>%
@@ -407,7 +423,7 @@ RS3_dist <-
 
 
 # RS3 plot Infilling ------------------------------------------------------
-RS3 %>% 
+RS3_both %>% 
   filter(manag != 'c') %>% 
   mutate(manag = case_when(manag == 'd'  ~ 'Dist',
                            manag == 'l'  ~ 'Ref')) %>%
@@ -436,14 +452,19 @@ df_ground %>%
   ggplot(aes(x = class,
              y = mean_prop,
              fill =manag)) + 
-  geom_boxplot()
+  geom_boxplot() + 
+  theme_bw() + 
+  theme(legend.position = 'bottom',
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size = 8))
   
 
 
 # RS4: diameter distribution: ------------------------------------------------------
 # is the diameter distribution homogenous or heterogenous?: only from seedlings, samplings, mature trees:
 # Ref: (dbhmax-dbhmin)/dbhmean
-dbh_ref <- df_full_plot %>% 
+# only from the plot data!!! as I have trees > 10 cm dbh there
+RS4_ref <- 
+  df_full_plot %>% 
   filter(height_class != 'mature') %>% 
   filter(manag == 'l') %>% 
   group_by(trip_n, manag) %>%
@@ -451,19 +472,151 @@ dbh_ref <- df_full_plot %>%
   summarize(dbh_min  = min(DBH, na.rm = T),
             dbh_max  = max(DBH, na.rm = T),
             dbh_mean = mean(DBH, na.rm = T)) %>% 
-  mutate(RS4_ref = (dbh_max-dbh_min)/dbh_mean) %>% 
-  mutate(RS4_ref = replace_na(RS4_ref, 0))
+  mutate(RS4_ref = (dbh_max-dbh_min)/dbh_mean) %>%
+  mutate(RS4_ref = replace_na(RS4_ref, 0)) %>% 
+  select(!manag)
 
+# get count of trees > 10 cm dbh by disturbed sites:
+RS4_dist <- df_full_plot %>% 
+  filter(manag == 'd') %>%
+  filter(DBH> 10) %>% 
+  group_by(trip_n) %>%
+  #arrange(trip_n) 
+  #filter(trip_n == '24')
+  count() %>% 
+  rename(n_living10 = n) %>%  # get count of living trees per site
+  mutate(n_living10 = replace_na(n_living10, 0)) %>% # if NA = replace by 0
+  right_join(filter(plot_counts_df_sum, manag == 'd'), 
+             by = c("trip_n")) %>%
+  mutate(n_trees_ha = n_living10*(10000/(n*4))) %>%  # how many trees I have by hectar???
+  mutate(n_trees_ha = replace_na(n_trees_ha, 0)) %>% # if NA = replace by 0
+  select(!c(manag, dom_sp))
+
+
+# Merge the RS4 together; !!! need to understand better the categories and their meaning!!!
+RS4 <- 
+  RS4_ref %>% 
+  full_join(RS4_dist) %>% 
+  mutate(RS4_ref = replace_na(RS4_ref, 0)) %>% # replace NA by 0 - trees are not present
+#  replace_na(0) %>% 
+  mutate(RS4 = case_when(RS4_ref >  1 & n_trees_ha >  10 ~ 0,
+                         RS4_ref <= 1 & n_trees_ha <= 10 ~ 0,
+                         RS4_ref > 1 & n_trees_ha <= 10 ~ 1,
+                         RS4_ref <= 1 & n_trees_ha > 10 ~ 1))
+
+
+
+# RS4 plots ---------------------------------------------------------------
+# Diamater distribution in Reference stands:
+p_RS4_ref <- RS4_ref %>% 
+  mutate(manag = 'Ref') %>% 
+  ggplot(aes(x = manag,
+            y = RS4_ref)) +
+  geom_boxplot() +
+  ggtitle('Diameter distribution\nin Reference stands') + 
+  theme_bw() + ylab("DBH distribution\n [norm]")
+
+p_RS4_dist <- RS4_dist %>% 
+  mutate(manag = 'Dist') %>% 
+  ggplot(aes(x = manag,
+             y = n_trees_ha)) + 
+  geom_boxplot() +
+  ggtitle('# of legacy trees > 10 cm\nin Disturbed stands') + 
+  theme_bw() +
+  ylab('# trees/ha')
+
+
+ggarrange(p_RS4_ref,p_RS4_dist)
+
+# 
 # number of legacies trees: in the plots and in the surroundings?
 # take into account matures trees in surroundings and plots:
-df_mature_all %>% 
-  filter(manag == 'd') %>% 
-  group_by(trip_n) %>% 
-  count() %>% 
-  rename(legacy_trees_n = n) %>% 
-  right_join(filter(plot_counts_df_sum, manag == 'd'))
+# df_mature_all %>% 
+#   filter(manag == 'd') %>% 
+#   group_by(trip_n) %>% 
+#   count() %>% 
+#   rename(legacy_trees_n = n) %>% 
+#   right_join(filter(plot_counts_df_sum, manag == 'd'))
+
+
+
+
+# Compile RS --------------------------------------------------------------
+
+RS <- select(RS1, c(trip_n, RS1)) %>%
+  full_join(select(RS2, c(trip_n,  RS2))) %>%
+  full_join(select(RS3_dist, c(trip_n, RS3))) %>% #,
+  full_join(select(RS4, c(trip_n, RS4)))  %>%
+  # Compensate for gaps/infilling
+  mutate(RS1_comp = case_when((RS1 == 1 & RS3 == 1) ~ 0.5, #& RS3_dist = 1 
+                              TRUE ~ RS1)) %>% 
+  mutate(RS2_comp = case_when((RS2 == 1 & RS3 == 1) ~ 0.5, #& RS3_dist = 1 
+                              TRUE ~ RS2)) %>%
+  mutate(RS = (RS1_comp+RS2_comp+RS4)/3)
+  
+
+
+# Classify Forest reorganization -------------------------------------------
+out_reorg <- 
+  select(RS, c(trip_n, RS)) %>% 
+  left_join(RA) %>% 
+  mutate(reorganization = case_when((RS <= 0.5  & RA <= 0.5)  ~ 'resilience',
+                           (RS >  0.5  & RA <= 0.5)  ~ 'restructuring',
+                           (RS <= 0.5  & RA  > 0.5)  ~ 'reassembly',
+                           (RS >  0.5  & RA  > 0.5)  ~ 'replacement'))
+
+# make a mosaic plot of counts!!! 
+# ggplot()
+
+library(treemapify)
+
+out_reorg %>% 
+  mutate(reorganization = factor(reorganization, levels = c('resilience',
+  'reassembly',
+  'restructuring',
+  'replacement'))) %>%
+
+  group_by(reorganization) %>% 
+  count()  %>%
+  ggplot(aes(area = n, 
+             fill = reorganization, 
+             label = paste((n/40)*100), '%')) +
+  geom_treemap(color = 'black') +
+  geom_treemap_text('center')
+
+
+# Barplot
+out_reorg %>% 
+  mutate(reorganization = factor(reorganization, levels = c('resilience',
+                                                            'reassembly',
+                                                            'restructuring',
+                                                            'replacement'))) %>%
+  
+  group_by(reorganization) %>% 
+  count()  %>%
+  ggplot(aes(x = reorganization, 
+             y = n,
+             fill = reorganization)) +
+  geom_col(color = 'black')
+
+
+
+library(waffle)
+  
+out_reorg %>% 
+  mutate(shift = factor(shift, levels = c('resilience',
+                                          'reassembly',
+                                          'restructuring',
+                                          'replacement'))) %>%
+  
+  group_by(shift) %>% 
+  count()  %>%
+  ggplot(aes(values = n, 
+             fill = shift)) +
+  geom_waffle() 
 
 
 
 # Export objects -----------------------------------------------------------
-save(list=ls(pat="R"),file="dat_restr.Rdata") 
+#save(list=ls(pat="R"),file="dat_restr.Rdata") 
+save.image(file="dat_restr.Rdata")
