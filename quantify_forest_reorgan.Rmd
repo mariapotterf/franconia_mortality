@@ -1,14 +1,26 @@
 ---
 title: "Quantifying the propensity of forest reorganization"
 author: "Mária Potterf"
-date: "8/18/2022"
-output: bookdown::html_document2
+date:  "`r Sys.Date()`"
+output: 
+  bookdown::html_document2:
+    toc: true
+
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, tidy = TRUE, tidy.opts = list(comment = FALSE), message = F)
+knitr::opts_chunk$set(echo = FALSE, tidy = TRUE, tidy.opts = list(comment = FALSE), message = F, warning = F)
 knitr::opts_chunk$set(fig.width=6, fig.height=2.5) 
 
+
+
+```
+
+
+```{css, echo=FALSE}
+p.caption {
+  font-size: 0.8em;
+}
 ```
 
 # Background and implementation:
@@ -29,7 +41,7 @@ Identify the aspects of the forest reorganization:
     + **RS1**: Stem density: Are pre-disturbance stem densities possible based on the post-disturbance stem density? (> then 2 times higher?)
     + **RS2**: Gap fraction : Share of plots per site that have no trees >10cm dbh?
     + **RS3**: Infilling: Is there enough bare soils for next tree cohort to establish?
-    + **RS4**: Diameter distribution (RS4): Is the diameter distribution homogeneous or heterogeneous? Based on variance of DBH distribution in Ref, and number of living trees in Dist site
+    + **RS4**: Diameter distribution: Is the diameter distribution homogeneous or heterogeneous? Based on variance of DBH distribution in Ref, and number of living trees in Dist site
 
 
 ## Composite indicators:
@@ -45,8 +57,8 @@ RA = (RA1+RA2+RA3+RA4+RA5)/5
 
 Early indications of restructuring (RS) are derived from the analyses of stem density (RS1), gap fraction (RS2) and diameter distribution (RS4). If there is considerable ability for infilling (RS3), the impact of reduced stem density (RS1) or increased gaps (RS2) are compensated:
 
-If RS1=1 and RS3=1 then RS1=0.5
-If RS2=1 and RS3=1 then RS2=0.5
+ - If RS1=1 and RS3=1 then RS1=0.5
+ - If RS2=1 and RS3=1 then RS2=0.5
 
 RS = (RS1+RS2+RS4)/3
 
@@ -75,7 +87,7 @@ The number of samples triplets by dominant tree species. Each triplet has 3 mana
 # rm(list=ls())
 
 # Input data -------------------------------------------------------------------
-getwd()
+#getwd()
 load(file = paste(getwd(), "dataToPlot.Rdata", sep = '/'))
 load(file = paste(getwd(), "dat_restr.Rdata", sep = '/'))
 
@@ -114,7 +126,7 @@ cols = c('#0072B2', #
 
 
 ```{r triplet-count, echo=FALSE}
-print(getwd())
+#print(getwd())
 out_summary <- dat %>% 
  group_by(dom_sp) %>%
  distinct(trip_n) %>%
@@ -142,14 +154,9 @@ Total count of plots (4m2) per triplet&category : **`r n_sites`** plots
 
 
 
-```{r print-summary, echo=F, caption = 'salala' }
+```{r print-summary, echo=F}
 # print nice table in knitr
 out_summary %>% knitr::kable("markdown")
-
-
-
-
-
 
 
 
@@ -173,7 +180,7 @@ The **Importance Value** is the sum of these three measures, and can range from 
  **Importance value** calculated here considers the extent of the 4m2 plot. 
  
  
- My data: 
+My data: 
  
  - seedlings regeneration < 1.3 m: BA = 0, regeneration 1.3m-2 m, estimated DBH = 1 cm
  - advanced regeneration: DBH measured for each tree
@@ -184,9 +191,10 @@ The **Importance Value** is the sum of these three measures, and can range from 
 
 ### Novel species: Presence & absence
 
-Identify the tree species that are novel (appear after the disturbance) or absent (disappear) after disturbances. Compared across triplets between reference (living) and disturbed conditions.
+Identify the tree species that are novel (appear after the disturbance) or absent (lost) after disturbances. Compared across triplets between reference (living) and disturbed conditions.
 
-```{r p-winners-loosers, echo = F, fig.height=3.5, fig.width = 3.5}
+```{r p-winners-loosers, echo = F, fig.height=3.5, fig.width = 3.5, fig.cap= 'Average counts of the winners/loosers per tree species'}
+
 p_win_loos_sp
 
 ```
@@ -203,7 +211,8 @@ Tree regeneration notes:
 - O_soft = other softwood species
 - O_hard = other hardwood species
 
-```{r p_prevalence, echo = F, fig.cap = 'Fig. Average counts per tree species. Ordered by the most aboundant tree species'}
+```{r p_prevalence, echo = F, fig.cap = 'Average counts per tree species and tree height. Ordered by the most aboundant tree species'}
+
 p_prevalence
 
 ```
@@ -212,7 +221,8 @@ p_prevalence
 
 #### Species composition by dominant tree species and category (for seedlings, saplings)
 
-```{r plot-regen-sp-categ, echo = F, fig.height=5}
+```{r plot-regen-sp-categ, echo = F, fig.height=5, fig.cap = 'Average counts per tree species and tree height category. Ordered by the most aboundant tree species'}
+
 p_treeComp_categ
 
 ```
@@ -225,32 +235,21 @@ p_treeComp_categ
 
 Are novel species (i.e., species that are not present under reference conditions) present after disturbance?
 
-- Ref: Calculate the importance value (IV) of all species in the reference stands from stem density and basal area shares of all tree species across all sample plots per site. 
-- Dist: Calculate the importance value of all species in the disturbed stands from stem density shares of all tree species across all sample plots per site and multiply by two .
-- I: Sum the IV of all species in Dist that are not present in Ref
-- If  I>1 then RA1 = 1 else RA=0 
+ - Ref: Calculate the importance value (IV) of all species in the reference stands from stem density and basal area shares of all tree species across all sample plots per site. 
+ - Dist: Calculate the importance value of all species in the disturbed stands from stem density shares of all tree species across all sample plots per site and multiply by two .
+ - I: Sum the IV of all species in Dist that are not present in Ref
+ - If  I>1 then RA1 = 1 else RA=0 
+
+ - **NA -> 0**: if the novel species are not important: no change  
+
+Data:
+
+ - plot level: seedlings, saplings, mature trees   
 
 
-```{r plot-RA1, echo = F, fig.height=3, fig.width=3}
+```{r plot-RA1, echo = F, fig.height=3, fig.width=3, fig.cap="Boxplots of the sums of species importance values per reference and disturbed sites. Lines represent sites located in one triplet."}
 
-RA1_plot %>% 
-  group_by(trip_n) %>% 
-  mutate(IVI_sum_living = IVI_sum[manag == 'l']) %>% 
-  filter(manag != 'l') %>% 
-  pivot_longer(!c(trip_n, manag, RA1), 
-               names_to = 'type',
-               values_to = 'IVI') %>% 
-  filter(type != 'IVI_sum') %>% 
-  ggplot(aes(type, y = IVI, fill = type)) +
-  geom_boxplot() +
-  geom_line(aes(group=trip_n), color = 'grey50', alpha = 0.5, lty = 'solid') +
-  geom_point(color = 'grey30', alpha = 0.5)+ 
-  theme(legend.position = "none") + 
-  ylab('Species importance values [sum]') +
-  scale_x_discrete(labels = c('Ref', 'Novel')) +
-  theme_bw() +
-  theme(legend.position = 'bottom')
-   
+p_RA1  
 
 ```
 
@@ -261,26 +260,16 @@ Are the novel tree species  present after disturbance likely to outcompete the t
  - Ref: Community-weighted mean   shade tolerance of the species present under reference conditions (across all plots per site)
  - Dist: Community-weighted mean shade tolerance of the species present after disturbance that are not present under reference conditions (across all plots per site)
  - If Dist > Ref  then RA2=1 else RA2=0
+ 
+ - **NA -> 0**: if the novel species are not present: no change
 
+Data:
 
-```{r plot-RA2, echo = F, fig.height=3, fig.width=3}
+ - plot level: seedlings, saplings, mature trees  
 
-RA2 %>% 
-  pivot_longer(!c(trip_n, dom_sp, manag, novelty, RA2), 
-             names_to = 'type',
-             values_to = 'val') %>%
-  separate(type, c('trait', 'cond')) %>% 
-  filter(trait != 'drought') %>% 
-  ggplot(aes(cond, y = val, fill = cond)) +
-  geom_boxplot() +
-  geom_line(aes(group=trip_n), color = 'grey50', alpha = 0.5, lty = 'solid') +
-  geom_point(color = 'grey30', alpha = 0.5)+ 
-  facet_grid(.~trait) +
-  theme(legend.position = "none") + 
-  ylab('Ecological trait [cwm]') +
-  scale_x_discrete(labels = c('Ref', 'Novel')) +
-  theme_bw() +
-  theme(legend.position = 'bottom') 
+```{r plot-RA2, echo = F, fig.height=3, fig.width=3, fig.cap="Boxplots of the shading tolerance (community weighted means) for reference and disturbed sites. Lines represent sites located in one triplet."}
+
+p_RA2
 
 ```
 
@@ -292,23 +281,17 @@ Is the species dominating after disturbance the same that dominates under refere
  - Ref: Species with highest IV under reference conditions (across all plots per site)
  - Dist: Species with highest IV post disturbance (across all plots per site)
  - If Ref=Dist then RA3=0 else RA3=1
+ 
+ - **if NA**-> 1: if the species is missing, it differs from the reference stand -> change
 
-```{r plot-RA3, echo = F, fig.height=3, fig.width=3}
+Data:
 
-RA3 %>% 
-  pivot_longer(!c(trip_n, manag, sp_IVI, RA3),
-               names_to = 'type',
-               values_to = 'species') %>%
-  mutate(type = case_when(type == 'reg_species' ~ 'Dist',
-                          type == 'maxIVI_l' ~ 'Ref')) %>%
-  mutate(type = factor(type, levels = c('Ref', 'Dist'))) %>% 
-  group_by(species, type) %>% 
-  count(species) %>%
-  ggplot(aes(x = type,
-             y = n, 
-             fill = species)) +
-  geom_col(col = 'black') +
-  ylab('Dominant tree species\nbefore and after disturbance [per site]')
+ - plot level: seedlings, saplings, mature trees  
+ 
+```{r plot-RA3, echo = F, fig.height=3, fig.width=4, fig.cap="Dominant tree species composition for reference and disturbed sites. "}
+
+p_RA3
+
 
 ```
 
@@ -320,24 +303,16 @@ Is the species winning the local competition in the regeneration the same that d
  - Ref: Determine the most frequent tree species with highest dbh under reference conditions per sitefor each plot, then determine the species that has most often the largest trees across plots
  - Dist: Determine the most frequent tree species with the highest dbh under disturbed conditions of the tallest individual tree <10 cm dbh per 4m² plot, then determine the species that is most often the tallest tree across plots
  - If Ref=Dist then RA4=0 else RA4=1
+ 
+ - **if NA** -> 1: if the species is missing, it differs from the reference stand -> change
 
+Data:
 
-```{r plot-RA4, echo = F, fig.height=3, fig.width=3}
-RA4 %>% 
-   pivot_longer(!c(trip_n, manag, n, RA4),
-                names_to = 'type',
-                values_to = 'species') %>%
-   mutate(type = case_when(type == 'reg_species' ~ 'Dist',
-                           type == 'spec_l' ~ 'Ref')) %>%
-   mutate(type = factor(type, levels = c('Ref', 'Dist'))) %>% 
-   group_by(species, type) %>% 
-   count(species) %>%
-   ggplot(aes(x = type,
-              y = n, 
-              fill = species)) +
-   geom_col(col = 'black') +
-   ylab('Dominant tree species (DBH)\nbefore and after disturbance [per site]')
+ - plot level: seedlings, saplings
+ 
+```{r plot-RA4, echo = F, fig.height=3, fig.width=4, fig.cap="Dominant tree species composition for reference and disturbed sites. "}
 
+p_RA4
 
 ```
 
@@ -349,24 +324,15 @@ Is the species winning the local competition in the regeneration the same that d
  - Dist: Determine the species that is most often the largest tree across plots
  - If Ref=Dist then RA5=0 else RA5=1
 
+ - **if NA** -> 1: if the species is missing, it differs from the reference stand -> change
+ 
+ Data:
 
-```{r plot-RA5, echo = F, fig.height=3, fig.width=3}
-RA5 %>% 
-   pivot_longer(!c(trip_n, manag, n, RA5),
-                names_to = 'type',
-                values_to = 'species') %>%
-   mutate(type = case_when(type == 'reg_species' ~ 'Dist',
-                           type == 'spec_l' ~ 'Ref')) %>%
-   mutate(type = factor(type, levels = c('Ref', 'Dist'))) %>% 
-   group_by(species, type) %>% 
-   count(species) %>%
-   ggplot(aes(x = type,
-              y = n, 
-              fill = species)) +
-   geom_col(col = 'black') +
-   ylab('Dominant tree species (height)\nbefore and after disturbance [per site]')
- 
- 
+ - plot: seedlings, saplings
+
+```{r plot-RA5, echo = F, fig.height=3, fig.width=4, fig.cap="Dominant tree species composition for reference and disturbed sites. "}
+
+p_RA5
 
 ```
 
@@ -382,35 +348,22 @@ Indicator: Regeneration sStem density in regeneration disturbed site divided by 
  - Dist: Stem density after disturbance (across all plots per site)
  - I: Dist / Ref
  - If I>2  then RS1=0 else RS1=1
-
-
-```{r plot-RS1, echo = F, fig.height=3, fig.width=3}
-RS1 %>% 
-  group_by(trip_n) %>% 
-  pivot_longer(!c(trip_n, dom_sp, manag, sub_counts, sum_count, RS1), 
-               names_to = 'type',
-               values_to = 'val') %>% 
-  mutate(type = case_when(type == 'rel_count' ~ 'Dist',
-                          type == 'dens_ref' ~ 'Ref')) %>%
-  mutate(type = factor(type, levels = c('Ref', 'Dist'))) %>% 
-  
-  ggplot(aes(type, y = val, fill = type)) +
-  geom_boxplot() +
-  geom_line(aes(group=trip_n), color = 'grey50', alpha = 0.5, lty = 'solid') +
-  geom_point(color = 'grey30', alpha = 0.5)+ 
-  theme(legend.position = "none") + 
-  ylab('Stem density [n/m^2]') +
- # scale_x_discrete(labels = c('Ref', 'Dist')) +
-  theme_bw() +
-  theme(legend.position = 'none')
-
-
  
+  - **if NA** -> 1: if the regeneration is missing -> change
+  
+Data:
+
+ - plot: seedlings, saplings, mature trees  
+
+
+```{r plot-RS1, echo = F, fig.height=3, fig.width=3, fig.cap="Boxplots of the stem density for forest regeneration for reference and disturbed sites. Lines represent sites located in one triplet."}
+
+p_RS1
 
 ```
 
 
-## Gap fraction (RS2)
+## RS2: Gap fraction
 
 Is the spatial structure in terms of gaps similar pre- and post-disturbance?
 
@@ -419,82 +372,45 @@ Is the spatial structure in terms of gaps similar pre- and post-disturbance?
  - I: Dist / Ref 
  - If **I>1.1**  then RS2=1 else RS2=0  !!! change here from the Protocol!! (was 2 instead of 1.1)
 
-
-```{r plot-RS2, echo = F, fig.height=3, fig.width=3}
-RS2 %>% 
-  group_by(trip_n) %>% 
-  pivot_longer(!c(trip_n, manag, plots_occupied, dom_sp, plots_count, RS2), 
-               names_to = 'type',
-               values_to = 'val') %>% 
-  mutate(type = case_when(type == 'gaps_share'     ~ 'Dist',
-                          type == 'gaps_share_ref' ~ 'Ref')) %>%
-  mutate(type = factor(type, levels = c('Ref', 'Dist'))) %>% 
+  - **no NA**: if the trees are missing => gap  = 100%
   
-  ggplot(aes(type, y = val, fill = type)) +
-  geom_boxplot() +
-  geom_line(aes(group=trip_n), color = 'grey50', alpha = 0.5, lty = 'solid') +
-  geom_point(color = 'grey30', alpha = 0.5)+ 
-  theme(legend.position = "none") + 
-  ylab('Gap share [%]\nmissing trees [<10 cm ]') +
-  # scale_x_discrete(labels = c('Ref', 'Dist')) +
-  theme_bw() +
-  theme(legend.position = 'none')
+  Data:
 
+ - plot: seedlings, saplings, mature trees  
+  
+```{r plot-RS2, echo = F, fig.height=3, fig.width=3, fig.cap="Boxplots of the gap share [%] for reference and disturbed sites. Lines represent sites located in one triplet."}
 
-
- 
+p_RS2
 
 ```
 
 
-## Infilling (RS3) 
+## RS3: Infilling 
 
-Is infilling likely possible? 
+Is infilling likely possible? Evaluate the share of the bare soil (here category soil/foliage)
 
  - Dist: Share of 4m² plot that is not covered by vegetation (across all plots per site)
  - If Dist>0.5 then RS3=1 else RS3=0
-
-
-```{r plot-RS3, echo = F, fig.height=3, fig.width=3}
-
-RS3_both %>% 
-  filter(manag != 'c') %>% 
-  mutate(manag = case_when(manag == 'd'  ~ 'Dist',
-                           manag == 'l'  ~ 'Ref')) %>%
-  mutate(manag = factor(manag, levels = c('Ref', 'Dist'))) %>% 
-  ggplot(aes(x = manag, 
-             y = mean_soil,
-             fill = manag)) +
-  geom_boxplot() +
-  geom_line(aes(group=trip_n), color = 'grey50', alpha = 0.5, lty = 'solid') +
-  geom_point(color = 'grey30', alpha = 0.5)+ 
-  theme(legend.position = "none") + 
-  ylab('Bare soil share [%]') +
-  # scale_x_discrete(labels = c('Ref', 'Dist')) +
-  theme_bw() +
-  theme(legend.position = 'none')
-
  
+ - **no NA**
+
+Data:
+
+ - plot: ground cover classes 
+
+```{r plot-RS3, echo = F, fig.height=3, fig.width=3, fig.cap="Boxplots of the bare soils share for reference and disturbed sites. Lines represent sites located in one triplet."}
+
+p_RS3
+
 
 ```
 
 *Plot all ground cover categories*
 
-```{r plot-RS3-all, echo = F, fig.height=3, fig.width=7}
+```{r plot-RS3-all, echo = F, fig.height=3, fig.width=5, fig.cap="Boxplots of the ground cover claaases distribution per each category for reference ('l') and disturbed sites ('d'). "}
 
-df_ground %>% 
-  #filter(class == 'soil/foliage') %>% 
-  group_by(trip_n, manag, class) %>% 
-  filter(manag != 'c') %>% 
-  summarize(mean_prop = mean(prop, na.rm = T)) %>% 
-  ggplot(aes(x = class,
-             y = mean_prop,
-             fill =manag)) + 
-  geom_boxplot() + 
-  theme_bw() + 
-  theme(legend.position = 'bottom',
-        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size = 8))
-  
+p_ground_cover
+
 
 ```
 
@@ -504,6 +420,7 @@ df_ground %>%
 Is the diameter distribution homogeneous or heterogeneous?
 
  –	Ref : (dbhmax – dbhmin)/dbhmean in reference stands
+ 
  –	Dist: Number of live legacy trees >10cm dbh [n per ha]
 
  - If Ref>1 and Dist>10  then RS4=0
@@ -513,61 +430,46 @@ Is the diameter distribution homogeneous or heterogeneous?
 
  - Interpretation: is there are more mature trees (Dist>10/ha), the heterogeneity is higher?
  
+ - **No NA**
  
-```{r plot-RS4, echo = F, fig.height=3, fig.width=7}
-ggarrange(p_RS4_ref, p_RS4_dist)
+ Data:
+
+ - plot level: seedlings, saplings, mature trees  
+ 
+```{r plot-RS4, echo = F, fig.height=3, fig.width=4, fig.cap="Left: Normalized diameter size distribution ((dbhmax – dbhmin)/dbhmean ) for reference site. Right: Number of trees > 10 cm DBH per disturbed site. "}
+
+p_RS4_agg
 
 ```
 
 
-# Restructuring, reassembly, replacement, resilience
+# Final categorization
 
 Classify the values:
 
- - If RS≤0.5 and RA≤0.5 → Resilience
- - If RS>0.5 and RA≤0.5 → Restructuring
- - If RS≤0.5 and RA>0.5 → Reassembly
- - If RS>0.5 and RA>0.5 → Replacement
+ - If RS≤0.5 and RA≤0.5 → *Resilience*
+ - If RS>0.5 and RA≤0.5 → *Restructuring*
+ - If RS≤0.5 and RA>0.5 → *Reassembly*
+ - If RS>0.5 and RA>0.5 → *Replacement*
  
-```{r plot-Reorganization-tree, echo = F, fig.height=3, fig.width=3}
-library(treemapify)
 
-out_reorg %>% 
-  group_by(reorganization) %>% 
-  count()  %>%
-  ggplot(aes(area = n, 
-             fill = reorganization, 
-             label = n)) +
-  geom_treemap(color = 'black') +
-  geom_treemap_text()
+The share of the sites that reorganize towards individual categories by dominant tree species: (the coloring scheme needs some grouping by species and shades: can be done in next step).
 
+
+
+```{r plot-Reorganization-tree, echo = F, fig.height=5, fig.width=5.7, fig.cap='Tree plot of the shared forest reorganization categories by individual dominant tree species. The % relates to overall number of triplets (40); disregarding the different shares of tree species.'}
+
+tree_plot
 
 ```
+The share of the triplets by forest reorganization classes by dominant tree species.  
 
 
-Visualize the count of the study sites by bar plot:
+```{r plot-reorg-stacked, echo = F, fig.height=3, fig.width=5, fig.cap = 'Stacked proportion barplot of the Forest reorganization categories by dominant species.'}
 
-```{r plot-Reorganization-bar, echo = F, fig.height=3, fig.width=3}
-
-out_reorg %>% 
-  mutate(reorganization = factor(reorganization, levels = c('resilience',
-                                                            'reassembly',
-                                                            'restructuring',
-                                                            'replacement'))) %>%
-  
-  group_by(reorganization) %>% 
-  count()  %>%
-  ggplot(aes(x = reorganization, 
-             y = n,
-             fill = reorganization)) +
-  geom_col(color = 'black')
-
-
-
+p_stacked_reorg
 
 ```
-
-
 
 
 
