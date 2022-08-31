@@ -76,11 +76,11 @@ RA1_plot <-
 RA1 <- RA1_plot %>% 
   filter(manag == 'd') %>% 
   right_join(master_tripl) %>%  # fill in all triplets categories
-  mutate(RA1 = replace_na(RA1, 0))  # if the novel species are not important: no change
+  mutate(RA1 = replace_na(RA1, 0))  # NA -> 0: if the novel species are not important: no change
   
 
 # RA1 plot only communities: --------------------------------------------------
-RA1_plot %>% 
+p_RA1 <- RA1_plot %>% 
   group_by(trip_n) %>% 
   mutate(IVI_sum_living = IVI_sum[manag == 'l']) %>% 
   filter(manag != 'l') %>% 
@@ -109,7 +109,7 @@ RA1_plot %>%
 # drought tolerance: 
 #             higher  = more tolerance (pine), 
 #             lower = less (more drought sensitive, spruce)
-# if no novel species => no change (NA == 0)
+# NA -> 0: if no novel species => no change (NA == 0)
 
 RA2 <- 
   df_IVI_out %>% 
@@ -135,7 +135,7 @@ RA2 <-
 
 
 # RA2 plot ----------------------------------------------------------------
-RA2 %>% 
+p_RA2 <-RA2 %>% 
   pivot_longer(!c(trip_n, dom_sp, manag, novelty, RA2), 
              names_to = 'type',
              values_to = 'val') %>%
@@ -176,7 +176,8 @@ RA3 <-
 #library(ggalluvial)
 
 
-RA3 %>% 
+p_RA3 <- 
+  RA3 %>% 
   pivot_longer(!c(trip_n, manag, sp_IVI, RA3),
                names_to = 'type',
                values_to = 'species') %>%
@@ -190,7 +191,8 @@ RA3 %>%
              y = n, 
              fill = species)) +
   geom_col(col = 'black') +
-  ylab('Dominant tree species\nbefore and after disturbance [per site]')
+  ylab('Dominant tree species\nbefore and after disturbance [per site]') +
+  guides(fill=guide_legend(ncol=2,byrow=TRUE)) + theme_bw()
 
 
 
@@ -223,7 +225,7 @@ RA4 <-
 
 # RA4 plot ----------------------------------------------------------------
 
-RA4 %>% 
+p_RA4 <- RA4 %>% 
    pivot_longer(!c(trip_n, manag, n, RA4),
                 names_to = 'type',
                 values_to = 'species') %>%
@@ -237,7 +239,8 @@ RA4 %>%
               y = n, 
               fill = species)) +
    geom_col(col = 'black') +
-   ylab('Dominant tree species (DBH)\nbefore and after disturbance [per site]')
+   ylab('Dominant tree species (DBH)\nbefore and after disturbance [per site]') +
+  guides(fill=guide_legend(ncol=2,byrow=TRUE)) + theme_bw()
  
  
   
@@ -264,7 +267,7 @@ RA5 <-
  
 
 # RA5 plot ----------------------------------------------------------------
-RA5 %>% 
+p_RA5 <- RA5 %>% 
    pivot_longer(!c(trip_n, manag, n, RA5),
                 names_to = 'type',
                 values_to = 'species') %>%
@@ -278,13 +281,12 @@ RA5 %>%
               y = n, 
               fill = species)) +
    geom_col(col = 'black') +
-   ylab('Dominant tree species (height)\nbefore and after disturbance [per site]')
+   ylab('Dominant tree species (height)\nbefore and after disturbance [per site]') +
+  guides(fill=guide_legend(ncol=2,byrow=TRUE)) + theme_bw()
+  
  
  
  
- 
-# checK 17-living: missing dominant tallest trees? - because not regeneration was present
-
 # RA: Reassambly: -----------------------------------------------------------
 # cbind RA tables 
 RA = select(RA1, c(trip_n, RA1)) %>%
@@ -308,6 +310,7 @@ RA %>% print(n = 40)
 # 
 head(df_full_plot) 
 
+# NA -> 1
 RS1 <-
   df_full_plot %>%
   filter(manag != 'c') %>%
@@ -326,7 +329,7 @@ RS1 <-
 
 # RS1 plot: compare stem densities: ----------------------------------------------
 # NA = no present data = change => 1
-RS1 %>% 
+p_RS1 <- RS1 %>% 
   group_by(trip_n) %>% 
   pivot_longer(!c(trip_n, dom_sp, manag, sub_counts, sum_count, RS1), 
                names_to = 'type',
@@ -379,7 +382,7 @@ RS2 <-
 
 # RS2  plot ---------------------------------------------------------------
 
-RS2 %>% 
+p_RS2 <- RS2 %>% 
   group_by(trip_n) %>% 
   pivot_longer(!c(trip_n, manag, plots_occupied, dom_sp, plots_count, RS2), 
                names_to = 'type',
@@ -387,7 +390,6 @@ RS2 %>%
   mutate(type = case_when(type == 'gaps_share'     ~ 'Dist',
                           type == 'gaps_share_ref' ~ 'Ref')) %>%
   mutate(type = factor(type, levels = c('Ref', 'Dist'))) %>% 
-  
   ggplot(aes(type, y = val, fill = type)) +
   geom_boxplot() +
   geom_line(aes(group=trip_n), color = 'grey50', alpha = 0.5, lty = 'solid') +
@@ -423,7 +425,7 @@ RS3_dist <-
 
 
 # RS3 plot Infilling ------------------------------------------------------
-RS3_both %>% 
+p_RS3 <- RS3_both %>% 
   filter(manag != 'c') %>% 
   mutate(manag = case_when(manag == 'd'  ~ 'Dist',
                            manag == 'l'  ~ 'Ref')) %>%
@@ -444,7 +446,8 @@ RS3_both %>%
 
 
 # plot distribution of all groups:
-df_ground %>% 
+p_ground_cover <- 
+  df_ground %>% 
   #filter(class == 'soil/foliage') %>% 
   group_by(trip_n, manag, class) %>% 
   filter(manag != 'c') %>% 
@@ -452,10 +455,10 @@ df_ground %>%
   ggplot(aes(x = class,
              y = mean_prop,
              fill =manag)) + 
-  geom_boxplot() + 
+  geom_boxplot( outlier.size = 0.7) + 
   theme_bw() + 
-  theme(legend.position = 'bottom',
-        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size = 8))
+  theme(legend.position = 'right',
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust=1, size = 8))
   
 
 
@@ -526,7 +529,7 @@ p_RS4_dist <- RS4_dist %>%
   ylab('# trees/ha')
 
 
-ggarrange(p_RS4_ref,p_RS4_dist)
+p_RS4_agg <- ggarrange(p_RS4_ref,p_RS4_dist)
 
 # 
 # number of legacies trees: in the plots and in the surroundings?
@@ -565,33 +568,36 @@ out_reorg <-
                            (RS <= 0.5  & RA  > 0.5)  ~ 'reassembly',
                            (RS >  0.5  & RA  > 0.5)  ~ 'replacement'))
 
-# make a mosaic plot of counts!!! 
-# ggplot()
+
+
+# make a mosaic plot of counts!!!  ----------------------------------------------
+# having only 4 reorganization categories
 
 library(treemapify)
 
-out_reorg %>% 
+d <- out_reorg %>% 
   mutate(reorganization = factor(reorganization, levels = c('resilience',
   'reassembly',
   'restructuring',
   'replacement'))) %>%
 
   group_by(reorganization) %>% 
-  count()  %>%
-  ggplot(aes(area = n, 
-             fill = reorganization, 
-             label = paste((n/40)*100), '%')) +
+  count() # %>%
+ 
+
+ggplot(d, aes(area = n, 
+             fill = reorganization,
+             label = n)) +
   geom_treemap(color = 'black') +
-  geom_treemap_text('center')
+  geom_treemap_text()
 
 
-# Barplot
+# Barplot ---------------------------------
 out_reorg %>% 
   mutate(reorganization = factor(reorganization, levels = c('resilience',
                                                             'reassembly',
                                                             'restructuring',
                                                             'replacement'))) %>%
-  
   group_by(reorganization) %>% 
   count()  %>%
   ggplot(aes(x = reorganization, 
@@ -600,23 +606,73 @@ out_reorg %>%
   geom_col(color = 'black')
 
 
+# Tree map with dominant trees species dataset: -----------------------------------
+#treemap <- 
+ d2 <- out_reorg %>% 
+  left_join(master_tripl) %>% 
+  group_by(reorganization, dom_sp) %>% 
+  mutate(comb = paste(dom_sp, reorganization, sep = ' ')) %>% 
+  count(comb) %>% 
+  as.data.frame() 
 
-library(waffle)
+windows()
+# Tree plots
+tree_plot <- d2%>%  
+  ggplot(aes(area = n, 
+             fill = comb,
+             label = paste(dom_sp, 
+                           reorganization, 
+                           paste(n/0.4, '%'),
+                           sep = "\n"))) +
+  geom_treemap(color = 'black') +
+  geom_treemap_text(colour = "white") +
+  theme(legend.position = "bottom")
   
-out_reorg %>% 
-  mutate(shift = factor(shift, levels = c('resilience',
-                                          'reassembly',
-                                          'restructuring',
-                                          'replacement'))) %>%
-  
-  group_by(shift) %>% 
-  count()  %>%
-  ggplot(aes(values = n, 
-             fill = shift)) +
-  geom_waffle() 
+
+# Bar plot
+tree_plot_cols<- d2%>%  
+  #arrange(desc(n)) %>%
+  #mutate(comb = factor(comb, 
+  #                     levels = comb)) %>% 
+  mutate(reorganization = factor(reorganization,
+                                 levels = c('resilience',
+                                            'reassembly',
+                                            'restructuring',
+                                            'replacement'))) %>% 
+  ggplot(aes(x = reorganization, 
+             y = n,
+             fill = reorganization)) +
+  geom_col(col = 'black') + 
+  facet_wrap(.~ dom_sp) +
+  theme(legend.position = 'right') + 
+  theme_bw()
 
 
+p_stacked_reorg <- d2 %>% 
+  ggplot(aes(y = n,
+             x = dom_sp,
+             fill = reorganization)) + 
+  geom_bar(position="fill", stat="identity", col = 'black') + 
+  theme_bw() +
+  ylab('Share of classes [%]') +
+  xlab('')
 
+# library(waffle)
+#   
+# out_reorg %>% 
+#   mutate(shift = factor(shift, levels = c('resilience',
+#                                           'reassembly',
+#                                           'restructuring',
+#                                           'replacement'))) %>%
+#   
+#   group_by(shift) %>% 
+#   count()  %>%
+#   ggplot(aes(values = n, 
+#              fill = shift)) +
+#   geom_waffle() 
+# 
+# 
+# 
 # Export objects -----------------------------------------------------------
 #save(list=ls(pat="R"),file="dat_restr.Rdata") 
 save.image(file="dat_restr.Rdata")
