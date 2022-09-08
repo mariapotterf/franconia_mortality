@@ -122,11 +122,11 @@ outPhotoVideoNearestTree  = paste(myPath, outTable, 'df_photo_video_nearTree.csv
 
 
 # Identify the exposure numbers: reconstruct the sectors and check how well they fit???
-# bacuase somethings the trees seems not correctly aligned the the snapshot?
+# because somethings the trees seems not correctly aligned the the snapshot?
 north = 315-360 & 0-45
-east = 45-135
+east  = 45-135
 south = 135-225
-west = 225-315 
+west  = 225-315 
 
 
 ## Clean input data -------------------------------------------------------------
@@ -206,7 +206,7 @@ dat %>%
 #dat$trip_n <- replace(dat$trip_n, dat$trip_n == 15 & dat$dom_sp == 'beech', 'spruce') 
 #dat$trip_n <- replace(dat$trip_n, dat$trip_n == 26 , 23) 
 
-# Change distances:
+# Change distances to nearest Mature trees:
 dat$env_Distance_next_MatureTree <- replace(dat$env_Distance_next_MatureTree, 
                                             dat$env_Distance_next_MatureTree == 25, 500) 
 dat$env_Distance_next_MatureTree <- replace(dat$env_Distance_next_MatureTree, 
@@ -221,6 +221,18 @@ dat$env_Distance_next_MatureTree <- replace(dat$env_Distance_next_MatureTree,
                                             dat$env_Distance_next_MatureTree == 44, 440) 
 dat$env_Distance_next_MatureTree <- replace(dat$env_Distance_next_MatureTree, 
                                             dat$env_Distance_next_MatureTree == 11, 1100) 
+
+
+# Change distances to nearest advanced regeneration:
+dat$env_Distance_next_Advanced_regeneration <- replace(dat$env_Distance_next_Advanced_regeneration, 
+                                            dat$env_Distance_next_Advanced_regeneration == 13160, 150) 
+dat$env_Distance_next_Advanced_regeneration <- replace(dat$env_Distance_next_Advanced_regeneration, 
+                                                       dat$env_Distance_next_Advanced_regeneration == 71, 171) 
+dat$env_Distance_next_Advanced_regeneration <- replace(dat$env_Distance_next_Advanced_regeneration, 
+                                                       dat$env_Distance_next_Advanced_regeneration == 40, 400) 
+dat$env_Distance_next_Advanced_regeneration <- replace(dat$env_Distance_next_Advanced_regeneration, 
+                                                       dat$env_Distance_next_Advanced_regeneration == 50, 15) 
+
 
 ## Check for typos & Get basic statistic ---------------------------------------
 # check for triplets numbers, number of subset per site, ...
@@ -622,6 +634,7 @@ df_advanced2 <-
   #dplyr::select(colnames(df_regen))
 
   
+rm(df_advanced)
 
 ##### Rbind regeneration data into single dataframe: --------------------------------
 #df_regen_fin <- rbind(df_regen, df_advanced2)
@@ -658,19 +671,17 @@ df_mature_trees_env <-
                                   tree_species == "Birke"        ~ "Birch",
                                   tree_species == "Weide"        ~ "Willow",
                                   tree_species == "Tanne"        ~ "Fir")) %>% 
- 
- # filter(is.na(orientation))
   mutate(orientation = case_when(orientation == 'ost'~ 'east',
                                  orientation == 'west'~ 'west',
                                  orientation == 'nord'~ 'north',
                                  orientation == 'sued'~ 'south')) %>% 
- # distinct(orientation)
   mutate(trip_n = as.character(trip_n),
          sub_n = as.character(sub_n))
 
 
 
-
+# Get the table of the nearest mature trees and the regeneration:
+# the distance is measured from the plot center: minimal distance must be >100cm!! (max 15 m = 1500 cm)
 df_mature_trees_env %>% 
   left_join(df_photo) %>% 
   filter(distance < 100 ) #%>% # & site == 'environment' 
@@ -730,15 +741,12 @@ df_advanced_env %>%
   theme_bw() +
   facet_grid(.~manag)
 
-# some have crazy values!!
-df_advanced_env %>% 
-  filter(distance > 5000)
 
-# # Get the list of the corresponding photos?
+# # Get the list of the corresponding photos: from extremely low (< 100 cm) and high numbers (> 1500cm) 
 
 df_advanced_env %>% 
   left_join(df_photo) %>% 
-  filter(distance > 1500 & site == 'environment' ) %>% 
+  filter(distance <100 & site == 'environment' ) %>% 
  select(trip_n, dom_sp, sub_n, tree_species, exposure, photo_number, distance) # DBH, , edge_tree 
 
 
