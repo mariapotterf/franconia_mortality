@@ -3,6 +3,7 @@
 # read data
 # each triplet categorize in one of teh characteristics:
 # as proposed by Rupert
+# for inpt data: use the plot + nearest distance tree data to get the dbh, BA, stem density, etc...
 
 
 rm(list=ls())
@@ -29,6 +30,7 @@ head(df_IVI_out)     # - df importance value:  df_IVI_out
 head(df_winners)     # - novel species:        df_novelty
 head(trait_df)       # - trait values for all species: eco_traits
 head(df_ground)      # - ground cover, in classes by 5%  
+head(df_mature_trees_env) # - trees in the surroundings; nearest trees
 
 # Master plots:
 head(plot_counts_df) # - total count of the plots per triplets & categories: to standardize the densities...
@@ -478,6 +480,8 @@ RS4_ref <-
   mutate(RS4_ref = (dbh_max-dbh_min)/dbh_mean) %>%
   mutate(RS4_ref = replace_na(RS4_ref, 0)) %>% 
   select(!manag)
+
+
 
 # get count of trees > 10 cm dbh by disturbed sites:
 RS4_dist <- df_full_plot %>% 
