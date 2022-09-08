@@ -112,12 +112,21 @@ outRegen          = paste(myPath, outTable, 'df_regen.csv'          , sep = '/')
 outRegenAdvanced  = paste(myPath, outTable, 'df_regen_advanced.csv' , sep = '/')
 outMaturePlot     = paste(myPath, outTable, 'df_mature_trees_plot.csv'   , sep = '/')
 outMatureENV      = paste(myPath, outTable, 'df_mature_trees_env.csv'   , sep = '/')
+outAdvancedENV    = paste(myPath, outTable, 'df_advanced_env.csv'   , sep = '/')
 
 outGround                 = paste(myPath, outTable, 'df_ground.csv', sep = '/')
 outVideo                  = paste(myPath, outTable, 'df_video.csv' , sep = '/')
 outPhoto                  = paste(myPath, outTable, 'df_photo.csv' , sep = '/')
 outPhotoVideoNearestTree  = paste(myPath, outTable, 'df_photo_video_nearTree.csv' , sep = '/')
   
+
+
+# Identify the exposure numbers: reconstruct the sectors and check how well they fit???
+# bacuase somethings the trees seems not correctly aligned the the snapshot?
+north = 315-360 & 0-45
+east = 45-135
+south = 135-225
+west = 225-315 
 
 
 ## Clean input data -------------------------------------------------------------
@@ -402,7 +411,7 @@ fwrite(df_mature_trees_plot, outMaturePlot)
 
 
 
-# Get Regeneration data  -----------------------------------------------------
+# Get Plot: Regeneration data  -----------------------------------------------------
 
 # The regeneration is combined regeneration and advanced regeneration!
 
@@ -672,6 +681,78 @@ df_mature_trees_env %>%
 
 #### Save the mature trees dataset -------------------------------------------------
 fwrite(df_mature_trees_env, outMatureENV )
+
+
+
+
+
+
+# Get advanced trees ENVIRONMENT -------------------------------------------------
+
+# Teh advanced trees in the ENV  do not have recorded the DBH!!! I can regress it from teh  
+df_advanced_env <-
+  #test<-
+  dat %>% 
+  dplyr::select(matches(paste(c(plot_info, plot_geo, 'env_'), collapse = '|'))) %>%
+  dplyr::select(matches(paste(c(plot_info, plot_geo, 'Advanced_regeneration'), collapse = '|'))) %>%
+  dplyr::select(-c("env_Advanced_regeneration_the_sectors" )) %>%
+  #names()
+  drop_na() %>%  # some sample plots have nearest trees > 15m away 
+  setnames(c(plot_info, 'gradient', 'exposure', 'orientation', 'tree_species', 'distance')) %>%
+  mutate(tree_species = case_when(tree_species == "Esche"        ~ "Ash",
+                                  tree_species == "Sonstiges NH" ~ "O_Soft",
+                                  tree_species == "Sonstiges LH" ~ "O_Hard",
+                                  tree_species == "Buche"        ~ "Beech" ,
+                                  tree_species == "Vogelbeere"   ~ "Rowan",
+                                  tree_species == "Bergahorn"    ~ "Maple",
+                                  tree_species == "Fichte"       ~ "Spruce",
+                                  tree_species == "Eiche"        ~ "Oak",
+                                  tree_species == "Kiefer"       ~ "Pine",
+                                  tree_species == "Birke"        ~ "Birch",
+                                  tree_species == "Weide"        ~ "Willow",
+                                  tree_species == "Tanne"        ~ "Fir")) %>% 
+  
+  # filter(is.na(orientation))
+  mutate(orientation = case_when(orientation == 'ost'~ 'east',
+                                 orientation == 'west'~ 'west',
+                                 orientation == 'nord'~ 'north',
+                                 orientation == 'sued'~ 'south')) %>% 
+  # distinct(orientation)
+  mutate(trip_n = as.character(trip_n),
+         sub_n = as.character(sub_n))
+
+
+# Check teh distribution of values:
+hist(df_advanced_env$distance)
+df_advanced_env %>% 
+  ggplot(aes(distance), fill = 'white', col = 'black') +
+  geom_histogram(bins = 100) +
+  theme_bw() +
+  facet_grid(.~manag)
+
+# some have crazy values!!
+df_advanced_env %>% 
+  filter(distance > 5000)
+
+# # Get the list of the corresponding photos?
+
+df_advanced_env %>% 
+  left_join(df_photo) %>% 
+  filter(distance > 1500 & site == 'environment' ) %>% 
+ select(trip_n, dom_sp, sub_n, tree_species, exposure, photo_number, distance) # DBH, , edge_tree 
+
+
+
+
+#### Save the mature trees dataset -------------------------------------------------
+fwrite(df_advanced_env, outAdvancedENV)
+
+
+
+
+
+
+
 
 
 
