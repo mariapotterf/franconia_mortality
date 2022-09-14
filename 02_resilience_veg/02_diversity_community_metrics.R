@@ -23,10 +23,27 @@
 # remove the planted seedlings!
 
 
+
+# Combine two data:  [plot and nearest tree]
+# --------------------------------------------------
+# plot level: 
+#    - mature tree, 
+#    - advanced
+#    - regen
+# basal area and density per site: 
+#   - from nearest distance metrics 
+#   - make sure to add +100 cm (distance to the center )
+# dbh for advanced regen in ENV:  
+#   - use the mean/median value from advanced regeneration 
+
+
+
 # How to get basal area?
 # ---------------------------------
-# from mature trees on the plots/nearest neighbor? merge both analyses and select the nearest tree: 
-#               then calculate the density and tree basal area per MA
+
+# two estimations: 
+#      on plot and nearest neighbor: those would be for BA, stem density
+
 # density from distance measure: based on nearest individual:
 # MA = (2*mean(distance)^2)  # MA = mean area
 # Density = 1/MA - > need to convert to common value with the sampling densities: hectar/m2
@@ -46,7 +63,7 @@
 # test different categories and community resemblance?
 # remove all previous data from R memory
 # Convert the regeneration counts into density/ha - takes into account the difference in sampling plot!
-#  need to do the slope correction?
+#     - need to do the slope correction?
 # http://wiki.awf.forst.uni-goettingen.de/wiki/index.php/Slope_correction
 # our inclinometer Suunto is in degrees: goes 0-90
 # slope correction: only needed for slopes > 10% (7 degrees) # https://www.archtoolbox.com/calculating-slope/
@@ -99,8 +116,6 @@ dat %>%
 
 
 # How many plots of 4m2 (per triplet) do we have? 1244!!!
-# saved in 
-head(plot_counts_df)
 
 
 # Explore the data: --------------------------------------------------------------
@@ -114,10 +129,6 @@ df_advanced_count <-
   summarize(sum_sapln = sum(count, na.rm = T)) #,
 
 
-# I have a very high regeneration in HK1 class: >40-50 treess/4m2 YES, correct
-# 'df_reg_full' keeps all planted and damaged ones of seedling regeneration !!!
-filter(df_reg_full, n_total > 30) # all high counts seem ok! 
-
 
 # Remove the planted seedlings:
 df_reg_onlyNatural <- df_reg_full %>% 
@@ -129,8 +140,6 @@ df_regen_all <- df_reg_onlyNatural %>%
   left_join(df_advanced_count, 
             by = c("trip_n", "dom_sp", "manag", "sub_n", "reg_species"))
 
-
-hist(df_reg_onlyNatural$n_total, breaks = seq(0,60, 1))
 
 
 # Regeneration counts: ------------------------------------------------------------
@@ -210,7 +219,7 @@ p_prevalence <- df_regen_all2 %>%
 
 #################################################
 # 
-# Calculate species importance value:            ----
+# Calculate species importance value: from PLOT           ----
 # 
 # ###############################################
 # combine the regeneration, advanced regeneration and mature trees per site
@@ -235,10 +244,6 @@ p_prevalence <- df_regen_all2 %>%
 # add distances (in cm) if teh tree is present on the plot:
 # measured from the plot center: +100 cm
 # -> change the distances for surroundings: should be > 100 cm away
-hist(df_mature_trees_env$distance )
-
-range(df_mature_trees_env$distance, na.rm = T) # in cm
-# [1]   11 1500
 
 my_cols_mature = c('trip_n',
                    'dom_sp',
