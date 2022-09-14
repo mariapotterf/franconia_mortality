@@ -117,6 +117,26 @@ dat %>%
   tally()  # 40
 
 
+
+
+
+# Get the number of sub_n per each triplet and category: -------------------------------------
+
+df_sub_count <- 
+  plot_counts_df %>% 
+  #plots_master %>% 
+  group_by(trip_n, dom_sp, manag) %>% 
+  count() %>% 
+  rename(sub_counts = n) %>% 
+  mutate(trip_n = as.character(trip_n))
+
+# trip_n = 1:
+#1      1 spruce c              6
+#2      1 spruce d              5
+#3      1 spruce l             15
+
+
+
 # How many plots of 4m2 (per triplet) do we have? 1244!!!
 
 # Calculate values on plot level (average per site), and on site level (distance density)
@@ -306,7 +326,7 @@ df_mature_fin <-
 # Calculate distance density from Mature trees ENV
 # 
 ####################################################################
-# need to get:
+# need to get: need to get it on level of species!
 # frequency of species
 # density
 # basal area - check from script! !!!!
@@ -315,7 +335,7 @@ df_mature_fin <-
 
 df_dens_mat_ENV <- 
   df_mature_trees_env %>% 
-  group_by(trip_n, manag) %>% 
+  group_by(trip_n, manag, tree_species) %>% 
   summarize(mean_dist = mean(distance, na.rm = T)) %>%
   mutate(MA = 2*mean_dist^2,
          density = 1/MA * 10^8)  # 1ha = 1e+8 cm2
@@ -323,7 +343,8 @@ df_dens_mat_ENV <-
   
 df_dens_mat_ENV %>% 
   ggplot(aes(y = density, x= manag)) + 
-  geom_boxplot()
+  geom_boxplot() + 
+  facet_wrap(.~ tree_species)
 
 
 
@@ -399,11 +420,71 @@ df_dens_adv_ENV %>%
 #
 #####################################################################
 
+# should I merge the data from ENV advanced, mature and Plot?
+# or calculate them individually, and then calculate their average?
+# maybe test on one: how the data will look different?
 
 # Get the Frequency, density, relative basal area
 # for mature trees, for advanced regen
 # Mature trees basal area: just simple sum, if needed multiply by density??
 
+
+# Mature trees:
+df_dens_mat_ENV     # density estimation 
+df_mature_trees_env # individual trees, contain the DBH info-> for basal area
+
+
+
+# Calculate relative frequency: if species occurs on 5 plots ot of 8: freq = 62.5% 
+# https://stackoverflow.com/questions/73442694/calculate-the-frequency-of-species-occurrence-across-sites/73442974#73442974
+df_freq_mat_env <-
+  df_mature_trees_env %>%
+ # drop_na(tree_species   ) %>%
+  select(trip_n, manag, sub_n, tree_species   ) %>%
+  distinct() %>% # just to check if teh species is present or not
+  group_by(trip_n, manag, tree_species   ) %>%
+  summarise(sites_by_species = n_distinct(sub_n)) %>% # Step 1; count sites by species
+  left_join(df_sub_count, by = c("trip_n", "manag")) %>%
+  mutate(frequency = 100 * sites_by_species / sub_counts)
+
+
+# relative density: 
+# the number of individuals per area as a percent of the number of individuals of all species.
+df_rel_density_mat_env <- 
+ df_dens_mat_ENV %>%
+  group_by(trip_n,  manag) %>% 
+  mutate(all_dens = sum(density, na.rm = T),
+         rel_density = density/all_dens*100)
+
+
+# Relative basal area.  
+# the total basal area of Species A as a percent of the total basal area of all species.  
+df_rel_BA_mat_env <- 
+  df_mature_trees_env %>%
+  mutate(r = DBH/2,
+         BA = pi*r^2)  %>% 
+  group_by(trip_n, dom_sp, manag, tree_species) %>%
+  summarize(sp_BA = sum(BA, na.rm = T)) %>% 
+  ungroup(.) %>% 
+  group_by(trip_n, dom_sp, manag) %>% 
+  mutate(all_BA = sum(sp_BA, na.rm = T),
+         rel_BA = sp_BA/all_BA*100) %>% 
+  mutate(rel_BA = replace_na(rel_BA, 0))  # replace NA by 0 if BA is missing
+
+
+###################################
+#                                 #
+# ENV: Mature: 
+#  Species Importance Value        #
+#                                 #
+###################################
+
+# merge the rel frequeny, density and basal area ------------------------------------------
+df_IVI_out_mat_env <- 
+  df_freq_mat_env %>% 
+  left_join(df_rel_density_mat_env) %>% 
+  left_join(df_rel_BA_mat_env) %>% 
+  mutate(sp_IVI = frequency + rel_density +rel_BA)
 
 
 
@@ -532,21 +613,6 @@ df_full_plot <- df_full_plot %>%
   drop_na(reg_species)
 
 
-
-# Get the number of sub_n per each triplet and category: -------------------------------------
-
-df_sub_count <- 
-  plot_counts_df %>% 
-  #plots_master %>% 
-  group_by(trip_n, dom_sp, manag) %>% 
-  count() %>% 
-  rename(sub_counts = n) %>% 
-  mutate(trip_n = as.character(trip_n))
-
-# trip_n = 1:
-#1      1 spruce c              6
-#2      1 spruce d              5
-#3      1 spruce l             15
 
 
 # Calculate relative frequency: if species occurs on 5 plots ot of 8: freq = 62.5% 
