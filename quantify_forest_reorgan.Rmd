@@ -46,14 +46,14 @@ Identify the aspects of the forest reorganization:
 
 ## Composite indicators:
 
-Composite indicator for reassembly:
+### For reassembly:
 
 All reassembly indicators are given equal weights in the aggregation towards a composite indicator of reassembly (RA):
 
 RA = (RA1+RA2+RA3+RA4+RA5)/5
 
 
-## Composite indicator for restructuring
+### For restructuring
 
 Early indications of restructuring (RS) are derived from the analyses of stem density (RS1), gap fraction (RS2) and diameter distribution (RS4). If there is considerable ability for infilling (RS3), the impact of reduced stem density (RS1) or increased gaps (RS2) are compensated:
 
@@ -231,7 +231,7 @@ p_treeComp_categ
 # Quantify forest reorganization
 
 
-## RA1: Novel species: competition:
+## RA1: Novel species: Presence
 
 Are novel species (i.e., species that are not present under reference conditions) present after disturbance?
 
