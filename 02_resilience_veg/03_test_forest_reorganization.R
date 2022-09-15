@@ -25,11 +25,11 @@ getwd()
 load(file = paste(getwd(), "dataToPlot.Rdata", sep = '/'))
 
 # Identify data to use:
-head(df_full_plot)   # - full plot based data: df_full_plot
-head(df_IVI_out)     # - df importance value:  df_IVI_out
-head(df_winners)     # - novel species:        df_novelty
-head(trait_df)       # - trait values for all species: eco_traits
-head(df_ground)      # - ground cover, in classes by 5%  
+head(df_full_plot)        # - full plot based data: df_full_plot
+head(df_IVI_3scales)      # - df importance value:  df_IVI_out, from plot, env mature, env advanced
+head(df_winners)          # - novel species:        df_novelty
+head(trait_df)            # - trait values for all species: eco_traits
+head(df_ground)           # - ground cover, in classes by 5%  
 head(df_mature_trees_env) # - trees in the surroundings; nearest trees
 
 # Master plots:
@@ -50,31 +50,27 @@ master_tripl <- distinct(select(plot_counts_df_sum, trip_n))
 #  2 24     d     Ash         novel  
 
 
-# !!! in working example: 
-# Evaluate how does the 300% value changes based on the species occurence, size and prevalence??
-
-
 # RA1: Novel species: presence ---------------------------------------------------------
 RA1_plot <- 
-  df_IVI_out %>% 
+  df_IVI_3scales %>% 
   filter(manag != 'c') %>% 
   left_join(df_winners) %>% 
     ungroup(.) %>% 
     mutate(novelty = case_when(is.na(novelty) ~ 'present',
-                               novelty == 'novel' ~ novelty),
-           sp_IVI = case_when(manag == 'd' ~ sp_IVI*2, # if disturbed, multiply by *2 (need more trees to re-populate disturbed areas that it was before)
-                              manag == 'l' ~ sp_IVI)) %>% 
+                               novelty == 'novel' ~ novelty)) %>% #  ,
+           #mean_sp_IVI = case_when(manag == 'd' ~ mean_sp_IVI*2, # if disturbed, multiply by *2 (need more trees to re-populate disturbed areas that it was before)
+          #                    manag == 'l' ~ mean_sp_IVI)) %>% 
   #mutate(IVI_sum_living = IVI_sum[manag == 'l']) %>% 
-    dplyr::select(trip_n, manag, reg_species, sp_IVI, novelty) %>%
+    dplyr::select(trip_n, manag, species, mean_sp_IVI, novelty) %>%
     #filter(manag == 'd') %>% 
     group_by(trip_n, manag) %>% 
-    summarize(IVI_sum = sum(sp_IVI, na.rm = T),
-              IVI_sum_novel = sum(sp_IVI[novelty == 'novel'])) %>%
-    mutate(RA1 = case_when(IVI_sum_novel > 150 ~ 1,
-                           IVI_sum_novel < 150 ~ 0)) #%>%
+    summarize(IVI_sum = sum(mean_sp_IVI, na.rm = T),
+              IVI_sum_novel = sum(mean_sp_IVI[novelty == 'novel'])) %>%
+    mutate(RA1 = case_when(IVI_sum_novel > 50 ~ 1,
+                           IVI_sum_novel <= 50 ~ 0)) #%>%
 
 
-# Get RA1 only for the 
+# Get RA1 for all triplets, also for missing ones 
 RA1 <- RA1_plot %>% 
   filter(manag == 'd') %>% 
   right_join(master_tripl) %>%  # fill in all triplets categories
@@ -114,17 +110,19 @@ p_RA1 <- RA1_plot %>%
 # NA -> 0: if no novel species => no change (NA == 0)
 
 RA2 <- 
-  df_IVI_out %>% 
-  left_join(df_winners, by = c("trip_n", "manag", "reg_species")) %>% 
-  left_join(trait_df, by =c('reg_species')) %>% #, by = character()
+  df_IVI_3scales %>% 
+  left_join(df_winners, by = c("trip_n", "manag", "species")) %>% 
+  left_join(trait_df, by = c('species')) %>% #, by = character()
   filter(manag != 'c') %>% 
   mutate(novelty = case_when(is.na(novelty) ~ 'present',
                              novelty == 'novel' ~ novelty)) %>% 
   ungroup(.) %>% 
-  group_by(trip_n, dom_sp, manag, novelty) %>% 
-  summarize(shade_cwm   = weighted.mean(Shade_tolerance,   sp_count, na.rm = TRUE  ),
-            drought_cwm = weighted.mean(Drought_tolerance, sp_count, na.rm = TRUE  )) %>%
-  dplyr::select(trip_n, dom_sp, manag, novelty, shade_cwm, drought_cwm)  %>% # how to pass the new value to the new column?
+  group_by(trip_n,  manag, novelty) %>% 
+  summarize(shade_cwm   = weighted.mean(Shade_tolerance,   
+                                        mean_sp_IVI, na.rm = TRUE  ),
+            drought_cwm = weighted.mean(Drought_tolerance, 
+                                        mean_sp_IVI, na.rm = TRUE  )) %>%
+  dplyr::select(trip_n,  manag, novelty, shade_cwm, drought_cwm)  %>% # how to pass the new value to the new column?
   group_by(trip_n) %>% 
   mutate(shade_novel   = ifelse(any(novelty == "novel"), shade_cwm[novelty == "novel"] ,
                               shade_cwm[novelty == "present"])) %>%
@@ -138,7 +136,7 @@ RA2 <-
 
 # RA2 plot ----------------------------------------------------------------
 p_RA2 <-RA2 %>% 
-  pivot_longer(!c(trip_n, dom_sp, manag, novelty, RA2), 
+  pivot_longer(!c(trip_n,  manag, novelty, RA2), 
              names_to = 'type',
              values_to = 'val') %>%
   separate(type, c('trait', 'cond')) %>% 
@@ -160,10 +158,10 @@ p_RA2 <-RA2 %>%
 # identify species with teh highest VI bofore and after disturbance: is it still teh same species?
 # NA = interpret as change = 1 -> if teh species is missing, means that it is differenyt from reference
 RA3 <-
-  df_IVI_out %>%
+  df_IVI_3scales %>%
   filter(manag != 'c') %>%
-  dplyr::select(trip_n, manag, reg_species, sp_IVI) %>%
-  filter(sp_IVI == max(sp_IVI)) %>%
+  dplyr::select(trip_n, manag, reg_species, mean_sp_IVI) %>%
+  filter(mean_sp_IVI == max(mean_sp_IVI)) %>%
   group_by(trip_n) %>%
   mutate(maxIVI_l = reg_species[which(c(manag == 'l'))[1]]) %>%
   filter(manag == "d")  %>%  # to keep only one row per triplet
@@ -180,7 +178,7 @@ RA3 <-
 
 p_RA3 <- 
   RA3 %>% 
-  pivot_longer(!c(trip_n, manag, sp_IVI, RA3),
+  pivot_longer(!c(trip_n, manag, mean_sp_IVI, RA3),
                names_to = 'type',
                values_to = 'species') %>%
   mutate(type = case_when(type == 'reg_species' ~ 'Dist',
@@ -207,7 +205,7 @@ RA4 <-
   df_full_plot %>% 
   dplyr::select(!height_class) %>% 
   filter(manag != 'c' ) %>% #& height_class != 'mature'
-  group_by(trip_n, dom_sp, manag, sub_n) %>% #, reg_species for each sub_plot the get prevailing species by plot
+  group_by(trip_n,  manag, sub_n) %>% #, reg_species for each sub_plot the get prevailing species by plot
   filter(DBH>0) %>% 
   group_by(trip_n, manag) %>% 
   count(reg_species) %>% 
@@ -253,7 +251,7 @@ RA5 <-
   # find species most often the tallest tree?
   filter(manag != 'c' & height_class != 'mature') %>% # remove the mature trees
   mutate(height_class_num = as.numeric(gsub('HK', '', height_class))) %>% # change to numeric values
-   # group_by(trip_n, dom_sp, manag, sub_n) %>% #, reg_species for each sub_plot the get prevailing species by plot
+   # group_by(trip_n,  manag, sub_n) %>% #, reg_species for each sub_plot the get prevailing species by plot
   group_by(trip_n, manag) %>% 
   count(reg_species) %>% 
   slice(which.max(n)) %>% # identify the most frequent species with max dbh per site
@@ -333,7 +331,7 @@ RS1 <-
 # NA = no present data = change => 1
 p_RS1 <- RS1 %>% 
   group_by(trip_n) %>% 
-  pivot_longer(!c(trip_n, dom_sp, manag, sub_counts, sum_count, RS1), 
+  pivot_longer(!c(trip_n,  manag, sub_counts, sum_count, RS1), 
                names_to = 'type',
                values_to = 'val') %>% 
   mutate(type = case_when(type == 'rel_count' ~ 'Dist',
@@ -386,7 +384,7 @@ RS2 <-
 
 p_RS2 <- RS2 %>% 
   group_by(trip_n) %>% 
-  pivot_longer(!c(trip_n, manag, plots_occupied, dom_sp, plots_count, RS2), 
+  pivot_longer(!c(trip_n, manag, plots_occupied,  plots_count, RS2), 
                names_to = 'type',
                values_to = 'val') %>% 
   mutate(type = case_when(type == 'gaps_share'     ~ 'Dist',
@@ -615,7 +613,7 @@ out_reorg %>%
  d2 <- out_reorg %>% 
   left_join(master_tripl) %>% 
   group_by(reorganization, dom_sp) %>% 
-  mutate(comb = paste(dom_sp, reorganization, sep = ' ')) %>% 
+  mutate(comb = paste( reorganization, sep = ' ')) %>% 
   count(comb) %>% 
   as.data.frame() 
 
@@ -624,7 +622,7 @@ windows()
 tree_plot <- d2%>%  
   ggplot(aes(area = n, 
              fill = comb,
-             label = paste(dom_sp, 
+             label = paste( 
                            reorganization, 
                            paste(n/0.4, '%'),
                            sep = "\n"))) +
@@ -654,7 +652,7 @@ tree_plot_cols<- d2%>%
 
 p_stacked_reorg <- d2 %>% 
   ggplot(aes(y = n,
-             x = dom_sp,
+             x = 
              fill = reorganization)) + 
   geom_bar(position="fill", stat="identity", col = 'black') + 
   theme_bw() +
