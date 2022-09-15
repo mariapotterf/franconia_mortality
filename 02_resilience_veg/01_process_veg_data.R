@@ -461,7 +461,7 @@ df_regen <-
   pivot_longer(!c(uniqueID, gradient, exposure),
                names_to = 'manag',
                values_to = 'n_total') %>%
-  separate(manag, c('reg_species', 'height_class'), '_') %>%
+  separate(manag, c('species', 'height_class'), '_') %>%
   separate(uniqueID, all_of(plot_info), '_') #%>%
 #filter(n_total !=0)  # keep 0s to have the all overview of the total species
 # mutate(origin = 'natural')
@@ -488,7 +488,7 @@ df_regen_planted <-
                names_to = 'manag',
                values_to = 'n_planted') %>%          # convert to long format
   mutate(manag = gsub('Number_of_planted_individuals', 'planted', manag)) %>%   # replace string pattern to simplify names
-  separate(manag, c('reg_species', 'height_class', 'origin'), '_') %>%
+  separate(manag, c('species', 'height_class', 'origin'), '_') %>%
   dplyr::select(-c('origin')) %>%
   separate(uniqueID, all_of(plot_info), '_') %>%
   filter(complete.cases(.))
@@ -517,7 +517,7 @@ df_regen_damaged <-
                                         "combined_damage"      = "combined")))  %>% 
     dplyr::mutate(dam_manag = gsub('Number_of_', '', dam_manag)) %>% 
     separate(uniqueID, c('trip_n', 'dom_sp', 'manag', 'sub_n'), '_') %>% 
-    separate(dam_manag, c('reg_species', 'height_class', 'damage_place'), '_')  %>%
+    separate(dam_manag, c('species', 'height_class', 'damage_place'), '_')  %>%
     filter(complete.cases(.)) %>% 
     filter(n_damage !=0)
   
@@ -533,10 +533,10 @@ df_reg_full <-
   filter(n_total !=0) %>%  # exclude 0 if no regeneration was collected
   mutate(n_planted = replace_na(n_planted, 0)) %>% # convert all NaN to zeros
   mutate(
-    reg_species = case_when(
-      reg_species == "OtherSoftwood" ~ "O_Soft",
-      reg_species == "OtherHardwood" ~ "O_Hard",
-      TRUE ~ reg_species
+    species = case_when(
+      species == "OtherSoftwood" ~ "O_Soft",
+      species == "OtherHardwood" ~ "O_Hard",
+      TRUE ~ species
     )) # %>% 
 
   
@@ -569,7 +569,7 @@ get_adv_regen <- function(x, ...) {
     filter(complete.cases(.)) # remove the rows that contains NA values
   
   # Rename the columns:
-  colnames(dat_reg) <- c('gradient', 'exposure', 'reg_species', 'DBH', 'height', 'uniqueID', 'tree_numb')
+  colnames(dat_reg) <- c('gradient', 'exposure', 'species', 'DBH', 'height', 'uniqueID', 'tree_numb')
   
   # Return the df from teh function
   return(dat_reg)
@@ -586,22 +586,22 @@ ls_advanced <- lapply(x, get_adv_regen)
 df_advanced <- do.call(rbind, ls_advanced)
 
 
-# Replace names of tree reg_species:
+# Replace names of tree species:
 df_advanced <- df_advanced %>%
   mutate(
-    reg_species = case_when(
-      reg_species == "Esche"        ~ "Ash",
-      reg_species == "Sonstiges NH" ~ "O_Soft",
-      reg_species == "Sonstiges LH" ~ "O_Hard",
-      reg_species == "Buche"        ~ "Beech" ,
-      reg_species == "Vogelbeere"   ~ "Rowan",
-      reg_species == "Bergahorn"    ~ "Maple",
-      reg_species == "Fichte"       ~ "Spruce",
-      reg_species == "Eiche"        ~ "Oak",
-      reg_species == "Kiefer"       ~ "Pine",
-      reg_species == "Birke"        ~ "Birch",
-      reg_species == "Weide"        ~ "Willow",
-      reg_species == "Tanne"        ~ "Fir"
+    species = case_when(
+      species == "Esche"        ~ "Ash",
+      species == "Sonstiges NH" ~ "O_Soft",
+      species == "Sonstiges LH" ~ "O_Hard",
+      species == "Buche"        ~ "Beech" ,
+      species == "Vogelbeere"   ~ "Rowan",
+      species == "Bergahorn"    ~ "Maple",
+      species == "Fichte"       ~ "Spruce",
+      species == "Eiche"        ~ "Oak",
+      species == "Kiefer"       ~ "Pine",
+      species == "Birke"        ~ "Birch",
+      species == "Weide"        ~ "Willow",
+      species == "Tanne"        ~ "Fir"
     )
   )
 
@@ -612,7 +612,7 @@ df_advanced <- df_advanced %>%
 df_advanced %>% filter(height <200)  # change the values to cm in next step
 
 
-#   reg_species   DBH height uniqueID      tree_numb
+#   species   DBH height uniqueID      tree_numb
 #<chr>   <dbl>  <dbl> <chr>             <int>
 #  1 Beech       9     10 64_pine_l_1           1
 #  2 Beech       8     13 31_beech_c_10         1
@@ -658,19 +658,19 @@ df_mature_trees_env <-
   dplyr::select(matches(paste(c(plot_info, plot_geo, 'MatureTree'), collapse = '|'))) %>%
   dplyr::select(-c("env_MatureTree_present_the_sectors" )) %>%
   drop_na() %>%  # some sample plots have nearest trees > 15m away 
-  setnames(c(plot_info, 'gradient', 'exposure', 'orientation', 'tree_species', 'DBH', 'distance', 'edge_tree' )) %>%
-  mutate(tree_species = case_when(tree_species == "Esche"        ~ "Ash",
-                                  tree_species == "Sonstiges NH" ~ "O_Soft",
-                                  tree_species == "Sonstiges LH" ~ "O_Hard",
-                                  tree_species == "Buche"        ~ "Beech" ,
-                                  tree_species == "Vogelbeere"   ~ "Rowan",
-                                  tree_species == "Bergahorn"    ~ "Maple",
-                                  tree_species == "Fichte"       ~ "Spruce",
-                                  tree_species == "Eiche"        ~ "Oak",
-                                  tree_species == "Kiefer"       ~ "Pine",
-                                  tree_species == "Birke"        ~ "Birch",
-                                  tree_species == "Weide"        ~ "Willow",
-                                  tree_species == "Tanne"        ~ "Fir")) %>% 
+  setnames(c(plot_info, 'gradient', 'exposure', 'orientation', 'species', 'DBH', 'distance', 'edge_tree' )) %>%
+  mutate(species = case_when(species == "Esche"        ~ "Ash",
+                                  species == "Sonstiges NH" ~ "O_Soft",
+                                  species == "Sonstiges LH" ~ "O_Hard",
+                                  species == "Buche"        ~ "Beech" ,
+                                  species == "Vogelbeere"   ~ "Rowan",
+                                  species == "Bergahorn"    ~ "Maple",
+                                  species == "Fichte"       ~ "Spruce",
+                                  species == "Eiche"        ~ "Oak",
+                                  species == "Kiefer"       ~ "Pine",
+                                  species == "Birke"        ~ "Birch",
+                                  species == "Weide"        ~ "Willow",
+                                  species == "Tanne"        ~ "Fir")) %>% 
   mutate(orientation = case_when(orientation == 'ost'~ 'east',
                                  orientation == 'west'~ 'west',
                                  orientation == 'nord'~ 'north',
@@ -685,7 +685,7 @@ df_mature_trees_env <-
 df_mature_trees_env %>% 
   left_join(df_photo) %>% 
   filter(distance < 100 ) #%>% # & site == 'environment' 
- # select(trip_n, dom_sp, sub_n, tree_species, DBH, photo_number, distance, edge_tree)
+ # select(trip_n, dom_sp, sub_n, species, DBH, photo_number, distance, edge_tree)
 
 
 
@@ -709,19 +709,19 @@ df_advanced_env <-
   dplyr::select(-c("env_Advanced_regeneration_the_sectors" )) %>%
   #names()
   drop_na() %>%  # some sample plots have nearest trees > 15m away 
-  setnames(c(plot_info, 'gradient', 'exposure', 'orientation', 'tree_species', 'distance')) %>%
-  mutate(tree_species = case_when(tree_species == "Esche"        ~ "Ash",
-                                  tree_species == "Sonstiges NH" ~ "O_Soft",
-                                  tree_species == "Sonstiges LH" ~ "O_Hard",
-                                  tree_species == "Buche"        ~ "Beech" ,
-                                  tree_species == "Vogelbeere"   ~ "Rowan",
-                                  tree_species == "Bergahorn"    ~ "Maple",
-                                  tree_species == "Fichte"       ~ "Spruce",
-                                  tree_species == "Eiche"        ~ "Oak",
-                                  tree_species == "Kiefer"       ~ "Pine",
-                                  tree_species == "Birke"        ~ "Birch",
-                                  tree_species == "Weide"        ~ "Willow",
-                                  tree_species == "Tanne"        ~ "Fir")) %>% 
+  setnames(c(plot_info, 'gradient', 'exposure', 'orientation', 'species', 'distance')) %>%
+  mutate(species = case_when(species == "Esche"        ~ "Ash",
+                                  species == "Sonstiges NH" ~ "O_Soft",
+                                  species == "Sonstiges LH" ~ "O_Hard",
+                                  species == "Buche"        ~ "Beech" ,
+                                  species == "Vogelbeere"   ~ "Rowan",
+                                  species == "Bergahorn"    ~ "Maple",
+                                  species == "Fichte"       ~ "Spruce",
+                                  species == "Eiche"        ~ "Oak",
+                                  species == "Kiefer"       ~ "Pine",
+                                  species == "Birke"        ~ "Birch",
+                                  species == "Weide"        ~ "Willow",
+                                  species == "Tanne"        ~ "Fir")) %>% 
   
   # filter(is.na(orientation))
   mutate(orientation = case_when(orientation == 'ost'~ 'east',
@@ -747,7 +747,7 @@ df_advanced_env %>%
 df_advanced_env %>% 
   left_join(df_photo) %>% 
   filter(distance <100 & site == 'environment' ) %>% 
- select(trip_n, dom_sp, sub_n, tree_species, exposure, photo_number, distance) # DBH, , edge_tree 
+ select(trip_n, dom_sp, sub_n, species, exposure, photo_number, distance) # DBH, , edge_tree 
 
 
 
