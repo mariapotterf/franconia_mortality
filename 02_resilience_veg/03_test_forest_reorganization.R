@@ -26,11 +26,11 @@ load(file = paste(getwd(), "dataToPlot.Rdata", sep = '/'))
 
 # Identify data to use:
 head(df_full_plot)        # - full plot based data: df_full_plot
-head(df_IVI_3scales)      # - df importance value:  df_IVI_out, from plot, env mature, env advanced
+head(site_IVI)            # - df importance value:from plot, env mature, env advanced, merged by density/ha
 head(df_winners)          # - novel species:        df_novelty
 head(trait_df)            # - trait values for all species: eco_traits
 head(df_ground)           # - ground cover, in classes by 5%  
-head(df_mature_trees_env) # - trees in the surroundings; nearest trees
+#head(df_mature_trees_env) # - trees in the surroundings; nearest trees
 
 # Master plots:
 head(plot_counts_df) # - total count of the plots per triplets & categories: to standardize the densities...
@@ -40,32 +40,27 @@ head(plot_counts_df) # - total count of the plots per triplets & categories: to 
 master_tripl <- distinct(select(plot_counts_df_sum, trip_n))
 
 # Reassembly: ------------------------------------------------------------------
-# add novelty info to the df_IVI_out:
-
-# Example of novel species:
-#> df_winners: 
-# A tibble: 34 x 4
-#trip_n manag reg_species novelty
-#  1 24     d     Oak         novel  
-#  2 24     d     Ash         novel  
-
+# add novelty info to the 'site_IVI':
+site_IVI <- replace_na(site_IVI, list(rel_BA   = 0, rIVI = 0))
 
 # RA1: Novel species: presence ---------------------------------------------------------
+# !!!! should teh sum (rIVI) be 100 % per community/site?
+
 RA1_plot <- 
-  df_IVI_3scales %>% 
+  site_IVI %>% 
   filter(manag != 'c') %>% 
   left_join(df_winners) %>% 
     ungroup(.) %>% 
     mutate(novelty = case_when(is.na(novelty) ~ 'present',
                                novelty == 'novel' ~ novelty)) %>% #  ,
-           #mean_sp_IVI = case_when(manag == 'd' ~ mean_sp_IVI*2, # if disturbed, multiply by *2 (need more trees to re-populate disturbed areas that it was before)
-          #                    manag == 'l' ~ mean_sp_IVI)) %>% 
+           #rIVI = case_when(manag == 'd' ~ rIVI*2, # if disturbed, multiply by *2 (need more trees to re-populate disturbed areas that it was before)
+          #                    manag == 'l' ~ rIVI)) %>% 
   #mutate(IVI_sum_living = IVI_sum[manag == 'l']) %>% 
-    dplyr::select(trip_n, manag, species, mean_sp_IVI, novelty) %>%
+    dplyr::select(trip_n, manag, species, rIVI, novelty) %>%
     #filter(manag == 'd') %>% 
     group_by(trip_n, manag) %>% 
-    summarize(IVI_sum = sum(mean_sp_IVI, na.rm = T),
-              IVI_sum_novel = sum(mean_sp_IVI[novelty == 'novel'])) %>%
+    summarize(IVI_sum = sum(rIVI, na.rm = T),
+              IVI_sum_novel = sum(rIVI[novelty == 'novel'])) %>%
     mutate(RA1 = case_when(IVI_sum_novel > 50 ~ 1,
                            IVI_sum_novel <= 50 ~ 0)) #%>%
 
@@ -110,7 +105,7 @@ p_RA1 <- RA1_plot %>%
 # NA -> 0: if no novel species => no change (NA == 0)
 
 RA2 <- 
-  df_IVI_3scales %>% 
+  site_IVI %>% 
   left_join(df_winners, by = c("trip_n", "manag", "species")) %>% 
   left_join(trait_df, by = c('species')) %>% #, by = character()
   filter(manag != 'c') %>% 
@@ -119,9 +114,9 @@ RA2 <-
   ungroup(.) %>% 
   group_by(trip_n,  manag, novelty) %>% 
   summarize(shade_cwm   = weighted.mean(Shade_tolerance,   
-                                        mean_sp_IVI, na.rm = TRUE  ),
+                                        rIVI, na.rm = TRUE  ),
             drought_cwm = weighted.mean(Drought_tolerance, 
-                                        mean_sp_IVI, na.rm = TRUE  )) %>%
+                                        rIVI, na.rm = TRUE  )) %>%
   dplyr::select(trip_n,  manag, novelty, shade_cwm, drought_cwm)  %>% # how to pass the new value to the new column?
   group_by(trip_n) %>% 
   mutate(shade_novel   = ifelse(any(novelty == "novel"), shade_cwm[novelty == "novel"] ,
@@ -158,15 +153,15 @@ p_RA2 <-RA2 %>%
 # identify species with teh highest VI bofore and after disturbance: is it still teh same species?
 # NA = interpret as change = 1 -> if teh species is missing, means that it is differenyt from reference
 RA3 <-
-  df_IVI_3scales %>%
+  site_IVI %>%
   filter(manag != 'c') %>%
-  dplyr::select(trip_n, manag, reg_species, mean_sp_IVI) %>%
-  filter(mean_sp_IVI == max(mean_sp_IVI)) %>%
+  dplyr::select(trip_n, manag, species, rIVI) %>%
+  filter(rIVI == max(rIVI)) %>%
   group_by(trip_n) %>%
-  mutate(maxIVI_l = reg_species[which(c(manag == 'l'))[1]]) %>%
+  mutate(maxIVI_l = species[which(c(manag == 'l'))[1]]) %>%
   filter(manag == "d")  %>%  # to keep only one row per triplet
-  mutate(RA3 = case_when(maxIVI_l == reg_species ~ 0,
-                         maxIVI_l != reg_species ~ 1)) %>% 
+  mutate(RA3 = case_when(maxIVI_l == species ~ 0,
+                         maxIVI_l != species ~ 1)) %>% 
   right_join(master_tripl) %>%  # fill in all triplets categories
   mutate(RA3 = replace_na(RA3, 1))  # if the regeneration is missing, it is a change! so put as 1
 
@@ -178,10 +173,10 @@ RA3 <-
 
 p_RA3 <- 
   RA3 %>% 
-  pivot_longer(!c(trip_n, manag, mean_sp_IVI, RA3),
+  pivot_longer(!c(trip_n, manag, rIVI, RA3),
                names_to = 'type',
                values_to = 'species') %>%
-  mutate(type = case_when(type == 'reg_species' ~ 'Dist',
+  mutate(type = case_when(type == 'species' ~ 'Dist',
                           type == 'maxIVI_l' ~ 'Ref')) %>%
   drop_na() %>% 
   mutate(type = factor(type, levels = c('Ref', 'Dist'))) %>% 
@@ -196,26 +191,31 @@ p_RA3 <-
 
 
 
-# RA4: Competition: tree size: -----------------------------------------------
-# find teh species that has most often the highest DBH & largest height - split in two columns?
+# RA4: Competition: tree DBH: -----------------------------------------------
+# find teh species that has most often the highest DBH 
+# add the nearest mature trees there
 # NA = missing values = there is a change  = 1
 # tre species are missing in 'dead' category, present in living: triplets: 10,2, 27, 4,61
 # considering as change!  = 1
+# !!!!!!! Check both here, with and without nearest Mature trees!!! if teh output is different??
+
 RA4 <- 
   df_full_plot %>% 
+  select(c('trip_n', 'sub_n', 'manag', 'species', 'DBH')) %>% 
+  bind_rows(select(df_mature_trees_env, c('trip_n', 'sub_n', 'manag', 'species', 'DBH'))) %>% 
   dplyr::select(!height_class) %>% 
   filter(manag != 'c' ) %>% #& height_class != 'mature'
-  group_by(trip_n,  manag, sub_n) %>% #, reg_species for each sub_plot the get prevailing species by plot
+  group_by(trip_n,  manag, sub_n) %>% #, species for each sub_plot the get prevailing species by plot
   filter(DBH>0) %>% 
   group_by(trip_n, manag) %>% 
-  count(reg_species) %>% 
+  count(species) %>% 
   slice(which.max(n)) %>% # idetify the most frequent species with max dbh per site
  # print(n = 90)  
   group_by(trip_n) %>% 
-  mutate(spec_l = reg_species[which(c(manag == 'l'))[1]]) %>% # get prevailing species in ref conditios 
+  mutate(spec_l = species[which(c(manag == 'l'))[1]]) %>% # get prevailing species in ref conditios 
   filter(manag == "d")  %>%  # to keep only disturbed ones
-  mutate(RA4 = case_when(spec_l == reg_species ~ 0,  # compare with the living ones
-                           spec_l != reg_species ~ 1)) %>% 
+  mutate(RA4 = case_when(spec_l == species ~ 0,  # compare with the living ones
+                           spec_l != species ~ 1)) %>% 
   right_join(master_tripl) %>%  # by = c("trip_n", "manag")) %>%
   mutate(RA4 = replace_na(RA4, 1))  # if the regeneration is missing, it is a change! so put as 1
   
@@ -229,7 +229,7 @@ p_RA4 <- RA4 %>%
    pivot_longer(!c(trip_n, manag, n, RA4),
                 names_to = 'type',
                 values_to = 'species') %>%
-   mutate(type = case_when(type == 'reg_species' ~ 'Dist',
+   mutate(type = case_when(type == 'species' ~ 'Dist',
                            type == 'spec_l' ~ 'Ref')) %>%
    mutate(type = factor(type, levels = c('Ref', 'Dist'))) %>% 
   drop_na() %>% 
@@ -251,15 +251,15 @@ RA5 <-
   # find species most often the tallest tree?
   filter(manag != 'c' & height_class != 'mature') %>% # remove the mature trees
   mutate(height_class_num = as.numeric(gsub('HK', '', height_class))) %>% # change to numeric values
-   # group_by(trip_n,  manag, sub_n) %>% #, reg_species for each sub_plot the get prevailing species by plot
+   # group_by(trip_n,  manag, sub_n) %>% #, species for each sub_plot the get prevailing species by plot
   group_by(trip_n, manag) %>% 
-  count(reg_species) %>% 
+  count(species) %>% 
   slice(which.max(n)) %>% # identify the most frequent species with max dbh per site
   group_by(trip_n) %>% 
-  mutate(spec_l = reg_species[which(c(manag == 'l'))[1]]) %>% # get prevailing species in ref conditios 
+  mutate(spec_l = species[which(c(manag == 'l'))[1]]) %>% # get prevailing species in ref conditios 
  filter(manag == "d")  %>%  # to keep only disturbed ones
-  mutate(RA5 = case_when(spec_l == reg_species ~ 0,  # compare with the living ones
-                                spec_l != reg_species | is.na(spec_l) ~ 1)) %>%  # if the regeneration is absent-> indicates shift?
+  mutate(RA5 = case_when(spec_l == species ~ 0,  # compare with the living ones
+                                spec_l != species | is.na(spec_l) ~ 1)) %>%  # if the regeneration is absent-> indicates shift?
   right_join(master_tripl) %>%  # by = c("trip_n", "manag")) %>%
   mutate(RA5 = replace_na(RA5, 1))  # if the regeneration is missing, it is a change! so put as 1
 
@@ -271,7 +271,7 @@ p_RA5 <- RA5 %>%
    pivot_longer(!c(trip_n, manag, n, RA5),
                 names_to = 'type',
                 values_to = 'species') %>%
-   mutate(type = case_when(type == 'reg_species' ~ 'Dist',
+   mutate(type = case_when(type == 'species' ~ 'Dist',
                            type == 'spec_l' ~ 'Ref')) %>%
    mutate(type = factor(type, levels = c('Ref', 'Dist'))) %>% 
   drop_na() %>% 
