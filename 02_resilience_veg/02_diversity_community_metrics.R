@@ -13,8 +13,6 @@
 # new regeneration: plot
 
 
-# Calculate species importance value: 
-# -------------------------------------------
 # relative frequencies, densities and basal area per whole site: 
 # for Mature trees: use mature trees metrics for site
 # for seedlings & saplings = freq per plot -> this old account for the different plot number per site (5-15)
@@ -26,7 +24,6 @@
 
 
 # Combine two data:  [plot and nearest tree]
-# --------------------------------------------------
 # plot level: 
 #    - mature tree, 
 #    - advanced
@@ -36,7 +33,7 @@
 #   - advanced regen (missing height and DBH!)
 #   - make sure to add +100 cm (distance to the center )
 # dbh for advanced regen in ENV:  
-#   - use the mean/median value from advanced regeneration 
+#   - skip from IVi calculation
 
 
 
@@ -56,8 +53,8 @@
 
 
 
-# Get data about community structure
-# --------------------------------------------
+# Get data about community structure :
+# 
 # ecological traits
 # shannon diversity
 # gap fraction: how many of the 4m2 plots with no trees <10cm
@@ -76,12 +73,10 @@ rm(list=ls())
 
 
 # Input data -------------------------------------------------------------------
-
 load(file = "vegData.Rdata")
 
 
 #### Source paths and functions  -----------------------------------------------
-
 source('myPaths.R')
 
 
@@ -95,51 +90,23 @@ library(stringr)  # use regex expressions
 #library(gridExtra)
 library(ggpubr)
 
-##### Stats
-#library(MuMIn)
-#library(vegan)
-#library(mgcv)
-#library(gratia) # visualization of mgcv
-
-
-## Colors
-cols = c('#0072B2', # blue
-         '#E69F00', # buffer 500
-         '#F0E442', # buffer 2000
-         '#000000') # black
 
 
 
-# Get summary statistics: Triplets -----------------------------------------------
-dat %>% 
-  group_by(dom_sp) %>% 
-  distinct(trip_n) %>% 
-  tally()  # 40
-
-
-
-
-
-# Get the number of sub_n per each triplet and category: -------------------------------------
+# Get supplementary table ------------------------------------------------------- 
+# the number of sub_n per each triplet and category
 
 df_sub_count <- 
   plot_counts_df %>% 
-  #plots_master %>% 
   group_by(trip_n, dom_sp, manag) %>% 
   count() %>% 
   rename(sub_counts = n) %>% 
   mutate(trip_n = as.character(trip_n))
 
-# trip_n = 1:
-#1      1 spruce c              6
-#2      1 spruce d              5
-#3      1 spruce l             15
-
-
-
-# How many plots of 4m2 (per triplet) do we have? 1244!!!
 
 # Calculate values on plot level (average per site), and on site level (distance density)
+# merge all data together on site level (density, freuqncy, basal area per species, per site)
+# then calculate the rIVI = relative species importance value
 
 #############################################
 #                                           #
@@ -154,7 +121,7 @@ df_sub_count <-
 # seedling data
 df_advanced_count <- 
   df_advanced2 %>% 
-  group_by(trip_n, dom_sp, manag, sub_n, reg_species) %>% 
+  group_by(trip_n, dom_sp, manag, sub_n, species) %>% 
   summarize(sum_sapln = sum(count, na.rm = T)) #,
 
 
@@ -167,92 +134,90 @@ df_reg_onlyNatural <- df_reg_full %>%
 # merge counts of seedlings & saplings: 
 df_regen_all <- df_reg_onlyNatural %>% 
   left_join(df_advanced_count, 
-            by = c("trip_n", "dom_sp", "manag", "sub_n", "reg_species"))
+            by = c("trip_n", "dom_sp", "manag", "sub_n", "species"))
 
 
 
-# Regeneration counts: ------------------------------------------------------------
+# Plot: Regeneration counts: ------------------------------------------------------------
 # get total density per species: get diversity of the regeneration species???
 # need to show as average counts!!!
 df_regen_all2 <- df_regen_all %>% 
-  group_by(trip_n, dom_sp, manag, sub_n, reg_species) %>% 
+  group_by(trip_n, dom_sp, manag, sub_n, species) %>% 
   summarize(seedlings = mean(n_natural, na.rm = T),
             sapling = mean(sum_sapln, na.rm = T)) %>%
   mutate_all(~replace(., is.nan(.), 0)) %>% # convert all NaN to zeros
-  pivot_longer(!c(trip_n, dom_sp, manag, sub_n, reg_species), 
+  pivot_longer(!c(trip_n, dom_sp, manag, sub_n, species), 
                names_to = 'veg_class',
                values_to = 'count') # %>%
 
 
 # get barplot: counts of regeneration by species: -----------------------------------
-p_treeComp_categ <- 
-  df_regen_all2 %>% 
-  ggplot(aes(x = reorder(reg_species, -count), #reg_species,
-             y = count,
-             fill = factor(veg_class))) +
-  stat_summary(fun = mean, 
-               position=position_dodge(0.95), 
-               geom = "bar",
-               color = 'black') + 
-  stat_summary(fun.data = mean_se, 
-               geom = "errorbar", 
-               position=position_dodge(0.95),
-               width = .3) +
-    labs(fill = "Natural\nRegeneration") + 
- scale_fill_manual(values = c('sapling' = '#E69F00',
-                              'seedling' = 'grey90'),
-                   labels = c('sapling [2-5 m]', 
-                              'seedling [0.2-2m]')) +
-  xlab('') +
-  ylab('Mean counts per tree species') + 
-  theme_bw() +
-  facet_grid(dom_sp~manag, scales = 'free') + # 
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size = 8),
-         legend.position = 'bottom')# + 
-  
-  
-  
-# order by prevelanec of spcies: 
-p_prevalence <- df_regen_all2 %>% 
-    ggplot(aes(x = reorder(reg_species, -count), #reg_species,
-               y = count,
-               fill = factor(veg_class))) +
-    stat_summary(fun = mean, 
-                 position=position_dodge(0.95), 
-                 geom = "bar",
-                 color = 'black') + 
-    stat_summary(fun.data = mean_se, 
-                 geom = "errorbar", 
-                 position=position_dodge(0.95),
-                 width = .3) +
-    labs(fill = "Natural\nRegeneration") + 
-    scale_fill_manual(values = c('sapling' = '#E69F00',
-                                 'seedling' = 'grey90'),
-                      labels = c('sapling [>2-5 m]', 
-                                 'seedling [0.2-2m]')) +
-    xlab('') +
-    ylab('Mean counts\nper tree species') + 
-    theme_bw() +
-    #  facet_grid(dom_sp~manag) + # , scales = 'free'
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size = 8),
-          legend.position = 'right')# + 
-
-           
-
-
-
-
-
-
-
-
-
-#################################################
+# p_treeComp_categ <- 
+#   df_regen_all2 %>% 
+#   ggplot(aes(x = reorder(species, -count), #species,
+#              y = count,
+#              fill = factor(veg_class))) +
+#   stat_summary(fun = mean, 
+#                position=position_dodge(0.95), 
+#                geom = "bar",
+#                color = 'black') + 
+#   stat_summary(fun.data = mean_se, 
+#                geom = "errorbar", 
+#                position=position_dodge(0.95),
+#                width = .3) +
+#     labs(fill = "Natural\nRegeneration") + 
+#  scale_fill_manual(values = c('sapling' = '#E69F00',
+#                               'seedling' = 'grey90'),
+#                    labels = c('sapling [2-5 m]', 
+#                               'seedling [0.2-2m]')) +
+#   xlab('') +
+#   ylab('Mean counts per tree species') + 
+#   theme_bw() +
+#   facet_grid(dom_sp~manag, scales = 'free') + # 
+#   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size = 8),
+#          legend.position = 'bottom')# + 
+#   
+#   
+#   
+# # order by prevelanec of spcies: 
+# p_prevalence <- df_regen_all2 %>% 
+#     ggplot(aes(x = reorder(species, -count), #species,
+#                y = count,
+#                fill = factor(veg_class))) +
+#     stat_summary(fun = mean, 
+#                  position=position_dodge(0.95), 
+#                  geom = "bar",
+#                  color = 'black') + 
+#     stat_summary(fun.data = mean_se, 
+#                  geom = "errorbar", 
+#                  position=position_dodge(0.95),
+#                  width = .3) +
+#     labs(fill = "Natural\nRegeneration") + 
+#     scale_fill_manual(values = c('sapling' = '#E69F00',
+#                                  'seedling' = 'grey90'),
+#                       labels = c('sapling [>2-5 m]', 
+#                                  'seedling [0.2-2m]')) +
+#     xlab('') +
+#     ylab('Mean counts\nper tree species') + 
+#     theme_bw() +
+#     #  facet_grid(dom_sp~manag) + # , scales = 'free'
+#     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size = 8),
+#           legend.position = 'right')# + 
 # 
-# Calculate species importance value: from PLOT           ----
+#            
 # 
-# ###############################################
-# combine the regeneration, advanced regeneration and mature trees per site
+# 
+# 
+
+
+
+
+
+
+
+# Plot: rIVI ------------------------------------------------------------------------
+
+# combine the regeneration, advanced regeneration and mature trees per plot & site
 # Calculate:
 # - relative frequency  - percent of inventory points occupied by species A as a percent of occurence of all species
 # - relative density    - the number of individuals per area as a percent tof teh number of individuals of all species
@@ -266,126 +231,279 @@ p_prevalence <- df_regen_all2 %>%
 # for advanced & mature trees: I have dbh
 # mature trees: need to be accounted for teh trees on the plot, trees in nearest distance to calculate the area& basal area
 
-# get data for the Mature trees:
-# -------------------------------------
+## Site: get data for the Mature trees: ------------------------------------------
 # merge the mature trees from ones present on plots, 
 # and from the ENV: filter which one has a closer tree: on the plot, or nearest one? 
 
 # add distances (in cm) if teh tree is present on the plot:
 # measured from the plot center: +100 cm
 # -> change the distances for surroundings: should be > 100 cm away
-
-my_cols_mature = c('trip_n',
-                   'dom_sp',
-                   'manag',
-                   'sub_n',
-                   'tree_species',
-                   'distance',
-                   'DBH',
-                   'orientation')
-
-# Prepare mature data: from Mature on plot & in ENV: s
-# PLOT:
-df_mature_trees_plot_sub <- df_mature_trees_plot %>%
-  drop_na() %>% 
-  ungroup(.) %>% 
-  rename(tree_species = species) %>% 
-  mutate(orientation = 'plot',
-         distance = 40)  %>% 
-  dplyr::select(all_of(my_cols_mature)) 
-
-
-
-# ENV:
-df_mature_trees_env_sub <- 
-  df_mature_trees_env %>% 
-  mutate(distance = case_when(distance < 100 ~ distance + 100,
-                              distance >= 100 ~ distance )) %>% 
-  dplyr::select(all_of(my_cols_mature)) %>% 
-  mutate(orientation = 'ENV')
-
-
-  
-# rbind the mature tree data fro the plot and from the Environment  
-df_mature_all <- rbind(df_mature_trees_env_sub,
-                       df_mature_trees_plot_sub )
-
-# select the nearest tree (on the plot, in the surroundings) to calculate tree density and basal area
-# !! not needed! if I am calculating the density estimation from the 
-df_mature_fin <- 
-  df_mature_all %>% 
-  group_by(trip_n, dom_sp, manag, sub_n) %>% 
-  slice_min(order_by = distance)#  %>% # select the nearest tree
-
+# 
+# my_cols_mature = c('trip_n',
+#                    'dom_sp',
+#                    'manag',
+#                    'sub_n',
+#                    'species',
+#                    'distance',
+#                    'DBH',
+#                    'orientation')
+# 
+# # Prepare mature data: from Mature on plot & in ENV: s
+# # PLOT:
+# df_mature_trees_plot_sub <- df_mature_trees_plot %>%
+#   drop_na() %>% 
+#   ungroup(.) %>% 
+#   mutate(orientation = 'plot',
+#          distance = 40)  %>% 
+#   dplyr::select(all_of(my_cols_mature)) 
+# 
+# 
+# 
+# # ENV:
+# df_mature_trees_env_sub <- 
+#   df_mature_trees_env %>% 
+#   mutate(distance = case_when(distance < 100 ~ distance + 100,
+#                               distance >= 100 ~ distance )) %>% 
+#   dplyr::select(all_of(my_cols_mature)) %>% 
+#   mutate(orientation = 'ENV')
+# 
+# 
+#   
+# # rbind the mature tree data fro the plot and from the Environment  
+# df_mature_all <- rbind(df_mature_trees_env_sub,
+#                        df_mature_trees_plot_sub )
+# 
+# # select the nearest tree (on the plot, in the surroundings) to calculate tree density and basal area
+# # !! not needed! if I am calculating the density estimation from the 
+# df_mature_fin <- 
+#   df_mature_all %>% 
+#   group_by(trip_n, dom_sp, manag, sub_n) %>% 
+#   slice_min(order_by = distance)#  %>% # select the nearest tree
+# 
 
 # can also check if my density estimation will change if using one or the other approach??
 
 
-####################################################################
-#
-# Calculate distance density from Mature trees ENV
-# 
-####################################################################
-# need to get: need to get it on level of species!
-# frequency of species
-# density
+
+
+
+
+
+#########################################################
+#                                                       #
+# Plot: Species Importance Value (regen, adv, mature)   #
+#                                                       #
+######################################################### -------------------------------
+
+# need to calculate values per hectar, and then merge with the values per hectar estimations from the nearest 
+# neighbor!!!
+
+# Create full dataset per 4m2 to calculate Importance value: ------------------------------
+# data for seedlings & samplings
+# get counts, dbh -> basal area to calculate the frequency, deminity and dominance per species:
+my_cols_regen = c('trip_n', 
+                  'dom_sp', 
+                  'manag', 
+                  'sub_n',
+                  'species',   
+                  'DBH',  
+                  'count', 
+                  'height_class') #  'height'
+
+# filter and rename the values: keep only natural regeneration!
+df_reg_onlyNatural2 <- df_reg_onlyNatural %>% 
+  rename(count = n_natural) %>% 
+  mutate(height = case_when(height_class == 'HK1' ~ 0.3,
+                            height_class == 'HK2' ~ 0.5,
+                            height_class == 'HK3' ~ 0.7,
+                            height_class == 'HK4' ~ 0.9,
+                            height_class == 'HK5' ~ 1.2,
+                            height_class == 'HK6' ~ 1.7
+  )) %>% 
+  mutate(DBH = case_when(height == 1.7 ~ 0.8,  # DBH is ~ 1 cm for the HK6
+                         height != 1.7 ~ 0)) %>% 
+  dplyr::select(all_of(my_cols_regen))
+
+
+
+# filter and process seedlings, sampling and mature trees to fit in this database, and then 'rbind' 3 tables:
+# calculate BA for each (skip seedlings < 1.3 m = BA is NA)
+df_advanced3 <- df_advanced2 %>% 
+  dplyr::select(all_of(my_cols_regen))
+
+
+
+# mature trees on plot:
+df_mature_trees_plot3 <- df_mature_trees_plot %>% 
+  mutate(height_class = 'mature',
+         count = 1) %>% 
+  ungroup(.) %>% 
+  dplyr::select(all_of(my_cols_regen))
+
+
+# check names: correct, can be merged (r bind)
+names(df_reg_onlyNatural2)
+names(df_advanced3)
+names(df_mature_trees_plot3)
+
+
+
+# Just calculate frequency, density and basal area from the species present on the plots:
+# Merge all tree data on plot together:
+df_full_plot = rbind(df_reg_onlyNatural2,
+                     df_advanced3,
+                     df_mature_trees_plot3)
+
+# remove any NA from teh species (as a part from teh mature trees estimation):
+df_full_plot <- df_full_plot %>% 
+  drop_na(species)
+
+
+
+#Get density from the ENV: advanced regen, ENv: mature trees 
+# ENV: Mature trees distance density ----------------------------------
+
 # basal area - check from script! !!!!
-
-
-
 df_dens_mat_ENV <- 
   df_mature_trees_env %>% 
-  group_by(trip_n, manag, tree_species) %>% 
+  group_by(trip_n, manag, species) %>% 
   summarize(mean_dist = mean(distance, na.rm = T)) %>%
   mutate(MA = 2*mean_dist^2,
          density = 1/MA * 10^8)  # 1ha = 1e+8 cm2
 
+
+#### ENV: advanced --------------------------------------------------------------
+df_dens_adv_ENV <- 
+  df_advanced_env %>% 
+  group_by(trip_n, manag, species) %>% 
+  summarize(mean_dist = mean(distance, na.rm = T)) %>%
+  mutate(MA = 2*mean_dist^2,
+         density = 1/MA * 10^8)  # 1ha = 1e+8 cm2
+
+
+# Plot: Recalculate the density values per ha ------------------------------------------
+# to merge it later with advanced regeneration and Mature trees from surroundings
+
+# Try first with density!!
+
+ha <- 10000
+
+# get together dataset for plot and nearest distance species ------------------------
+df_dens_plot_ENV <- df_full_plot %>% 
+  group_by(trip_n, manag, species) %>% 
+  summarize(sp_count = sum(count, na.rm = T)) %>%
+  right_join(df_sub_count, by = c("trip_n", "manag")) %>% # add number of plots per site to calculate density for hectar
+  mutate(index = ha/(sub_counts*4),
+         density = index*sp_count) %>%  # density represents the value per ha!!!
+  dplyr::select(trip_n, manag, species, density) %>%
+  bind_rows(select(df_dens_mat_ENV, c('trip_n', 'manag', 'species', 'density'))) %>% 
+  bind_rows(select(df_dens_adv_ENV, c('trip_n', 'manag', 'species', 'density'))) %>% 
+  group_by(trip_n, manag, species) %>% 
+  summarize(dens_sum = sum(density, na.rm = T))
   
-df_dens_mat_ENV %>% 
-  ggplot(aes(y = density, x= manag)) + 
-  geom_boxplot() + 
-  facet_wrap(.~ tree_species)
+  
+  
+# !!!!!!
 
 
 
-# Outliers: goes up to 2000 trees/ha ------------------------- 
-# check the triplet number!
-df_dens_mat_ENV %>% 
-  filter(density > 1000)
 
 
-# 
-#   trip_n manag mean_dist     MA density
-#   <chr>  <chr>     <dbl>  <dbl>   <dbl>
-# 1  10     l          181. 65281.   1532.  # !!
-# 2  17     l          192  73728    1356.
-# 3  3      l          196. 76608.   1305.
-# 4  30     d          217. 94020.   1064.
-# 5  31     c          215  92450    1082.
-# 6  46     l          208. 86806.   1152 
-# 7  61     l          209. 87641.   1141.
-# 8  62     l          192  73728    1356.
-# 9  63     c          202  81608    1225.
-# 10 63     d          160  51200    1953. # !!
-# 11 63     l          214. 91878.   1088.
-# 12 64     l          222. 98441.   1016.
-# 
+unique(df_full_plot$count)
 
 
-df_mature_trees_env %>% 
-  filter(trip_n == '63' & manag == 'd') # dbh is ~ 10cm
-# 
-#     trip_n dom_sp manag sub_n gradient exposure orientation tree_species   DBH
-#     <chr>  <chr>  <chr> <chr>    <dbl>    <dbl> <chr>       <chr>        <dbl>
-#   1 63     pine   d     1            0        0 west        Beech           10
-#   2 63     pine   d     2            0        0 north       Beech           15
-#   3 63     pine   d     3            0        0 east        Beech           12
-#   4 63     pine   d     4            0        0 south       Beech           11
-#   5 63     pine   d     5            0        0 east        Pine            41
+# Calculate relative frequency: if species occurs on 5 plots ot of 8: freq = 62.5% 
+# https://stackoverflow.com/questions/73442694/calculate-the-frequency-of-species-occurrence-across-sites/73442974#73442974
+df_freq_plot <-
+  df_full_plot %>%
+  drop_na(species) %>%
+  select(trip_n, manag, sub_n, species) %>%
+  distinct() %>% # just to check if teh species is present or not
+  group_by(trip_n, manag, species) %>%
+  summarise(sites_by_species = n_distinct(sub_n)) %>% # Step 1; count sites by specices
+  left_join(df_sub_count, by = c("trip_n", "manag")) %>%
+  mutate(frequency = 100 * sites_by_species / sub_counts)
 
 
-df_mature_trees_env %>% 
-  filter(trip_n == '10' & manag == 'l') # dbh is higher, but distances are still low: 2-4 m in living
+# relative density: 
+# the number of individuals per area as a percent of the number of individuals of all species.
+df_rel_density_plot <- 
+  df_full_plot %>%
+  group_by(trip_n, dom_sp, manag, species) %>% 
+  summarize(sp_count = sum(count, na.rm = T)) %>% 
+  ungroup(.) %>% 
+  group_by(trip_n, dom_sp, manag) %>% 
+  mutate(all_count = sum(sp_count, na.rm = T),
+         rel_density = sp_count/all_count*100)
+
+
+# Relative basal area.  
+# the total basal area of Species A as a percent of the total basal area of all species.  
+df_rel_BA_plot <- df_full_plot %>%
+  mutate(r = DBH/2,
+         BA = pi*r^2)  %>% 
+  group_by(trip_n, dom_sp, manag, species) %>%
+  summarize(sp_BA = sum(BA, na.rm = T)) %>% 
+  ungroup(.) %>% 
+  group_by(trip_n, dom_sp, manag) %>% 
+  mutate(all_BA = sum(sp_BA, na.rm = T),
+         rel_BA = sp_BA/all_BA*100) %>% 
+  mutate(rel_BA = replace_na(rel_BA, 0))  # replace NA by 0 if BA is missing
+
+
+#########################################
+#                                       #
+# Plot: Species Importance Value        #
+#                                       #
+###################################
+
+# merge the rel frequeny, density and basal area ------------------------------------------
+df_IVI_plot <- 
+  df_freq_plot %>% 
+  left_join(df_rel_density_plot) %>% 
+  left_join(df_rel_BA_plot) %>% 
+  mutate(sp_IVI = (frequency + rel_density +rel_BA)/3) %>% 
+  mutate(scale = 'plot')# new_name = old_name
+
+
+# Explore teh species importance value: IVI
+#windows()
+p_jitter_sp_IVI <- df_IVI_plot %>% 
+  ggplot(aes(y = sp_IVI,
+             x = species,
+             col = species)) +
+  geom_jitter(alpha = 0.5, width = 0.15) +
+  facet_grid(dom_sp~manag) + 
+  theme_bw() +
+  labs(color = 'Tree species', 
+       x = '', 
+       y = 'Plot: rel. Importance Value [%]') +
+  theme(axis.text.x = element_text(angle = 90, 
+                                   vjust = 0.5, 
+                                   hjust=1, 
+                                   size = 8))  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -394,11 +512,10 @@ df_mature_trees_env %>%
 
 #####################################################################
 #
-#         ENV: 
-#    Species importance value get counts of teh plots per site: 
+#   ENV:  Species importance value get counts of teh plots per site: 
 #         to calculate frequency, density and areas:
 #
-#####################################################################
+#####################################################################---------------------
 
 # should I merge the data from ENV advanced, mature and Plot?
 # or calculate them individually, and then calculate their average?
@@ -415,14 +532,14 @@ df_mature_trees_env # individual trees, contain the DBH info-> for basal area
 
 
 
-# Calculate relative frequency: if species occurs on 5 plots ot of 8: freq = 62.5% 
+# Calculate relative frequency: if species occurs on 5 plots out of 8: freq = 62.5% 
 # https://stackoverflow.com/questions/73442694/calculate-the-frequency-of-species-occurrence-across-sites/73442974#73442974
 df_freq_mat_env <-
   df_mature_trees_env %>%
- # drop_na(tree_species   ) %>%
-  select(trip_n, manag, sub_n, tree_species   ) %>%
+ # drop_na(species   ) %>%
+  select(trip_n, manag, sub_n, species   ) %>%
   distinct() %>% # just to check if teh species is present or not
-  group_by(trip_n, manag, tree_species   ) %>%
+  group_by(trip_n, manag, species   ) %>%
   summarise(sites_by_species = n_distinct(sub_n)) %>% # Step 1; count sites by species
   left_join(df_sub_count, by = c("trip_n", "manag")) %>%
   mutate(frequency = 100 * sites_by_species / sub_counts)
@@ -443,7 +560,7 @@ df_rel_BA_mat_env <-
   df_mature_trees_env %>%
   mutate(r = DBH/2,
          BA = pi*r^2)  %>% 
-  group_by(trip_n, dom_sp, manag, tree_species) %>%
+  group_by(trip_n, dom_sp, manag, species) %>%
   summarize(sp_BA = sum(BA, na.rm = T)) %>% 
   ungroup(.) %>% 
   group_by(trip_n, dom_sp, manag) %>% 
@@ -452,11 +569,7 @@ df_rel_BA_mat_env <-
   mutate(rel_BA = replace_na(rel_BA, 0))  # replace NA by 0 if BA is missing
 
 
-#################################################
-#                                               #
-# ENV: Mature:  Species Importance Value        #
-#                                               #
-#################################################
+# ENV: Mature:  Species Importance Value  --------------------------------------------
 
 # merge the rel frequeny, density and basal area ------------------------------------------
 df_IVI_mat_env <- 
@@ -464,32 +577,11 @@ df_IVI_mat_env <-
   left_join(df_rel_density_mat_env) %>% 
   left_join(df_rel_BA_mat_env) %>% 
   mutate(sp_IVI = (frequency + rel_density +rel_BA)/3) %>%   # scale to [0-100%]
-  rename(species = tree_species) %>%   # new_name = old_name
   mutate(scale = 'ENV_mat')
 
-#####################################################################
-#
-#                   ENV: advanced regen: 
-#     Species importance value get counts of teh plots per site: 
-#         to calculate frequency, density and areas:
-#
-#####################################################################
 
 
-
-
-####################################################################
-# 
-# Distance density Advanced reg ENV 
-#
-####################################################################
-
-df_dens_adv_ENV <- 
-  df_advanced_env %>% 
-  group_by(trip_n, manag, tree_species) %>% 
-  summarize(mean_dist = mean(distance, na.rm = T)) %>%
-  mutate(MA = 2*mean_dist^2,
-         density = 1/MA * 10^8)  # 1ha = 1e+8 cm2
+# ENV: advanced regen: rIVI ----------------------------------------
 
 
 df_dens_adv_ENV %>% 
@@ -497,8 +589,7 @@ df_dens_adv_ENV %>%
   geom_boxplot()
 
 
-# missing dbh for advanced regen: use the average one per species from the
-# plot data
+# missing dbh for advanced regen: skip calculation of the Basal area for relative importance values
 
 
 # ENV Advanced regen:
@@ -511,10 +602,10 @@ df_advanced_env     # individual trees, contain the DBH info-> for basal area
 # https://stackoverflow.com/questions/73442694/calculate-the-frequency-of-species-occurrence-across-sites/73442974#73442974
 df_freq_adv_env <-
   df_advanced_env %>%
-  # drop_na(tree_species   ) %>%
-  select(trip_n, manag, sub_n, tree_species   ) %>%
+  # drop_na(species   ) %>%
+  select(trip_n, manag, sub_n, species   ) %>%
   distinct() %>% # just to check if teh species is present or not
-  group_by(trip_n, manag, tree_species   ) %>%
+  group_by(trip_n, manag, species   ) %>%
   summarise(sites_by_species = n_distinct(sub_n)) %>% # Step 1; count sites by species
   left_join(df_sub_count, by = c("trip_n", "manag")) %>%
   mutate(frequency = 100 * sites_by_species / sub_counts)
@@ -529,39 +620,8 @@ df_rel_density_adv_env <-
          rel_density = density/all_dens*100)
 
 
-# Relative basal area.  
-# the total basal area of Species A as a percent of the total basal area of all species.  
-# how to adress missing density??? ! just skip it from the IVI calculation
-# get means per species:
 
-advanced_means <- df_advanced2 %>% 
-  group_by(reg_species, manag) %>% 
-  summarize(mean_dbh = mean(DBH, na.rm = T))
-
-
-df_advanced2 %>% 
-  ggplot(aes(x = reg_species,
-             y = DBH,
-             group = manag,
-             color = manag, 
-             shape = manag)) + 
-  stat_summary(fun = mean,
-               fun.min = function(x) mean(x) - sd(x), 
-               fun.max = function(x) mean(x) + sd(x), 
-               geom = "pointrange") +
-  stat_summary(fun = mean,
-               geom = "line") + 
-  theme_bw()
-  #geom_boxplot()
-
-
-# Relative basal area: missing from advanced regeneration, skip from teh IVI calculation!!
-
-########################################################
-#                                                      #
-# ENV: Advanced regen: Species Importance Value        #
-#                                                      #
-########################################################
+# ENV: Advanced regen: Species Importance Value  ---------------------------------------
 
 # merge the rel frequeny, density and basal area ------------------------------------------
 # keep  in mind that IVI for the ENV advanced regen goes only [0-200] 
@@ -569,164 +629,50 @@ df_IVI_adv_env <-
   df_freq_adv_env %>% 
   left_join(df_rel_density_adv_env) %>% 
   mutate(sp_IVI = (frequency + rel_density)/2) %>% 
-  rename(species = tree_species) %>%  # new_name = old_name# scale the value to 1-100 
   mutate(scale = 'ENV_adv')
 
 
 
 
 
+# -------------------------------------------------------------
+#
+#    Get species importance value for whole community
+#                   3  scales: plot, ENV mature, ENV adv
+# 
+# -------------------------------------------------------------
 
-# Create full dataset per 4m2 to calculate Importance value: ------------------------------
-# data for seedlings & samplings
-# get counts, dbh -> basal area to calculate the frequency, deminity and dominance per species:
-my_cols_regen = c('trip_n', 
-                  'dom_sp', 
-                  'manag', 
-                  'sub_n',
-                  'reg_species',   
-                  'DBH',  
-                  'count', 
-                  'height_class') #  'height'
-
-# filter and rename the values: keep only natural regeneration!
-df_reg_onlyNatural2 <- df_reg_onlyNatural %>% 
-  rename(count = n_natural) %>% 
-  mutate(height = case_when(height_class == 'HK1' ~ 0.3,
-                            height_class == 'HK2' ~ 0.5,
-                            height_class == 'HK3' ~ 0.7,
-                            height_class == 'HK4' ~ 0.9,
-                            height_class == 'HK5' ~ 1.2,
-                            height_class == 'HK6' ~ 1.7
-                             )) %>% 
-  mutate(DBH = case_when(height == 1.7 ~ 0.8,  # DBH is ~ 1 cm for the HK6
-                         height != 1.7 ~ 0)) %>% 
-  dplyr::select(all_of(my_cols_regen))
+# for plot level: sum up the density and basal area per site
+# frequency is already on the site level
 
 
+# test example for different triplet number:
+# compares the sites between themselves, not the plots:
+# first just compare the distinct species betwee sites
 
-# filter and process seedlings, sampling and mature trees to fit in this database, and then 'rbind' 3 tables:
-# calculate BA for each (skip seedlings < 1.3 m = BA is NA)
-df_advanced3 <- df_advanced2 %>% 
-  dplyr::select(all_of(my_cols_regen))
+# Seelect columns to subset
+my_cols = c('trip_n', 'manag', 'species', 'sp_IVI') # , 'scale'
 
-
-  
-# Rename mature trees' columns:
-# df_mature_fin3 <- df_mature_fin %>% 
-#   rename(reg_species = tree_species) %>%  # need to fit the regeneration database: every plots have information about all trees on it, and which category) %>% 
-#   mutate(height_class = 'mature',
-#          count = 1) %>% 
-#  drop_na() %>% 
-#   ungroup(.) %>% 
-#   dplyr::select(all_of(c(my_cols_regen, 'distance')))
+# merge all scales IVI values: calculate it as means per rIVI per site??
+# !!! no! I need to take into account the all 3 dimensions, then calculate the rIVI
+# try to merge the frequency, basal area and density for each scale??
 
 
-# mature trees on plot:
-df_mature_trees_plot3 <- df_mature_trees_plot %>% 
-  #drop_na(.) %>% 
-  rename(reg_species = species) %>%  # need to fit the regeneration database: every plots have information about all trees on it, and which category) %>% 
-  mutate(height_class = 'mature',
-         count = 1) %>% 
-  ungroup(.) %>% 
-  dplyr::select(all_of(my_cols_regen))
-
-  
-# check names: correct, can be merged (r bind)
-names(df_reg_onlyNatural2)
-names(df_advanced3)
-names(df_mature_trees_plot3)
-
-
-
-# Just calculate frequency, density and basal area from the species present on the plots:
-# Merge all tree data together:
-df_full_plot = rbind(df_reg_onlyNatural2,
-               df_advanced3,
-               df_mature_trees_plot3)
-
-# remove any NA from teh reg_species (as a part from teh mature trees estimation):
-df_full_plot <- df_full_plot %>% 
-  drop_na(reg_species)
+df_IVI_3scales <- 
+  select(df_IVI_plot, my_cols)  %>%
+  bind_rows(select(df_IVI_mat_env, my_cols)) %>%
+  bind_rows(select(df_IVI_adv_env, my_cols)) %>%
+  #  tail()
+  #  ungroup(.) %>% 
+  group_by(trip_n, manag, species) %>% 
+  summarize(mean_sp_IVI = mean(sp_IVI, na.rm = T))
 
 
 
 
-# Calculate relative frequency: if species occurs on 5 plots ot of 8: freq = 62.5% 
-# https://stackoverflow.com/questions/73442694/calculate-the-frequency-of-species-occurrence-across-sites/73442974#73442974
-df_freq_plot <-
-  df_full_plot %>%
-  drop_na(reg_species) %>%
-  select(trip_n, manag, sub_n, reg_species) %>%
-  distinct() %>% # just to check if teh species is present or not
-  group_by(trip_n, manag, reg_species) %>%
-  summarise(sites_by_species = n_distinct(sub_n)) %>% # Step 1; count sites by specices
-  left_join(df_sub_count, by = c("trip_n", "manag")) %>%
-  mutate(frequency = 100 * sites_by_species / sub_counts)
 
 
-# relative density: 
-# the number of individuals per area as a percent of the number of individuals of all species.
-df_rel_density_plot <- 
-  df_full_plot %>%
-  group_by(trip_n, dom_sp, manag, reg_species) %>% 
-  summarize(sp_count = sum(count, na.rm = T)) %>% 
-    ungroup(.) %>% 
-    group_by(trip_n, dom_sp, manag) %>% 
-  mutate(all_count = sum(sp_count, na.rm = T),
-         rel_density = sp_count/all_count*100)
-
-
-# Relative basal area.  
-# the total basal area of Species A as a percent of the total basal area of all species.  
-df_rel_BA_plot <- df_full_plot %>%
-  mutate(r = DBH/2,
-         BA = pi*r^2)  %>% 
-  group_by(trip_n, dom_sp, manag, reg_species) %>%
-  summarize(sp_BA = sum(BA, na.rm = T)) %>% 
-  ungroup(.) %>% 
-  group_by(trip_n, dom_sp, manag) %>% 
-  mutate(all_BA = sum(sp_BA, na.rm = T),
-         rel_BA = sp_BA/all_BA*100) %>% 
-  mutate(rel_BA = replace_na(rel_BA, 0))  # replace NA by 0 if BA is missing
-
-
-###################################
-#                                 #
-# Plot: Species Importance Value        #
-#                                 #
-###################################
-
-# merge the rel frequeny, density and basal area ------------------------------------------
-df_IVI_plot <- 
-  df_freq_plot %>% 
-  left_join(df_rel_density_plot) %>% 
-  left_join(df_rel_BA_plot) %>% 
-  mutate(sp_IVI = (frequency + rel_density +rel_BA)/3) %>% 
-  rename(species = reg_species) %>% 
-  mutate(scale = 'plot')# new_name = old_name
-    
-
-# Explore teh species importance value: IVI
-#windows()
-p_jitter_sp_IVI <- df_IVI_plot %>% 
-  ggplot(aes(y = sp_IVI,
-             x = reg_species,
-             col = reg_species)) +
-  geom_jitter(alpha = 0.5, width = 0.15) +
-  facet_grid(dom_sp~manag) + 
-  theme_bw() +
-  labs(color = 'Tree species', 
-       x = '', 
-       y = 'Plot: rel. Importance Value [%]') +
-  theme(axis.text.x = element_text(angle = 90, 
-                                   vjust = 0.5, 
-                                   hjust=1, 
-                                   size = 8))  
-  
-
-
-#  Importance value for novel species?? -----------------------------------
+#  Find novel species -------------------------------------------------------
 
 # Identify winners, losers from the 'site' dataset, not only from the regeneration:
 # reason: the mature trees should be simply present as the mature trees ?? so we can still see the
@@ -737,19 +683,6 @@ p_jitter_sp_IVI <- df_IVI_plot %>%
 # just identify which species are new compared to Reference (Living) conditions
 # eg ignore height's classes, counts...
 
-# Use database on the site level: ENV mature, ENV adv, Plot data: from species importance values
-
-# test example for different triplet number:
-# compares the sites between themselves, not the plots:
-# first just compare the distinct species betwee sites
-
-# Seelect columns to subset
-my_cols = c('trip_n', 'manag', 'species', 'sp_IVI', 'scale')
-
-# merge all scales IVI values: 
-df_IVI_3scales <- select(df_IVI_plot, my_cols)  %>%
-  left_join(select(df_IVI_mat_env, my_cols)) %>%
-  left_join(select(df_IVI_adv_env, my_cols))
 
 
 
@@ -785,32 +718,32 @@ df_novelty =
   group_by(species, novelty) %>% 
   tally() %>% 
   mutate(n2 = case_when(novelty == 'lost' ~ -n,
-                        novelty == 'novel' ~ n)) #TRUE ~ reg_species
+                        novelty == 'novel' ~ n)) #TRUE ~ species
 
-#windows()
-p_win_loos_sp <- ggplot(df_novelty, aes(x = reg_species, fill = novelty, y = n2)) +
-  geom_col(position = 'identity', col = 'black')  +
-  theme_bw() +
-  ylab('Counts (mean)') + 
-  theme(axis.text = element_text(angle = 90)) 
-#facet_wrap(vars(reg_species), strip.position = "bottom")
-
-
-p_winners <- ggplot(df_winners, aes(x = species, fill = species)) + 
-  geom_bar() +
-  ggtitle('Novel species', subtitle= 'Appear after disturbance)') + 
-  theme_bw()
-
-p_loosers <- ggplot(df_loosers, aes(x = species, fill = species)) + 
-  geom_bar() + 
-  ggtitle('Lost species', subtitle= 'Disappear after disturbance)') + 
-  theme_bw()
-
-ggarrange(p_winners, p_loosers, nrow = 2)
-
-
-
-head(df_winners)
+# #windows()
+# p_win_loos_sp <- ggplot(df_novelty, aes(x = species, fill = novelty, y = n2)) +
+#   geom_col(position = 'identity', col = 'black')  +
+#   theme_bw() +
+#   ylab('Counts (mean)') + 
+#   theme(axis.text = element_text(angle = 90)) 
+# #facet_wrap(vars(species), strip.position = "bottom")
+# 
+# 
+# p_winners <- ggplot(df_winners, aes(x = species, fill = species)) + 
+#   geom_bar() +
+#   ggtitle('Novel species', subtitle= 'Appear after disturbance)') + 
+#   theme_bw()
+# 
+# p_loosers <- ggplot(df_loosers, aes(x = species, fill = species)) + 
+#   geom_bar() + 
+#   ggtitle('Lost species', subtitle= 'Disappear after disturbance)') + 
+#   theme_bw()
+# 
+# ggarrange(p_winners, p_loosers, nrow = 2)
+# 
+# 
+# 
+# head(df_winners)
 
 
 
@@ -1270,7 +1203,7 @@ head(df_reg_dens )
 # Calculate % of  regeneration species from total density
 df_dens_species <- 
   df_reg_dens %>% 
-  group_by(trip_n, dom_sp, manag, reg_species) %>% 
+  group_by(trip_n, dom_sp, manag, species) %>% 
   summarize(ds_species = sum(corr_density, na.rm = T)/n_subsites) %>% # divide by number of subsites!!
   distinct() 
 
@@ -1278,23 +1211,23 @@ df_dens_sum <- df_dens_species %>%  # keep only unique rows
   group_by(trip_n, dom_sp, manag) %>% 
   summarize(ds_sum = sum(ds_species, na.rm = T))
 
-# Merge to original table to calaulctate shares by reg_species:
+# Merge to original table to calaulctate shares by species:
 df_density_change <- df_dens_species %>% 
   left_join(df_dens_sum, by = c("trip_n", "dom_sp", "manag")) %>% 
   mutate(ds_spec_share = ds_species  /ds_sum*100) %>% 
-  # filter(reg_species %in% c("Spruce", 'Beech', 'Pine', 'Oak' )) %>% 
-  mutate(cl_change = case_when(dom_sp == 'spruce' & reg_species == 'Spruce' & ds_spec_share > 50 ~ 'resilience',
-                               dom_sp == 'spruce' & reg_species == 'Spruce' & ds_spec_share <= 50 & ds_spec_share > 25  ~ 'decrease',
-                               dom_sp == 'spruce' & reg_species == 'Spruce' & ds_spec_share <= 25 & ds_spec_share > 0  ~ 'reduction',
-                               dom_sp == 'beech'  & reg_species == 'Beech'  & ds_spec_share > 50 ~ 'resilience',
-                               dom_sp == 'beech'  & reg_species == 'Beech'  & ds_spec_share <= 50 & ds_spec_share > 25  ~ 'decrease',
-                               dom_sp == 'beech'  & reg_species == 'Beech'  & ds_spec_share <= 25 & ds_spec_share > 0  ~ 'reduction',
-                               dom_sp == 'pine' & reg_species == 'Pine' & ds_spec_share > 50 ~ 'resilience',
-                               dom_sp == 'pine' & reg_species == 'Pine' & ds_spec_share <= 50 & ds_spec_share > 25  ~ 'decrease',
-                               dom_sp == 'pine' & reg_species == 'Pine' & ds_spec_share <= 25 & ds_spec_share > 0  ~ 'reduction',
-                               dom_sp == 'oak'  & reg_species == 'Oak'  & ds_spec_share > 50 ~ 'resilience',
-                               dom_sp == 'oak'  & reg_species == 'Oak'  & ds_spec_share <= 50 & ds_spec_share > 25  ~ 'decrease',
-                               dom_sp == 'aok'  & reg_species == 'Oak'  & ds_spec_share <= 25 & ds_spec_share > 0  ~ 'reduction',
+  # filter(species %in% c("Spruce", 'Beech', 'Pine', 'Oak' )) %>% 
+  mutate(cl_change = case_when(dom_sp == 'spruce' & species == 'Spruce' & ds_spec_share > 50 ~ 'resilience',
+                               dom_sp == 'spruce' & species == 'Spruce' & ds_spec_share <= 50 & ds_spec_share > 25  ~ 'decrease',
+                               dom_sp == 'spruce' & species == 'Spruce' & ds_spec_share <= 25 & ds_spec_share > 0  ~ 'reduction',
+                               dom_sp == 'beech'  & species == 'Beech'  & ds_spec_share > 50 ~ 'resilience',
+                               dom_sp == 'beech'  & species == 'Beech'  & ds_spec_share <= 50 & ds_spec_share > 25  ~ 'decrease',
+                               dom_sp == 'beech'  & species == 'Beech'  & ds_spec_share <= 25 & ds_spec_share > 0  ~ 'reduction',
+                               dom_sp == 'pine' & species == 'Pine' & ds_spec_share > 50 ~ 'resilience',
+                               dom_sp == 'pine' & species == 'Pine' & ds_spec_share <= 50 & ds_spec_share > 25  ~ 'decrease',
+                               dom_sp == 'pine' & species == 'Pine' & ds_spec_share <= 25 & ds_spec_share > 0  ~ 'reduction',
+                               dom_sp == 'oak'  & species == 'Oak'  & ds_spec_share > 50 ~ 'resilience',
+                               dom_sp == 'oak'  & species == 'Oak'  & ds_spec_share <= 50 & ds_spec_share > 25  ~ 'decrease',
+                               dom_sp == 'aok'  & species == 'Oak'  & ds_spec_share <= 25 & ds_spec_share > 0  ~ 'reduction',
                                TRUE ~ 'species_change')) %>%
   ungroup(.) #%>% 
 
@@ -1341,11 +1274,11 @@ library(ggalluvial)
 # what are the resulting spcies??? -----------------
 df_dens_flow_species <- 
   df_density_change %>% 
-  group_by(trip_n, dom_sp, manag, reg_species) %>% 
+  group_by(trip_n, dom_sp, manag, species) %>% 
   #top_n(1, ds_spec_share) %>%  # select the highest share per species and category
   ungroup(.) %>% 
-  dplyr::select(dom_sp, manag, reg_species) %>%
-  group_by(dom_sp, manag, reg_species) %>% 
+  dplyr::select(dom_sp, manag, species) %>%
+  group_by(dom_sp, manag, species) %>% 
   count()
 
 
