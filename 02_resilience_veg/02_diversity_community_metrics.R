@@ -392,26 +392,6 @@ df_mature_trees_env %>%
 
 
 
-####################################################################
-# 
-# Distance density Advanced reg ENV 
-#
-####################################################################
-
-df_dens_adv_ENV <- 
-  df_advanced_env %>% 
-  group_by(trip_n, manag) %>% 
-  summarize(mean_dist = mean(distance, na.rm = T)) %>%
-  mutate(MA = 2*mean_dist^2,
-         density = 1/MA * 10^8)  # 1ha = 1e+8 cm2
-
-
-df_dens_adv_ENV %>% 
-  ggplot(aes(y = density, x= manag)) + 
-  geom_boxplot()
-
-
-
 #####################################################################
 #
 #         ENV: 
@@ -472,73 +452,129 @@ df_rel_BA_mat_env <-
   mutate(rel_BA = replace_na(rel_BA, 0))  # replace NA by 0 if BA is missing
 
 
-###################################
-#                                 #
-# ENV: Mature: 
-#  Species Importance Value        #
-#                                 #
-###################################
+#################################################
+#                                               #
+# ENV: Mature:  Species Importance Value        #
+#                                               #
+#################################################
 
 # merge the rel frequeny, density and basal area ------------------------------------------
 df_IVI_out_mat_env <- 
   df_freq_mat_env %>% 
   left_join(df_rel_density_mat_env) %>% 
   left_join(df_rel_BA_mat_env) %>% 
-  mutate(sp_IVI = frequency + rel_density +rel_BA)
+  mutate(sp_IVI = (frequency + rel_density +rel_BA)/3)  # scale to [0-100%]
+
+
+
+#####################################################################
+#
+#                   ENV: advanced regen: 
+#     Species importance value get counts of teh plots per site: 
+#         to calculate frequency, density and areas:
+#
+#####################################################################
 
 
 
 
+####################################################################
+# 
+# Distance density Advanced reg ENV 
+#
+####################################################################
+
+df_dens_adv_ENV <- 
+  df_advanced_env %>% 
+  group_by(trip_n, manag, tree_species) %>% 
+  summarize(mean_dist = mean(distance, na.rm = T)) %>%
+  mutate(MA = 2*mean_dist^2,
+         density = 1/MA * 10^8)  # 1ha = 1e+8 cm2
+
+
+df_dens_adv_ENV %>% 
+  ggplot(aes(y = density, x= manag)) + 
+  geom_boxplot()
+
+
+# missing dbh for advanced regen: use the average one per species from the
+# plot data
+
+
+# ENV Advanced regen:
+df_dens_adv_ENV     # density estimation 
+df_advanced_env     # individual trees, contain the DBH info-> for basal area
 
 
 
+# Calculate relative frequency: if species occurs on 5 plots ot of 8: freq = 62.5% 
+# https://stackoverflow.com/questions/73442694/calculate-the-frequency-of-species-occurrence-across-sites/73442974#73442974
+df_freq_adv_env <-
+  df_advanced_env %>%
+  # drop_na(tree_species   ) %>%
+  select(trip_n, manag, sub_n, tree_species   ) %>%
+  distinct() %>% # just to check if teh species is present or not
+  group_by(trip_n, manag, tree_species   ) %>%
+  summarise(sites_by_species = n_distinct(sub_n)) %>% # Step 1; count sites by species
+  left_join(df_sub_count, by = c("trip_n", "manag")) %>%
+  mutate(frequency = 100 * sites_by_species / sub_counts)
 
 
+# relative density: 
+# the number of individuals per area as a percent of the number of individuals of all species.
+df_rel_density_adv_env <- 
+  df_dens_adv_ENV %>%
+  group_by(trip_n,  manag) %>% 
+  mutate(all_dens = sum(density, na.rm = T),
+         rel_density = density/all_dens*100)
 
 
+# Relative basal area.  
+# the total basal area of Species A as a percent of the total basal area of all species.  
+# how to adress missing density??? ! just skip it from the IVI calculation
+# get means per species:
+
+advanced_means <- df_advanced2 %>% 
+  group_by(reg_species, manag) %>% 
+  summarize(mean_dbh = mean(DBH, na.rm = T))
 
 
+df_advanced2 %>% 
+  ggplot(aes(x = reg_species,
+             y = DBH,
+             group = manag,
+             color = manag, 
+             shape = manag)) + 
+  stat_summary(fun = mean,
+               fun.min = function(x) mean(x) - sd(x), 
+               fun.max = function(x) mean(x) + sd(x), 
+               geom = "pointrange") +
+  stat_summary(fun = mean,
+               geom = "line") + 
+  theme_bw()
+  #geom_boxplot()
 
 
+# Relative basal area: missing from advanced regeneration, skip from teh IVI calculation!!
 
+########################################################
+#                                                      #
+# ENV: Advanced regen: Species Importance Value        #
+#                                                      #
+########################################################
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Calculate tree density and area per site:
-# need to check !! 6 spruce-c has only 2 categories: D, L!
-out_df_mature <- 
-  df_mature_fin %>% 
-  group_by(trip_n, dom_sp, manag) %>% 
-  mutate(tree_BA_cm2 = pi*(DBH/2)^2) %>%
-  summarize(avg_dist_m = mean(distance/100, na.rm = T),
-            MA_m2 = (2*avg_dist_m)^2,
-            density_m2 = 1/MA_m2,
-            BA_cm2 = sum(tree_BA_cm2, na.rm = T)) 
-            
-#sample_n(1)   #  %>%  # if two trees are selected (eg. two trees on plot) select only one:
+# merge the rel frequeny, density and basal area ------------------------------------------
+# keep  in mind that IVI for the ENV advanced regen goes only [0-200] 
+df_IVI_out_adv_env <- 
+  df_freq_adv_env %>% 
+  left_join(df_rel_density_adv_env) %>% 
+  mutate(sp_IVI = (frequency + rel_density)/2) # scale the value to 1-100 
   
-out_df_mature %>% 
-  group_by(trip_n, dom_sp) %>% 
-  tally() %>% 
-  filter(n!=3)
 
-#   trip_n  dom_sp     n
-#   <chr>   <chr>  <int>
-# 1  6      spruce     2
+
+
+
+
 
 # Create full dataset per 4m2 to calculate Importance value: ------------------------------
 # data for seedlings & samplings
@@ -617,7 +653,7 @@ df_full_plot <- df_full_plot %>%
 
 # Calculate relative frequency: if species occurs on 5 plots ot of 8: freq = 62.5% 
 # https://stackoverflow.com/questions/73442694/calculate-the-frequency-of-species-occurrence-across-sites/73442974#73442974
-df_freq <-
+df_freq_plot <-
   df_full_plot %>%
   drop_na(reg_species) %>%
   select(trip_n, manag, sub_n, reg_species) %>%
@@ -630,7 +666,7 @@ df_freq <-
 
 # relative density: 
 # the number of individuals per area as a percent of the number of individuals of all species.
-df_rel_density <- 
+df_rel_density_plot <- 
   df_full_plot %>%
   group_by(trip_n, dom_sp, manag, reg_species) %>% 
   summarize(sp_count = sum(count, na.rm = T)) %>% 
@@ -642,7 +678,7 @@ df_rel_density <-
 
 # Relative basal area.  
 # the total basal area of Species A as a percent of the total basal area of all species.  
-df_rel_BA <- df_full_plot %>%
+df_rel_BA_plot <- df_full_plot %>%
   mutate(r = DBH/2,
          BA = pi*r^2)  %>% 
   group_by(trip_n, dom_sp, manag, reg_species) %>%
@@ -656,29 +692,34 @@ df_rel_BA <- df_full_plot %>%
 
 ###################################
 #                                 #
-# Species Importance Value        #
+# Plot: Species Importance Value        #
 #                                 #
 ###################################
 
 # merge the rel frequeny, density and basal area ------------------------------------------
-df_IVI_out <- 
-  df_freq %>% 
-  left_join(df_rel_density) %>% 
-  left_join(df_rel_BA) %>% 
-  mutate(sp_IVI = frequency + rel_density +rel_BA)
+df_IVI_out_plot <- 
+  df_freq_plot %>% 
+  left_join(df_rel_density_plot) %>% 
+  left_join(df_rel_BA_plot) %>% 
+  mutate(sp_IVI = (frequency + rel_density +rel_BA)/3)
     
 
 # Explore teh species importance value: IVI
 #windows()
-p_jitter_sp_IVI <- df_IVI_out %>% 
+p_jitter_sp_IVI <- df_IVI_out_plot %>% 
   ggplot(aes(y = sp_IVI,
              x = reg_species,
              col = reg_species)) +
   geom_jitter(alpha = 0.5, width = 0.15) +
   facet_grid(dom_sp~manag) + 
   theme_bw() +
-  labs(color = 'Tree species', x = '', y = 'Importance Value [%]') +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size = 8))  
+  labs(color = 'Tree species', 
+       x = '', 
+       y = 'Plot: rel. Importance Value [%]') +
+  theme(axis.text.x = element_text(angle = 90, 
+                                   vjust = 0.5, 
+                                   hjust=1, 
+                                   size = 8))  
   
 
 
