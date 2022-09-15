@@ -459,13 +459,13 @@ df_rel_BA_mat_env <-
 #################################################
 
 # merge the rel frequeny, density and basal area ------------------------------------------
-df_IVI_out_mat_env <- 
+df_IVI_mat_env <- 
   df_freq_mat_env %>% 
   left_join(df_rel_density_mat_env) %>% 
   left_join(df_rel_BA_mat_env) %>% 
-  mutate(sp_IVI = (frequency + rel_density +rel_BA)/3)  # scale to [0-100%]
-
-
+  mutate(sp_IVI = (frequency + rel_density +rel_BA)/3) %>%   # scale to [0-100%]
+  rename(species = tree_species) %>%   # new_name = old_name
+  mutate(scale = 'ENV_mat')
 
 #####################################################################
 #
@@ -565,11 +565,12 @@ df_advanced2 %>%
 
 # merge the rel frequeny, density and basal area ------------------------------------------
 # keep  in mind that IVI for the ENV advanced regen goes only [0-200] 
-df_IVI_out_adv_env <- 
+df_IVI_adv_env <- 
   df_freq_adv_env %>% 
   left_join(df_rel_density_adv_env) %>% 
-  mutate(sp_IVI = (frequency + rel_density)/2) # scale the value to 1-100 
-  
+  mutate(sp_IVI = (frequency + rel_density)/2) %>% 
+  rename(species = tree_species) %>%  # new_name = old_name# scale the value to 1-100 
+  mutate(scale = 'ENV_adv')
 
 
 
@@ -697,16 +698,18 @@ df_rel_BA_plot <- df_full_plot %>%
 ###################################
 
 # merge the rel frequeny, density and basal area ------------------------------------------
-df_IVI_out_plot <- 
+df_IVI_plot <- 
   df_freq_plot %>% 
   left_join(df_rel_density_plot) %>% 
   left_join(df_rel_BA_plot) %>% 
-  mutate(sp_IVI = (frequency + rel_density +rel_BA)/3)
+  mutate(sp_IVI = (frequency + rel_density +rel_BA)/3) %>% 
+  rename(species = reg_species) %>% 
+  mutate(scale = 'plot')# new_name = old_name
     
 
 # Explore teh species importance value: IVI
 #windows()
-p_jitter_sp_IVI <- df_IVI_out_plot %>% 
+p_jitter_sp_IVI <- df_IVI_plot %>% 
   ggplot(aes(y = sp_IVI,
              x = reg_species,
              col = reg_species)) +
@@ -725,44 +728,61 @@ p_jitter_sp_IVI <- df_IVI_out_plot %>%
 
 #  Importance value for novel species?? -----------------------------------
 
-# Identify winners looserd from teh overall datase, not only from the regeneration:
+# Identify winners, losers from the 'site' dataset, not only from the regeneration:
+# reason: the mature trees should be simply present as the mature trees ?? so we can still see the
+# the appearance of new species?
 
 # Identify novel species in the community: ----------------------------------------
 # are there any new species in the regeneration? compare the reference vs disturbed sites:
 # just identify which species are new compared to Reference (Living) conditions
 # eg ignore height's classes, counts...
+
+# Use database on the site level: ENV mature, ENV adv, Plot data: from species importance values
+
 # test example for different triplet number:
 # compares the sites between themselves, not the plots:
 # first just compare the distinct species betwee sites
 
-# CHeck for specific triplet
-df_winners <- df_full_plot %>% 
+# Seelect columns to subset
+my_cols = c('trip_n', 'manag', 'species', 'sp_IVI', 'scale')
+
+# merge all scales IVI values: 
+df_IVI_3scales <- select(df_IVI_plot, my_cols)  %>%
+  left_join(select(df_IVI_mat_env, my_cols)) %>%
+  left_join(select(df_IVI_adv_env, my_cols))
+
+
+
+
+# Get winnders and loser species between Ref-Dist:
+df_winners <- df_IVI_3scales %>% 
   filter(manag !='c' ) %>% # & trip_n == 11
   group_by(trip_n, manag) %>% 
-  distinct(reg_species) %>% 
-  select(trip_n, manag, reg_species) %>% 
+  distinct(species) %>% 
+  select(trip_n, manag, species) %>% 
   ungroup() %>% 
   group_by(trip_n) %>% 
-  filter(manag == 'd' & !reg_species %in% reg_species[manag == 'l'] ) %>%
+  filter(manag == 'd' & !species %in% species[manag == 'l'] ) %>%
   mutate(novelty = 'novel')
 
 
 # identify loosers: species that were present at reference; not present after disturbance
 df_loosers <- 
-  df_full_plot %>% 
+  df_IVI_3scales %>% 
   filter(manag !='c') %>% 
   group_by(trip_n, manag) %>% 
-  distinct(reg_species) %>% 
-  select(trip_n, manag, reg_species) %>% 
+  distinct(species) %>% 
+  select(trip_n, manag, species) %>% 
   ungroup() %>% 
   group_by(trip_n) %>% 
-  filter(manag == 'l' & !reg_species %in% reg_species[manag == 'd']) %>% 
+  filter(manag == 'l' & !species %in% species[manag == 'd']) %>% 
   mutate(novelty = 'lost')
+
 
 # Merge loosers and winners species together:
 df_novelty = 
   rbind(df_winners, df_loosers) %>% 
-  group_by(reg_species, novelty) %>% 
+  group_by(species, novelty) %>% 
   tally() %>% 
   mutate(n2 = case_when(novelty == 'lost' ~ -n,
                         novelty == 'novel' ~ n)) #TRUE ~ reg_species
@@ -776,12 +796,12 @@ p_win_loos_sp <- ggplot(df_novelty, aes(x = reg_species, fill = novelty, y = n2)
 #facet_wrap(vars(reg_species), strip.position = "bottom")
 
 
-p_winners <- ggplot(df_winners, aes(x = reg_species, fill = reg_species)) + 
+p_winners <- ggplot(df_winners, aes(x = species, fill = species)) + 
   geom_bar() +
   ggtitle('Novel species', subtitle= 'Appear after disturbance)') + 
   theme_bw()
 
-p_loosers <- ggplot(df_loosers, aes(x = reg_species, fill = reg_species)) + 
+p_loosers <- ggplot(df_loosers, aes(x = species, fill = species)) + 
   geom_bar() + 
   ggtitle('Lost species', subtitle= 'Disappear after disturbance)') + 
   theme_bw()
@@ -791,29 +811,6 @@ ggarrange(p_winners, p_loosers, nrow = 2)
 
 
 head(df_winners)
-
-# calculate sum IV for all species for reference
-# calculate sum IV for all species for disturbed site
-# calculate sum IV for novel species? - in disturbed site
-
-# simplify teh table:
-
-df_IVI_out_simple <- df_IVI_out %>% 
-  dplyr::select(trip_n, manag, reg_species, dom_sp, sp_IVI )
-
-
-# 
-
-
-# Importance value: comparison across managemnet regime:
-p_VI_categ <- df_IVI_out_simple %>% 
-  ggplot(aes(x = factor(manag),
-             y = sp_IVI, 
-             fill = factor(manag))) + 
-  geom_boxplot() +
-  ylab('Importance value [%]') +
-  theme_bw()
-
 
 
 
@@ -915,7 +912,7 @@ trait_df <- trait_df %>%
       Species == "Abies alba"            ~ "Fir"
     )
   ) %>% 
-  rename(reg_species = Species)
+  rename(species = Species)
 
 
 # Slope correction factor:------------------------------------------------------
@@ -1017,7 +1014,7 @@ df_reg_dens <- df_regen %>%
   dplyr::left_join(subsample_n,
                    by = c('trip_n', 'manag', 'dom_sp')) %>% #, 'dom_sp', 'manag'
   ungroup() %>%
-  group_by(trip_n, dom_sp, manag, reg_species,  n_subsites)  %>% #height_class,
+  group_by(trip_n, dom_sp, manag, species,  n_subsites)  %>% #height_class,
   summarize(dens_sum = sum(n_total, na.rm = T)/n_subsites) %>%
   mutate(
     length_corr = 2 * cos(gradient * pi / 180),
@@ -1108,8 +1105,8 @@ df_regen %>%
 #hist($n_total, bin = 1 )
 
 # Get Shannon: diversity -----------------------------------------------------
-# - calculate the share per reg_species: pi
-# - calculate Shannon: H = -sum(pi*log(pi)) for each reg_species
+# - calculate the share per species: pi
+# - calculate Shannon: H = -sum(pi*log(pi)) for each species
 # - values for Shannon have to be in 0-1 range (not 0-100)!
 df_reg_dens_sums <- df_reg_dens %>%
   group_by(trip_n, dom_sp, manag) %>%
@@ -1184,7 +1181,7 @@ p_shannon <- df_reg_dens_shannon %>%
 
 df_traits_cwm <- 
   df_reg_dens %>%
-  #group_by(trip_n, dom_sp, manag, reg_species) %>%
+  #group_by(trip_n, dom_sp, manag, species) %>%
   #summarize(mean_dens = mean(corr_density)) %>%
   left_join(trait_df) %>% 
   ungroup(.) %>% 
