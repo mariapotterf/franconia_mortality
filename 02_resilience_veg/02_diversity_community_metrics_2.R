@@ -42,6 +42,7 @@
 
 # two estimations: 
 #      on plot and nearest neighbor: those would be for BA, stem density
+# simpler: only based on the plot and nearest distances
 
 # density from distance measure: based on nearest individual:
 # MA = (2*mean(distance)^2)  # MA = mean area
@@ -53,7 +54,7 @@
 
 
 
-# Get data about community structure :
+# Get data about community structure : --------------------------------
 # 
 # ecological traits
 # shannon diversity
@@ -61,6 +62,8 @@
 
 # test different categories and community resemblance?
 # remove all previous data from R memory
+
+# Slope correction? -------------------------------------
 # Convert the regeneration counts into density/ha - takes into account the difference in sampling plot!
 #     - need to do the slope correction?
 # http://wiki.awf.forst.uni-goettingen.de/wiki/index.php/Slope_correction
@@ -361,7 +364,7 @@ df_full_plot <- df_full_plot %>%
 
 
 #Get density from the ENV: advanced regen, ENv: mature trees 
-# ENV: Mature trees distance density ----------------------------------
+# ENV: Mature trees distance density -> SITE----------------------------------
 
 # basal area - check from script! !!!!
 df_dens_mat_ENV <- 
@@ -372,7 +375,7 @@ df_dens_mat_ENV <-
          density = 1/MA * 10^8)  # 1ha = 1e+8 cm2
 
 
-#### ENV: advanced --------------------------------------------------------------
+#### ENV: advanced -> SITE --------------------------------------------------------------
 df_dens_adv_ENV <- 
   df_advanced_env %>% 
   group_by(trip_n, manag, species) %>% 
@@ -384,8 +387,6 @@ df_dens_adv_ENV <-
 # Plot: Recalculate the density values per ha ------------------------------------------
 # to merge it later with advanced regeneration and Mature trees from surroundings
 
-# Try first with density!!
-
 ha <- 10000
 
 # get together dataset for plot and nearest distance species ------------------------
@@ -394,8 +395,9 @@ df_dens_plot_ENV <- df_full_plot %>%
   summarize(sp_count = sum(count, na.rm = T)) %>%
   right_join(df_sub_count, by = c("trip_n", "manag")) %>% # add number of plots per site to calculate density for hectar
   mutate(index = ha/(sub_counts*4),
-         density = index*sp_count) %>%  # density represents the value per ha!!!
+         density = index*sp_count) %>%  # "density" represents the value per ha!!!
   dplyr::select(trip_n, manag, species, density) %>%
+  # get density from ENV mature trees, ENV advanced 
   bind_rows(select(df_dens_mat_ENV, c('trip_n', 'manag', 'species', 'density'))) %>% 
   bind_rows(select(df_dens_adv_ENV, c('trip_n', 'manag', 'species', 'density'))) %>% 
   group_by(trip_n, manag, species) %>% 
@@ -403,6 +405,18 @@ df_dens_plot_ENV <- df_full_plot %>%
   
 
 
+# Dummy example: species rIVI ---------------------------------------------
+# can I get more then 100%??? yes, if I have different species aross different communities: each species/site can be at most 100%
+dd <- data.frame(site = rep(c(1,2,3,4,5), each = 2),
+                 species = rep(c('a', 'b'), 5),
+                 count = c(10, 1,
+                           10, 1,
+                           10, 1,
+                           10, 1,
+                           10, 1))
+
+
+# Get species rIVI --------------------------------------------------------------
 # Site: Get relative density
 site_rel_dens <- df_dens_plot_ENV %>% 
   mutate(all_count = sum(dens_sum, na.rm = T),
@@ -445,6 +459,7 @@ site_IVI <-
   site_rel_freq  %>% 
   full_join(site_rel_dens) %>% 
   full_join(site_rel_BA) %>% 
+  replace_na(., list(all_BA = 0, rel_BA   = 0)) %>% 
   mutate(rIVI = (frequency + rel_density +rel_BA)/3)  # relative IVI
 
 
