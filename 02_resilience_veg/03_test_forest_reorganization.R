@@ -5,6 +5,9 @@
 # as proposed by Rupert
 # for inpt data: use the plot + nearest distance tree data to get the dbh, BA, stem density, etc...
 
+# To do:
+# how to show sensitivity analysis instead of thersold values? ; eg for novelty??
+# run analysis for Disturbed and Cleared? - > make respective lists of novel species fr CC, D
 
 rm(list=ls())
 
@@ -25,12 +28,12 @@ getwd()
 load(file = paste(getwd(), "dataToPlot.Rdata", sep = '/'))
 
 # Identify data to use:
-head(df_full_plot)        # - full plot based data: df_full_plot
+head(df_full_plot)        # - full PLOT based data: df_full_plot, seedlings, advanced, mature 
 head(site_IVI)            # - df importance value:from plot, env mature, env advanced, merged by density/ha
 head(df_winners)          # - novel species:        df_novelty
 head(trait_df)            # - trait values for all species: eco_traits
 head(df_ground)           # - ground cover, in classes by 5%  
-#head(df_mature_trees_env) # - trees in the surroundings; nearest trees
+head(df_mature_trees_env) # - trees in the surroundings; nearest trees
 
 # Master plots:
 head(plot_counts_df) # - total count of the plots per triplets & categories: to standardize the densities...
@@ -43,8 +46,16 @@ master_tripl <- distinct(select(plot_counts_df_sum, trip_n))
 # add novelty info to the 'site_IVI':
 site_IVI <- replace_na(site_IVI, list(rel_BA   = 0, rIVI = 0))
 
+
+# inspect the rIVI values per comunity? per site, each species should be max 100?
+# can be > 100 because frequency: the occurence of species per plots: each species can have up to 100%
+site_IVI %>% 
+  filter(trip_n == '1' & manag == 'c') #%>% 
+  #select()
+
 # RA1: Novel species: presence ---------------------------------------------------------
-# !!!! should teh sum (rIVI) be 100 % per community/site?
+# the sum (rIVI) of all species per site  is 100 % 
+# in my data, I have different species across 
 
 RA1_plot <- 
   site_IVI %>% 
@@ -57,12 +68,17 @@ RA1_plot <-
           #                    manag == 'l' ~ rIVI)) %>% 
   #mutate(IVI_sum_living = IVI_sum[manag == 'l']) %>% 
     dplyr::select(trip_n, manag, species, rIVI, novelty) %>%
+  #filter(trip_n == '2') %>% 
+  #print(n = 20)
+  #summarize(max = max(rIVI))
     #filter(manag == 'd') %>% 
     group_by(trip_n, manag) %>% 
     summarize(IVI_sum = sum(rIVI, na.rm = T),
               IVI_sum_novel = sum(rIVI[novelty == 'novel'])) %>%
     mutate(RA1 = case_when(IVI_sum_novel > 50 ~ 1,
                            IVI_sum_novel <= 50 ~ 0)) #%>%
+
+# How to whow the sensitivity of teh threshold value???
 
 
 # Get RA1 for all triplets, also for missing ones 
@@ -185,15 +201,17 @@ p_RA3 <-
   ggplot(aes(x = type,
              y = n, 
              fill = species)) +
-  geom_col(col = 'black') +
-  ylab('Dominant tree species\nbefore and after disturbance [per site]') +
-  guides(fill=guide_legend(ncol=2,byrow=TRUE)) + theme_bw()
+  geom_col(col = 'white') +
+  ylab('Dominant \nregeneration species') +
+  guides(fill=guide_legend(ncol=2,
+                           byrow=TRUE)) + 
+  theme_bw()
 
 
 
 # RA4: Competition: tree DBH: -----------------------------------------------
 # find teh species that has most often the highest DBH 
-# add the nearest mature trees there
+# exclude surrounding data: ENV mature, ENV adv
 # NA = missing values = there is a change  = 1
 # tre species are missing in 'dead' category, present in living: triplets: 10,2, 27, 4,61
 # considering as change!  = 1
@@ -201,15 +219,15 @@ p_RA3 <-
 
 RA4 <- 
   df_full_plot %>% 
-  select(c('trip_n', 'sub_n', 'manag', 'species', 'DBH')) %>% 
-  bind_rows(select(df_mature_trees_env, c('trip_n', 'sub_n', 'manag', 'species', 'DBH'))) %>% 
-  dplyr::select(!height_class) %>% 
-  filter(manag != 'c' ) %>% #& height_class != 'mature'
+  select(c('trip_n', 'sub_n', 'manag', 'species', 'DBH', 'height_class')) %>% 
+ # bind_rows(select(df_mature_trees_env, c('trip_n', 'sub_n', 'manag', 'species', 'DBH'))) %>% 
+ # dplyr::select(!height_class) %>% 
+  filter(manag != 'c' & height_class != 'mature') %>% #& height_class != 'mature'
   group_by(trip_n,  manag, sub_n) %>% #, species for each sub_plot the get prevailing species by plot
   filter(DBH>0) %>% 
   group_by(trip_n, manag) %>% 
   count(species) %>% 
-  slice(which.max(n)) %>% # idetify the most frequent species with max dbh per site
+  slice(which.max(n)) %>% # identify the most frequent species with max dbh per site
  # print(n = 90)  
   group_by(trip_n) %>% 
   mutate(spec_l = species[which(c(manag == 'l'))[1]]) %>% # get prevailing species in ref conditios 
@@ -244,49 +262,7 @@ p_RA4 <- RA4 %>%
  
  
   
-# RA5 Competition: tree height ------------------------------------------
-# if NA -> the dominant tree species is different -> evaluate as change (NA -> 1)
-RA5 <- 
-  df_full_plot %>% 
-  # find species most often the tallest tree?
-  filter(manag != 'c' & height_class != 'mature') %>% # remove the mature trees
-  mutate(height_class_num = as.numeric(gsub('HK', '', height_class))) %>% # change to numeric values
-   # group_by(trip_n,  manag, sub_n) %>% #, species for each sub_plot the get prevailing species by plot
-  group_by(trip_n, manag) %>% 
-  count(species) %>% 
-  slice(which.max(n)) %>% # identify the most frequent species with max dbh per site
-  group_by(trip_n) %>% 
-  mutate(spec_l = species[which(c(manag == 'l'))[1]]) %>% # get prevailing species in ref conditios 
- filter(manag == "d")  %>%  # to keep only disturbed ones
-  mutate(RA5 = case_when(spec_l == species ~ 0,  # compare with the living ones
-                                spec_l != species | is.na(spec_l) ~ 1)) %>%  # if the regeneration is absent-> indicates shift?
-  right_join(master_tripl) %>%  # by = c("trip_n", "manag")) %>%
-  mutate(RA5 = replace_na(RA5, 1))  # if the regeneration is missing, it is a change! so put as 1
 
-
- 
-
-# RA5 plot ----------------------------------------------------------------
-p_RA5 <- RA5 %>% 
-   pivot_longer(!c(trip_n, manag, n, RA5),
-                names_to = 'type',
-                values_to = 'species') %>%
-   mutate(type = case_when(type == 'species' ~ 'Dist',
-                           type == 'spec_l' ~ 'Ref')) %>%
-   mutate(type = factor(type, levels = c('Ref', 'Dist'))) %>% 
-  drop_na() %>% 
-   group_by(species, type) %>% 
-   count(species) %>%
-   ggplot(aes(x = type,
-              y = n, 
-              fill = species)) +
-   geom_col(col = 'black') +
-   ylab('Dominant tree species (height)\nbefore and after disturbance [per site]') +
-  guides(fill=guide_legend(ncol=2,byrow=TRUE)) + theme_bw()
-  
- 
- 
- 
 # RA: Reassambly: -----------------------------------------------------------
 # cbind RA tables 
 RA = select(RA1, c(trip_n, RA1)) %>%
