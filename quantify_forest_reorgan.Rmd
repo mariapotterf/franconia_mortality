@@ -281,7 +281,7 @@ p_RA3
 Is the species winning the local competition in the regeneration the same that dominates under reference conditions? Based on height classes.
 
  - Ref: Determine the species that has most often the tallest trees across plots
- - Dist: Determine the species that is most often the largest tree across plots
+ - Dist: Determine the species that is most often the tallest tree across plots
  - If Ref=Dist then RA4=0 else RA4=1
  
  - **if NA** -> 1: if the species is missing, it differs from the reference stand -> change
@@ -402,7 +402,7 @@ p_RS4_agg
 ```
 
 
-```{r plot-density, echo = F, fig.height=5, fig.width=5, fig.cap="DBH density distribution for advanced and mature trees per management categories. Note different scales. Vertical line represents mean per category." }
+```{r plot-density, echo = F, fig.height=5, fig.width=5, fig.cap="DBH density distribution for advanced and mature trees per management categories. C-cleared, D-dead, L-living (Reference). Note different scales. Vertical line represents mean per category." }
 
 p_dbh_dist
 ```
@@ -410,11 +410,30 @@ p_dbh_dist
 DBH distribution summary
 
 
-```{r print-summary-dbh, echo=F}
+```{r print-summary-n-living, echo=F}
 # print nice table in knitr
-dummy %>% knitr::kable("markdown", digits = 1, caption = 'DBH distribution summary and normalized values')
+dummy_dbh %>% knitr::kable("markdown", digits = 1, caption = 'DBH distribution summary and normalized values: (dbh_max-dbh_min)/dbh_mean')
 
 ```
+
+
+```{r plot-n-living, echo = F, fig.height=3.5, fig.width=3.5, fig.cap="Number of living trees (dbh >10 cm) per management categories. C-cleared, D-dead, L-living (Reference). Red dot represents mean per category." }
+
+p_n_living
+```
+
+Density of living trees/ha: Summary
+
+
+```{r print-summary-dbh, echo=F}
+# print nice table in knitr
+dummy_living_trees %>% knitr::kable("markdown", digits = 1, caption = 'NUmber of living trees per management cetegory. ')
+
+```
+
+
+
+
 
 # Final categorization
 
