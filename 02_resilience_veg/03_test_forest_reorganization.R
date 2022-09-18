@@ -492,56 +492,9 @@ p_RS3 <- RS3_both %>%
 # is the diameter distribution homogenous or heterogenous?: 
 # from seedlings, samplings, mature trees; and from the ENV: Mature
 # Ref: (dbhmax-dbhmin)/dbhmean
-# only from the plot data!!! as I have trees > 10 cm dbh there
-RS4_ref <- 
-  df_full_plot %>% 
-  select(c('trip_n', 'sub_n', 'manag', 'species', 'DBH')) %>% 
- ##
-  #filter(height_class != 'mature') %>% 
-  filter(manag == 'l') %>% 
-  group_by(trip_n, manag) %>%
-  filter(DBH != 0) %>% 
-  summarize(dbh_min  = min(DBH, na.rm = T),
-            dbh_max  = max(DBH, na.rm = T),
-            dbh_mean = mean(DBH, na.rm = T)) %>% 
-  mutate(RS4_ref = (dbh_max-dbh_min)/dbh_mean) %>%
-  mutate(RS4_ref = replace_na(RS4_ref, 0)) %>% 
-  select(!manag)
+# from the plot & nearest data!!! as I have trees > 10 cm dbh there
 
-
-
-# get count of trees > 10 cm dbh by disturbed sites:
-# use the ENV mature trees density estimation
-ha <- 10000 
-
-# need to recalculate for hectar!!
-RS4_dist <- df_dens_mat_ENV %>% 
-  select(c('trip_n', 'manag', 'species', 'density')) %>% 
-  filter(manag == 'd')  %>%
-  #filter(DBH> 10) %>% 
-  group_by(trip_n, manag) %>%
-    summarize(all_sp = sum(density)) %>% 
-  rename(n_trees_ha = all_sp) %>%  # get count of living trees per site
-  right_join(filter(plot_counts_df_sum, manag == 'd'), 
-             by = c("trip_n", 'manag')) %>%
-  mutate(n_trees_ha = replace_na(n_trees_ha, 0)) #%>% # if NA = replace by 0
-
-
-# Merge the RS4 together:
-# Investigate different thresholds!
-RS4 <- 
-  RS4_ref %>% 
-  full_join(RS4_dist) %>% 
-  mutate(RS4_ref = replace_na(RS4_ref, 0)) %>% # replace NA by 0 - trees are not present
-#  replace_na(0) %>% 
-  mutate(RS4 = case_when(RS4_ref >  1 & n_trees_ha >  10 ~ 0,
-                         RS4_ref <= 1 & n_trees_ha <= 10 ~ 0,
-                         RS4_ref > 1 & n_trees_ha <= 10 ~ 1,
-                         RS4_ref <= 1 & n_trees_ha > 10 ~ 1))
-
-
-
-
+### RS4 exploratory plots: ----------------------------------------------------
 # Get diameter distribution of dbh per tree class category:
 df_mature_trees_env2 <- df_mature_trees_env %>% 
   mutate(height_class = 'mature_ENV') %>% 
@@ -580,7 +533,7 @@ p_dbh_dist <- df_dbh_distrib %>%
   theme_bw() +
   scale_fill_discrete(name="") +
   theme(legend.position = 'bottom') +
-  geom_vline(data = dummy, aes(xintercept = mean), color = 'black')
+  geom_vline(data = dummy_dbh, aes(xintercept = mean), color = 'black')
     
 
 
@@ -592,7 +545,8 @@ df_mature_trees_env3 <- df_mature_trees_env %>%
 
 
 # Get counst of living trees: take into account the average distances between trees
-         
+ha <- 10000         
+
 df_living <- df_full_plot %>% 
   filter(DBH>10) %>% 
   mutate(distance = 100) %>% # get distance for plot in [cm]: tree is located in plot
@@ -627,10 +581,7 @@ dummy_living_trees <- df_living %>%
   #mutate(norm = (max-min)/mean)
 
 
-
-
-
-
+# RS4: Get boxplot living
 p_n_living <- df_living %>% 
   ggplot(aes(y = n_living_trees, 
              fill = factor(manag), 
@@ -646,7 +597,58 @@ p_n_living <- df_living %>%
                show.legend = FALSE)
  # geom_vline(data = dummy, aes(xintercept = mean), color = 'black')
 
-    
+
+
+# Get RS4 values -----------------------------------------------------------
+RS4_ref <- 
+  df_full_plot %>% 
+  select(c('trip_n', 'sub_n', 'manag', 'species', 'DBH')) %>% 
+  ##
+  #filter(height_class != 'mature') %>% 
+  filter(manag == 'l') %>% 
+  group_by(trip_n, manag) %>%
+  filter(DBH != 0) %>% 
+  summarize(dbh_min  = min(DBH, na.rm = T),
+            dbh_max  = max(DBH, na.rm = T),
+            dbh_mean = mean(DBH, na.rm = T)) %>% 
+  mutate(RS4_ref = (dbh_max-dbh_min)/dbh_mean) %>%
+  mutate(RS4_ref = replace_na(RS4_ref, 0)) %>% 
+  select(!manag)
+
+
+
+# get count of trees > 10 cm dbh by disturbed sites:
+# use the ENV mature trees density estimation
+
+# 
+RS4_dist <- df_living %>% 
+  select(c('trip_n', 'manag', 'n_living_trees')) %>% 
+  filter(manag == 'd')  %>%
+  #filter(DBH> 10) %>% 
+  #group_by(trip_n, manag) %>%
+  #summarize(all_sp = sum(density)) %>% 
+  #rename(n_trees_ha = all_sp) %>%  # get count of living trees per site
+  right_join(filter(plot_counts_df_sum, manag == 'd'), 
+             by = c("trip_n", 'manag')) %>%
+  mutate(n_living_trees = replace_na(n_living_trees, 0)) #%>% # if NA = replace by 0
+
+
+# Merge the RS4 together:
+# Investigate different thresholds!
+RS4 <- 
+  RS4_ref %>% 
+  full_join(RS4_dist) %>% 
+  mutate(RS4_ref = replace_na(RS4_ref, 0)) %>% # replace NA by 0 - trees are not present
+  #  replace_na(0) %>% 
+  mutate(RS4 = case_when(RS4_ref >  1 & n_living_trees >  10 ~ 0,
+                         RS4_ref <= 1 & n_living_trees <= 10 ~ 0,
+                         RS4_ref > 1 & n_living_trees <= 10 ~ 1,
+                         RS4_ref <= 1 & n_living_trees > 10 ~ 1))
+
+
+
+
+
 
 
 
@@ -667,14 +669,14 @@ p_RS4_ref <- RS4_ref %>%
 p_RS4_dist <- RS4_dist %>% 
   mutate(manag = 'Dist') %>% 
   ggplot(aes(x = manag,
-             y = n_trees_ha)) + 
+             y = n_living_trees)) + 
   geom_boxplot() +
   ggtitle('# of legacy trees > 10 cm\nin Disturbed stands') + 
   theme_bw() +
   ylab('# trees/ha')
 
 
-p_RS4_agg <- ggarrange(p_RS4_ref,p_RS4_dist)
+p_RS4_agg <- ggarrange(p_RS4_ref, p_RS4_dist)
 
 # 
 # number of legacies trees: in the plots and in the surroundings?
