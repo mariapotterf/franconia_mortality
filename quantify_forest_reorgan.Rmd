@@ -5,6 +5,8 @@ date:  "`r Sys.Date()`"
 output: 
   bookdown::html_document2:
     toc: true
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile),glue::glue('forest_reorg_{Sys.Date()}')))})
+
 
 ---
 
@@ -29,11 +31,10 @@ Identify the aspects of the forest reorganization:
 
 * in forest composition: **Reassembly**
 
-    + **RA1**:  Novel species: Presence: Are novel species present? What is their *importance value* (IV)
-    + **RA2**: Novel species: Competition: CWM of shade tolerance for novel species
+    + **RA1**:  Novel species: Presence: Are novel species present? What is their *importance value* (IV)?
+    + **RA2**: Novel species: Competition: CWM of shade tolerance for novel species. Is it lower then reference? 
     + **RA3**: Competition: Dominance: Is the same species dominant before and after the disturbance? 
-    + **RA4**: Competition: Tree size: Is the most frequent biggest (dbh) tree same under Ref and disturbed conditions?
-    + **RA5**: Competition: Tree size: Is the most frequent tallest tree (cm) same under Ref and disturbed conditions?
+    + **RA4**: Competition: Tree size: Is the most frequent tallest tree same under Ref and disturbed conditions?
 
 
 * in forest structure: **Restructuring**
@@ -46,11 +47,11 @@ Identify the aspects of the forest reorganization:
 
 ## Composite indicators:
 
-### For reassembly:
+### For reassembly
 
 All reassembly indicators are given equal weights in the aggregation towards a composite indicator of reassembly (RA):
 
-RA = (RA1+RA2+RA3+RA4+RA5)/5
+RA = (RA1+RA2+RA3+RA4)/4
 
 
 ### For restructuring
@@ -81,6 +82,7 @@ The number of samples triplets by dominant tree species. Each triplet has 3 mana
 
 - Ref  - reference, undisturbed sites
 - Dist - disturbed sites by drought, uncleared
+- Cleared - will be evaluated in next round
 
 
 ```{r read-libs, eval = TRUE, echo=FALSE, include = FALSE, warning = FALSE, error = FALSE }
@@ -180,52 +182,27 @@ The **Importance Value** is the sum of these three measures, and can range from 
  **Importance value** calculated here considers the extent of the 4m2 plot. 
  
  
-My data: 
- 
- - seedlings regeneration < 1.3 m: BA = 0, regeneration 1.3m-2 m, estimated DBH = 1 cm
- - advanced regeneration: DBH measured for each tree
- - mature trees: DBH measured for each tree
+**Collected data overview**: 
  
  
-## Species composition: Overview
+Plot (4m2):  
 
-### Novel species: Presence & absence
+ - seedlings:
+    +  regeneration < 1.3 m: BA = 0, 
+    + regeneration 1.3m-2 m, estimated DBH = 0.8 cm, BA accordingly
+ - advanced regeneration: 
+    + DBH & height measured for each tree
+ - mature trees:
+    + DBH measured for each tree
+ 
+ 
+Surroundings (<15m from plot center):
 
-Identify the tree species that are novel (appear after the disturbance) or absent (lost) after disturbances. Compared across triplets between reference (living) and disturbed conditions.
-
-```{r p-winners-loosers, echo = F, fig.height=3.5, fig.width = 3.5, fig.cap= 'Average counts of the winners/loosers per tree species'}
-
-p_win_loos_sp
-
-```
-
-### Prevalence of species in regeneration by height category:
-
-Tree regeneration heights classes:
-
-- seedlings: 0.2-2m
-- saplings: 2-5m, up to 10 cm dbh
-
-Tree regeneration notes: 
-
-- O_soft = other softwood species
-- O_hard = other hardwood species
-
-```{r p_prevalence, echo = F, fig.cap = 'Average counts per tree species and tree height. Ordered by the most aboundant tree species'}
-
-p_prevalence
-
-```
+ - nearest advanced regeneration: species
+ - nearest mature tree: species, DBH
+ 
 
 
-
-#### Species composition by dominant tree species and category (for seedlings, saplings)
-
-```{r plot-regen-sp-categ, echo = F, fig.height=5, fig.cap = 'Average counts per tree species and tree height category. Ordered by the most aboundant tree species'}
-
-p_treeComp_categ
-
-```
 
 
 # Quantify forest reorganization
@@ -235,16 +212,17 @@ p_treeComp_categ
 
 Are novel species (i.e., species that are not present under reference conditions) present after disturbance?
 
- - Ref: Calculate the importance value (IV) of all species in the reference stands from stem density and basal area shares of all tree species across all sample plots per site. 
- - Dist: Calculate the importance value of all species in the disturbed stands from stem density shares of all tree species across all sample plots per site and multiply by two .
- - I: Sum the IV of all species in Dist that are not present in Ref
- - If  I>1 then RA1 = 1 else RA=0 
+ - Ref: Calculate the relative importance value (rIV) of all species in the reference stands from relative stem density, relative basal area, and relative frequency of all tree species across all sample plots per site. rIV is IV [0-300] scaled to a [0-100] scale, i.e. divided by 3. 
+ - Dist: Calculate the rIV of all species in the disturbed stands from relative stem density, relative basal area, and relative frequency of all tree species across all sample plots per site. If basal area is zero , omit this component of IV and calculate it only based on relative density and relative frequency. In this case, IV is [0-300], and rIV = IV/3.
+ - I: Sum the rIV of all species in Dist that are not present in Ref
+ - If   I>50 then RA1 = 1 else RA=0   
 
  - **NA -> 0**: if the novel species are not important: no change  
 
 Data:
 
  - plot level: seedlings, saplings, mature trees   
+ - surroundings: nearest Mature, advanced regeneration
 
 
 ```{r plot-RA1, echo = F, fig.height=3, fig.width=3, fig.cap="Boxplots of the sums of species importance values per reference and disturbed sites. Lines represent sites located in one triplet."}
@@ -265,7 +243,8 @@ Are the novel tree species  present after disturbance likely to outcompete the t
 
 Data:
 
- - plot level: seedlings, saplings, mature trees  
+ - plot level: seedlings, saplings, mature trees   
+ - surroundings: nearest Mature, advanced regeneration  
 
 ```{r plot-RA2, echo = F, fig.height=3, fig.width=3, fig.cap="Boxplots of the shading tolerance (community weighted means) for reference and disturbed sites. Lines represent sites located in one triplet."}
 
@@ -278,15 +257,16 @@ p_RA2
 
 Is the species dominating after disturbance the same that dominates under reference conditions?
 
- - Ref: Species with highest IV under reference conditions (across all plots per site)
- - Dist: Species with highest IV post disturbance (across all plots per site)
+ - Ref: Species with highest rIV under reference conditions (across all plots per site)
+ - Dist: Species with highest rIV post disturbance (across all plots per site)
  - If Ref=Dist then RA3=0 else RA3=1
  
  - **if NA**-> 1: if the species is missing, it differs from the reference stand -> change
 
 Data:
 
- - plot level: seedlings, saplings, mature trees  
+ - plot level: seedlings, saplings, mature trees   
+ - surroundings: nearest Mature, advanced regeneration    
  
 ```{r plot-RA3, echo = F, fig.height=3, fig.width=4, fig.cap="Dominant tree species composition for reference and disturbed sites. "}
 
@@ -296,45 +276,26 @@ p_RA3
 ```
 
 
-## RA4: Competition: Tree size: dbh
+## RA4: Competition - Tree size: height
 
-Is the species winning the local competition in the regeneration the same that dominates under reference conditions? Based on dbh.
+Is the species winning the local competition in the regeneration the same that dominates under reference conditions? Based on height classes.
 
- - Ref: Determine the most frequent tree species with highest dbh under reference conditions per sitefor each plot, then determine the species that has most often the largest trees across plots
- - Dist: Determine the most frequent tree species with the highest dbh under disturbed conditions of the tallest individual tree <10 cm dbh per 4m² plot, then determine the species that is most often the tallest tree across plots
+ - Ref: Determine the species that has most often the tallest trees across plots
+ - Dist: Determine the species that is most often the largest tree across plots
  - If Ref=Dist then RA4=0 else RA4=1
  
  - **if NA** -> 1: if the species is missing, it differs from the reference stand -> change
 
 Data:
 
- - plot level: seedlings, saplings
+ - only plot level: seedlings, saplings
  
-```{r plot-RA4, echo = F, fig.height=3, fig.width=4, fig.cap="Dominant tree species composition for reference and disturbed sites. "}
+```{r plot-RA4, echo = F, fig.height=3, fig.width=4, fig.cap="Dominant tree species height for reference and disturbed sites. "}
 
 p_RA4
 
 ```
 
-## RA5: Competition: Tree size: height
-
-Is the species winning the local competition in the regeneration the same that dominates under reference conditions? Based on height classes.
-
- - Ref: Determine the species that has most often the largest trees across plots
- - Dist: Determine the species that is most often the largest tree across plots
- - If Ref=Dist then RA5=0 else RA5=1
-
- - **if NA** -> 1: if the species is missing, it differs from the reference stand -> change
- 
- Data:
-
- - plot: seedlings, saplings
-
-```{r plot-RA5, echo = F, fig.height=3, fig.width=4, fig.cap="Dominant tree species composition for reference and disturbed sites. "}
-
-p_RA5
-
-```
 
 
 # Restructuring
@@ -353,7 +314,9 @@ Indicator: Regeneration sStem density in regeneration disturbed site divided by 
   
 Data:
 
- - plot: seedlings, saplings, mature trees  
+ - plot level: seedlings, saplings, mature trees   
+ - surroundings: nearest Mature, advanced regeneration    
+
 
 
 ```{r plot-RS1, echo = F, fig.height=3, fig.width=3, fig.cap="Boxplots of the stem density for forest regeneration for reference and disturbed sites. Lines represent sites located in one triplet."}
@@ -376,7 +339,9 @@ Is the spatial structure in terms of gaps similar pre- and post-disturbance?
   
   Data:
 
- - plot: seedlings, saplings, mature trees  
+ - plot level: seedlings, saplings, mature trees   
+ - surroundings: nearest Mature, advanced regeneration    
+
   
 ```{r plot-RS2, echo = F, fig.height=3, fig.width=3, fig.cap="Boxplots of the gap share [%] for reference and disturbed sites. Lines represent sites located in one triplet."}
 
@@ -396,7 +361,7 @@ Is infilling likely possible? Evaluate the share of the bare soil (here category
 
 Data:
 
- - plot: ground cover classes 
+ - plot: ground cover [%] 
 
 ```{r plot-RS3, echo = F, fig.height=3, fig.width=3, fig.cap="Boxplots of the bare soils share for reference and disturbed sites. Lines represent sites located in one triplet."}
 
@@ -405,14 +370,7 @@ p_RS3
 
 ```
 
-*Plot all ground cover categories*
 
-```{r plot-RS3-all, echo = F, fig.height=3, fig.width=5, fig.cap="Boxplots of the ground cover claaases distribution per each category for reference ('l') and disturbed sites ('d'). "}
-
-p_ground_cover
-
-
-```
 
 
 ## RS4: Diameter distribution
@@ -434,7 +392,8 @@ Is the diameter distribution homogeneous or heterogeneous?
  
  Data:
 
- - plot level: seedlings, saplings, mature trees  
+ - plot level: seedlings, saplings, mature trees   
+ - surroundings: nearest Mature, advanced regeneration    
  
 ```{r plot-RS4, echo = F, fig.height=3, fig.width=4, fig.cap="Left: Normalized diameter size distribution ((dbhmax – dbhmin)/dbhmean ) for reference site. Right: Number of trees > 10 cm DBH per disturbed site. "}
 
@@ -442,6 +401,20 @@ p_RS4_agg
 
 ```
 
+
+```{r plot-density, echo = F, fig.height=5, fig.width=5, fig.cap="DBH density distribution for advanced and mature trees per management categories. Note different scales. Vertical line represents mean per category." }
+
+p_dbh_dist
+```
+
+DBH distribution summary
+
+
+```{r print-summary-dbh, echo=F}
+# print nice table in knitr
+dummy %>% knitr::kable("markdown", digits = 1, caption = 'DBH distribution summary and normalized values')
+
+```
 
 # Final categorization
 
