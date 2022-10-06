@@ -37,10 +37,10 @@ head(df_mature_trees_env) # - trees in the surroundings: mature trees
 head(df_advanced_env)     # - trees in the surroundings: advanced
 
 # Master plots:
-head(plot_counts_df) # - total count of the plots per triplets & categories: to standardize the densities...
+head(plot_counts_df)      # - total count of the plots per triplets & categories: to standardize the densities...
 
 
-# overview of full triplets:
+# Master set for all triplets:
 master_tripl <- distinct(select(plot_counts_df_sum, trip_n))
 
 # Reassembly: ------------------------------------------------------------------
@@ -53,6 +53,43 @@ site_IVI <- replace_na(site_IVI, list(rel_BA   = 0, rIVI = 0))
 site_IVI %>% 
   filter(trip_n == '1' & manag == 'c') #%>% 
   #select()
+
+
+# Get new propensity of forest reorganization: 
+# need to get species importance values per plot, not per site!!
+
+## RA1: Dominant species ----------------------------------------
+# will the tree species dominating pre-disturbance dominate in post-disturbances?
+# get teh dominant species per plot (from species importance values) and its share
+# compare teh share of species between R and D: does it decrease, increase? 
+# Change is indicated by decrease 
+
+
+# 
+#RA3 <-
+  site_IVI %>%
+ # filter(manag != 'c') %>%
+  dplyr::select(trip_n, manag, species, rIVI) %>%
+  filter(rIVI == max(rIVI)) %>%
+  group_by(trip_n) %>%
+  mutate(maxIVI_l = species[which(c(manag == 'l'))[1]],
+         IVI_l    = rIVI[which(c(manag == 'l'))[1]],
+         diff_IVI = rIVI -IVI_l) #,
+         sd_l = sd(rIVI[which(c(manag == 'l'))], na.rm = T)) # %>%   # get the relative value for Ref
+  #filter(manag == "d")  %>%  # to keep only one row per triplet
+  mutate(RA1 = case_when(maxIVI_l == species ~ 0,
+                         maxIVI_l != species ~ 1)) %>% 
+  right_join(master_tripl) %>%  # fill in all triplets categories
+  mutate(RA3 = replace_na(RA3, 1))  # if the regeneration is missing, it is a change! so put as 1
+
+
+
+
+
+
+
+
+
 
 # RA1: Novel species: presence ---------------------------------------------------------
 # the sum (rIVI) of all species per site  is 100 % 
@@ -165,7 +202,7 @@ p_RA2 <-RA2 %>%
   theme(legend.position = 'bottom')
 
 
-
+# RA3: Dominance --------------------------------------------------------
 # competitin: Dominance: Is the species dominating after distrubances the same that dominates under reference conditions?
 # identify species with teh highest VI bofore and after disturbance: is it still teh same species?
 # NA = interpret as change = 1 -> if teh species is missing, means that it is differenyt from reference
