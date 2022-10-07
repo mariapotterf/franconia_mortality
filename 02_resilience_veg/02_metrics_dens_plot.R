@@ -34,7 +34,7 @@
 #   - make sure to add +100 cm (distance to the center )
 # dbh for advanced regen in ENV:  
 #   - skip from IVi calculation
-# outcome: get the species importance value per plot! not per site
+# outcome: get the species importance value per plot! nearest trees add as 
 # try simply for site: can be easier (can have all 3 dimensions of species importance value)
 
 
@@ -50,7 +50,7 @@
 # Density = 1/MA - > need to convert to common value with the sampling densities: hectar/m2
 
 
-# get species Importance Value: frequency, density, basal area
+# get species Importance Value: density, basal area; can't get frequency on plot level
 # identify novel species against reference conditions - do they change the shade tolerance of comunity?
 
 
@@ -368,173 +368,167 @@ df_full_plot <- df_full_plot %>%
 #Get density from the ENV: advanced regen, ENv: mature trees 
 # ENV: Mature trees distance density -> SITE----------------------------------
 
-# basal area - check from script! !!!!
-df_dens_mat_ENV <- 
-  df_mature_trees_env %>% 
-  group_by(trip_n, manag, species) %>% 
-  summarize(mean_dist = mean(distance, na.rm = T)) %>%
-  mutate(MA = 2*mean_dist^2,
-         density = 1/MA * 10^8)  # 1ha = 1e+8 cm2
-
-
-#### ENV: advanced -> SITE --------------------------------------------------------------
-df_dens_adv_ENV <- 
-  df_advanced_env %>% 
-  group_by(trip_n, manag, species) %>% 
-  summarize(mean_dist = mean(distance, na.rm = T)) %>%
-  mutate(MA = 2*mean_dist^2,
-         density = 1/MA * 10^8)  # 1ha = 1e+8 cm2
-
 
 # Plot: Recalculate the density values per ha ------------------------------------------
 # to merge it later with advanced regeneration and Mature trees from surroundings
 
-ha <- 10000
+# ha <- 10000
 
 # get together dataset for plot and nearest distance species ------------------------
-df_dens_plot_ENV <- df_full_plot %>% # plot level
-  group_by(trip_n, manag, species) %>% 
-  summarize(sp_count = sum(count, na.rm = T)) %>%
-  right_join(df_sub_count, by = c("trip_n", "manag")) %>% # add number of plots per site to calculate density for hectar
-  mutate(index = ha/(sub_counts*4),
-         density = index*sp_count) %>%  # "density" represents the value per ha!!!
-  dplyr::select(trip_n, manag, species, density) %>%
-  # add density from ENV mature trees, ENV advanced 
-  bind_rows(select(df_dens_mat_ENV, c('trip_n', 'manag', 'species', 'density'))) %>% 
-  bind_rows(select(df_dens_adv_ENV, c('trip_n', 'manag', 'species', 'density'))) %>% 
-  group_by(trip_n, manag, species) %>% 
-  summarize(dens_sum = sum(density, na.rm = T)) 
+# df_dens_plot_ENV <- df_full_plot %>% # plot level
+#   group_by(trip_n, manag, species) %>% 
+#   summarize(sp_count = sum(count, na.rm = T)) %>%
+#   right_join(df_sub_count, by = c("trip_n", "manag")) %>% # add number of plots per site to calculate density for hectar
+#   mutate(index = ha/(sub_counts*4),
+#          density = index*sp_count) %>%  # "density" represents the value per ha!!!
+#   dplyr::select(trip_n, manag, species, density) %>%
+#   # add density from ENV mature trees, ENV advanced 
+#   bind_rows(select(df_dens_mat_ENV, c('trip_n', 'manag', 'species', 'density'))) %>% 
+#   bind_rows(select(df_dens_adv_ENV, c('trip_n', 'manag', 'species', 'density'))) %>% 
+#   group_by(trip_n, manag, species) %>% 
+#   summarize(dens_sum = sum(density, na.rm = T)) 
+#   
+# 
+# 
+
+# Add ENV data to PLOT data: as new rows  -------------------------------------------------------------
+
+# first, make a subset of the suitable tables, having the same columns as full plot data
+
+df_mature_trees_env_p <- df_mature_trees_env %>% 
+  select(trip_n, dom_sp, manag, sub_n, species, DBH) %>%  #  height_class, count
+  mutate(height_class = 'mat_ENV',
+         count = 1)
+
+
+
+# Estimate averager dbh from the advanced regeneration in plots: to have at least some evaluation 
+# of teh advanced regeneration dbh in ENV
+unique(df_full_plot$height_class)
+
+
+# Get estimated dbh for the individual species and regimes
+df_dbh_mean_advanced <- 
+  df_full_plot %>% 
+  select(c('trip_n', 'manag', 'species', 'DBH', 'height_class')) %>% 
+  filter(height_class %in% c("HK7")) %>% 
+  group_by(manag, species) %>%
+  summarize(DBH = mean(DBH)) 
+
   
+# Plot DBH range Mean_se(): ----------------------------------------------
+#p_dbh_dist <- 
+df_full_plot %>% 
+  filter(height_class == 'HK7') %>% 
+  ggplot(aes(y = DBH,
+             x = factor(species), 
+             color = factor(manag))) +
+  stat_summary() +
+  theme_bw() +
+  theme(legend.position = 'bottom') 
+
+
+# Add estimated dbh for advanced regeneration by species:
+df_advanced_env_p <-
+  df_advanced_env %>%
+  right_join(df_dbh_mean_advanced, by = c('manag', 'species')) %>%
+  mutate(height_class = 'adv_ENV',
+         count = 1) %>%
+  select(trip_n, dom_sp, manag, sub_n, species, DBH, height_class, count) # correctly order the columns
 
 
 
 
-# Get species rIVI --------------------------------------------------------------
-# Site: Get relative density
-site_rel_dens <- df_dens_plot_ENV %>% 
-  mutate(all_count = sum(dens_sum, na.rm = T),
-         rel_density = dens_sum/all_count*100)
+
+# Get species rIVI Plot + ENV--------------------------------------------------------------
+# # no frequency: not possible on plot level
+# # relative density: 
+# # the number of individuals per area as a percent of the number of individuals of all species.
+df_rel_density <-
+  df_full_plot %>%
+  bind_rows(df_mature_trees_env_p) %>% 
+  bind_rows(df_advanced_env_p) %>%
+  group_by(trip_n, dom_sp, manag, sub_n, species) %>%
+  summarize(sp_count = sum(count, na.rm = T)) %>%
+  ungroup(.) %>%
+  group_by(trip_n, dom_sp, manag, sub_n) %>%
+  mutate(all_count = sum(sp_count, na.rm = T),
+         rel_density = sp_count/all_count*100)# %>% 
+#  filter(trip_n == 1 & manag == 'c' & sub_n == 1)
+# 
+# 
+# # Relative basal area.  
+# # the total basal area of Species A as a percent of the total basal area of all species.  
+df_rel_BA_plot <- 
+  df_full_plot %>%
+  bind_rows(df_mature_trees_env_p) %>% 
+  bind_rows(df_advanced_env_p) %>%
+  mutate(r = DBH/2,
+         BA = pi*r^2)  %>%
+  group_by(trip_n, dom_sp, manag, sub_n, species) %>%
+  summarize(sp_BA = sum(BA, na.rm = T)) %>%
+  ungroup(.) %>%
+  group_by(trip_n, dom_sp, sub_n, manag) %>%
+  mutate(all_BA = sum(sp_BA, na.rm = T),
+         rel_BA = sp_BA/all_BA*100) %>%
+  mutate(rel_BA = replace_na(rel_BA, 0)) %>%  # replace NA by 0 if BA is missing
+    filter(trip_n == 1 & manag == 'c' & sub_n == 1)
+
+
+
+
+
+# Site: Get relative density -----------------------------------
+# site_rel_dens <- #df_dens_plot_ENV %>% 
+# df_full_plot %>% 
+#   #select(trip_n, manag, sub_n, species) %>% 
+#   bind_rows(select(df_mature_trees_env_p, c('trip_n', 'sub_n', 'manag', 'species'))) %>% 
+#   bind_rows(select(df_advanced_env_p, c('trip_n', 'sub_n', 'manag', 'species'))) #%>%
+#   group_by(trip_n, manag, sub_n, species) %>% 
+# 
+#   mutate(all_count = sum(dens_sum, na.rm = T),
+#          rel_density = dens_sum/all_count*100)
 
   
 # Site: get relative frequency
 # add ENV advanced and mature trees to full PLOt dataset, just to see if teh species is present or not
 # need it here on the plot level!
-site_rel_freq <- df_full_plot %>% 
-  select(trip_n, manag, sub_n, species) %>% 
-  bind_rows(select(df_mature_trees_env, c('trip_n', 'sub_n', 'manag', 'species'))) %>% 
-  bind_rows(select(df_advanced_env, c('trip_n', 'sub_n', 'manag', 'species'))) %>%
-  distinct() %>% 
-  group_by(trip_n, manag, species) %>%
-  summarise(sites_by_species = n_distinct(sub_n)) %>% # Step 1; count sites by specices
-  left_join(df_sub_count, by = c("trip_n", "manag")) %>%
-  mutate(frequency = 100 * sites_by_species / sub_counts) # on how many plots the species is present??
+# site_rel_freq <- df_full_plot %>% 
+#   select(trip_n, manag, sub_n, species) %>% 
+#   bind_rows(select(df_mature_trees_env, c('trip_n', 'sub_n', 'manag', 'species'))) %>% 
+#   bind_rows(select(df_advanced_env, c('trip_n', 'sub_n', 'manag', 'species'))) %>%
+#   distinct() %>% 
+#   group_by(trip_n, manag, species) %>%
+#   summarise(sites_by_species = n_distinct(sub_n)) %>% # Step 1; count sites by specices
+#   left_join(df_sub_count, by = c("trip_n", "manag")) %>%
+#   mutate(frequency = 100 * sites_by_species / sub_counts) # on how many plots the species is present??
 
   
 # Get relative basal area: not from the ENV advanced, only from plot and ENV Mature
-site_rel_BA <- 
-  df_full_plot %>%
-    select(c('trip_n', 'sub_n', 'manag', 'species', 'DBH')) %>% 
-    bind_rows(select(df_mature_trees_env, c('trip_n', 'sub_n', 'manag', 'species', 'DBH'))) %>% 
-  mutate(r = DBH/2,
-         BA = pi*r^2)  %>% 
-  group_by(trip_n,manag, species) %>%
-  summarize(sp_BA = sum(BA, na.rm = T)) %>% 
-  ungroup(.) %>% 
-  group_by(trip_n, manag) %>% 
-  mutate(all_BA = sum(sp_BA, na.rm = T),
-         rel_BA = sp_BA/all_BA*100) %>% 
-  mutate(rel_BA = replace_na(rel_BA, 0))  # replace NA by 0 if BA is missing
+#site_rel_BA <- 
+  # df_full_plot %>%
+  #   select(c('trip_n', 'sub_n', 'manag', 'species', 'DBH')) %>% 
+  #   bind_rows(select(df_mature_trees_env, c('trip_n', 'sub_n', 'manag', 'species', 'DBH'))) %>% 
+  # mutate(r = DBH/2,
+  #        BA = pi*r^2)  %>% 
+  # group_by(trip_n,manag, species) %>%
+  # summarize(sp_BA = sum(BA, na.rm = T)) %>% 
+  # ungroup(.) %>% 
+  # group_by(trip_n, manag) %>% 
+  # mutate(all_BA = sum(sp_BA, na.rm = T),
+  #        rel_BA = sp_BA/all_BA*100) %>% 
+  # mutate(rel_BA = replace_na(rel_BA, 0))  # replace NA by 0 if BA is missing
 
 
 # SITE: Calculate IVI: species importance value -----------------------------------------------
 # merge the rel frequeny, density and basal area ------------------------------------------
-site_IVI <- 
-  site_rel_freq  %>% 
-  full_join(site_rel_dens) %>% 
-  full_join(site_rel_BA) %>% 
+plot_IVI <- 
+ # site_rel_freq  %>% 
+  df_rel_density %>% 
+  full_join(df_rel_BA_plot) %>% 
   replace_na(., list(all_BA = 0, rel_BA   = 0)) %>% 
-  mutate(rIVI = (frequency + rel_density +rel_BA)/3)  # relative IVI
-
-
-# # Calculate relative frequency: if species occurs on 5 plots ot of 8: freq = 62.5% 
-# # https://stackoverflow.com/questions/73442694/calculate-the-frequency-of-species-occurrence-across-sites/73442974#73442974
-# df_freq_plot <-
-#   df_full_plot %>%
-#   drop_na(species) %>%
-#   select(trip_n, manag, sub_n, species) %>%
-#   distinct() %>% # just to check if teh species is present or not
-#   group_by(trip_n, manag, species) %>%
-#   summarise(sites_by_species = n_distinct(sub_n)) %>% # Step 1; count sites by specices
-#   left_join(df_sub_count, by = c("trip_n", "manag")) %>%
-#   mutate(frequency = 100 * sites_by_species / sub_counts)
-# 
-# 
-# # relative density: 
-# # the number of individuals per area as a percent of the number of individuals of all species.
-# df_rel_density_plot <- 
-#   df_full_plot %>%
-#   group_by(trip_n, dom_sp, manag, species) %>% 
-#   summarize(sp_count = sum(count, na.rm = T)) %>% 
-#   ungroup(.) %>% 
-#   group_by(trip_n, dom_sp, manag) %>% 
-#   mutate(all_count = sum(sp_count, na.rm = T),
-#          rel_density = sp_count/all_count*100)
-# 
-# 
-# # Relative basal area.  
-# # the total basal area of Species A as a percent of the total basal area of all species.  
-# df_rel_BA_plot <- df_full_plot %>%
-#   mutate(r = DBH/2,
-#          BA = pi*r^2)  %>% 
-#   group_by(trip_n, dom_sp, manag, species) %>%
-#   summarize(sp_BA = sum(BA, na.rm = T)) %>% 
-#   ungroup(.) %>% 
-#   group_by(trip_n, dom_sp, manag) %>% 
-#   mutate(all_BA = sum(sp_BA, na.rm = T),
-#          rel_BA = sp_BA/all_BA*100) %>% 
-#   mutate(rel_BA = replace_na(rel_BA, 0))  # replace NA by 0 if BA is missing
-# 
-# 
-# #########################################
-# #                                       #
-# # Plot: Species Importance Value        #
-# #                                       #
-# ###################################
-# 
-# # merge the rel frequeny, density and basal area ------------------------------------------
-# df_IVI_plot <- 
-#   df_freq_plot %>% 
-#   left_join(df_rel_density_plot) %>% 
-#   left_join(df_rel_BA_plot) %>% 
-#   mutate(sp_IVI = (frequency + rel_density +rel_BA)/3) %>% 
-#   mutate(scale = 'plot')# new_name = old_name
-# 
-# 
-# # Explore teh species importance value: IVI
-# #windows()
-# p_jitter_sp_IVI <- df_IVI_plot %>% 
-#   ggplot(aes(y = sp_IVI,
-#              x = species,
-#              col = species)) +
-#   geom_jitter(alpha = 0.5, width = 0.15) +
-#   facet_grid(dom_sp~manag) + 
-#   theme_bw() +
-#   labs(color = 'Tree species', 
-#        x = '', 
-#        y = 'Plot: rel. Importance Value [%]') +
-#   theme(axis.text.x = element_text(angle = 90, 
-#                                    vjust = 0.5, 
-#                                    hjust=1, 
-#                                    size = 8))  
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
+  #mutate(rIVI = (frequency + rel_density +rel_BA)/3)  # relative IVI
+  mutate(rIVI = ( rel_density +rel_BA)/2)  # relative IVI
 
 
 
@@ -544,176 +538,6 @@ site_IVI <-
 
 
 
-
-
-
-
-# 
-# 
-# 
-# 
-# 
-# 
-# #####################################################################
-# #
-# #   ENV:  Species importance value get counts of teh plots per site: 
-# #         to calculate frequency, density and areas:
-# #
-# #####################################################################---------------------
-# 
-# # should I merge the data from ENV advanced, mature and Plot?
-# # or calculate them individually, and then calculate their average?
-# # maybe test on one: how the data will look different?
-# 
-# # Get the Frequency, density, relative basal area
-# # for mature trees, for advanced regen
-# # Mature trees basal area: just simple sum, if needed multiply by density??
-# 
-# 
-# # Mature trees:
-# df_dens_mat_ENV     # density estimation 
-# df_mature_trees_env # individual trees, contain the DBH info-> for basal area
-# 
-# 
-# 
-# # Calculate relative frequency: if species occurs on 5 plots out of 8: freq = 62.5% 
-# # https://stackoverflow.com/questions/73442694/calculate-the-frequency-of-species-occurrence-across-sites/73442974#73442974
-# df_freq_mat_env <-
-#   df_mature_trees_env %>%
-#  # drop_na(species   ) %>%
-#   select(trip_n, manag, sub_n, species   ) %>%
-#   distinct() %>% # just to check if teh species is present or not
-#   group_by(trip_n, manag, species   ) %>%
-#   summarise(sites_by_species = n_distinct(sub_n)) %>% # Step 1; count sites by species
-#   left_join(df_sub_count, by = c("trip_n", "manag")) %>%
-#   mutate(frequency = 100 * sites_by_species / sub_counts)
-# 
-# 
-# # relative density: 
-# # the number of individuals per area as a percent of the number of individuals of all species.
-# df_rel_density_mat_env <- 
-#  df_dens_mat_ENV %>%
-#   group_by(trip_n,  manag) %>% 
-#   mutate(all_dens = sum(density, na.rm = T),
-#          rel_density = density/all_dens*100)
-# 
-# 
-# # Relative basal area.  
-# # the total basal area of Species A as a percent of the total basal area of all species.  
-# df_rel_BA_mat_env <- 
-#   df_mature_trees_env %>%
-#   mutate(r = DBH/2,
-#          BA = pi*r^2)  %>% 
-#   group_by(trip_n, dom_sp, manag, species) %>%
-#   summarize(sp_BA = sum(BA, na.rm = T)) %>% 
-#   ungroup(.) %>% 
-#   group_by(trip_n, dom_sp, manag) %>% 
-#   mutate(all_BA = sum(sp_BA, na.rm = T),
-#          rel_BA = sp_BA/all_BA*100) %>% 
-#   mutate(rel_BA = replace_na(rel_BA, 0))  # replace NA by 0 if BA is missing
-# 
-# 
-# # ENV: Mature:  Species Importance Value  --------------------------------------------
-# 
-# # merge the rel frequeny, density and basal area ------------------------------------------
-# df_IVI_mat_env <- 
-#   df_freq_mat_env %>% 
-#   left_join(df_rel_density_mat_env) %>% 
-#   left_join(df_rel_BA_mat_env) %>% 
-#   mutate(sp_IVI = (frequency + rel_density +rel_BA)/3) %>%   # scale to [0-100%]
-#   mutate(scale = 'ENV_mat')
-# 
-# 
-# 
-# # ENV: advanced regen: rIVI ----------------------------------------
-# 
-# 
-# df_dens_adv_ENV %>% 
-#   ggplot(aes(y = density, x= manag)) + 
-#   geom_boxplot()
-# 
-# 
-# # missing dbh for advanced regen: skip calculation of the Basal area for relative importance values
-# 
-# 
-# # ENV Advanced regen:
-# df_dens_adv_ENV     # density estimation 
-# df_advanced_env     # individual trees, contain the DBH info-> for basal area
-# 
-# 
-# 
-# # Calculate relative frequency: if species occurs on 5 plots ot of 8: freq = 62.5% 
-# # https://stackoverflow.com/questions/73442694/calculate-the-frequency-of-species-occurrence-across-sites/73442974#73442974
-# df_freq_adv_env <-
-#   df_advanced_env %>%
-#   # drop_na(species   ) %>%
-#   select(trip_n, manag, sub_n, species   ) %>%
-#   distinct() %>% # just to check if teh species is present or not
-#   group_by(trip_n, manag, species   ) %>%
-#   summarise(sites_by_species = n_distinct(sub_n)) %>% # Step 1; count sites by species
-#   left_join(df_sub_count, by = c("trip_n", "manag")) %>%
-#   mutate(frequency = 100 * sites_by_species / sub_counts)
-# 
-# 
-# # relative density: 
-# # the number of individuals per area as a percent of the number of individuals of all species.
-# df_rel_density_adv_env <- 
-#   df_dens_adv_ENV %>%
-#   group_by(trip_n,  manag) %>% 
-#   mutate(all_dens = sum(density, na.rm = T),
-#          rel_density = density/all_dens*100)
-# 
-# 
-# 
-# # ENV: Advanced regen: Species Importance Value  ---------------------------------------
-# 
-# # merge the rel frequeny, density and basal area ------------------------------------------
-# # keep  in mind that IVI for the ENV advanced regen goes only [0-200] 
-# df_IVI_adv_env <- 
-#   df_freq_adv_env %>% 
-#   left_join(df_rel_density_adv_env) %>% 
-#   mutate(sp_IVI = (frequency + rel_density)/2) %>% 
-#   mutate(scale = 'ENV_adv')
-# 
-# 
-# 
-# 
-# 
-# # -------------------------------------------------------------
-# #
-# #    Get species importance value for whole community
-# #                   3  scales: plot, ENV mature, ENV adv
-# # 
-# # -------------------------------------------------------------
-# 
-# # for plot level: sum up the density and basal area per site
-# # frequency is already on the site level
-# 
-# 
-# # test example for different triplet number:
-# # compares the sites between themselves, not the plots:
-# # first just compare the distinct species betwee sites
-# 
-# # Seelect columns to subset
-# my_cols = c('trip_n', 'manag', 'species', 'sp_IVI') # , 'scale'
-# 
-# # merge all scales IVI values: calculate it as means per rIVI per site??
-# # !!! no! I need to take into account the all 3 dimensions, then calculate the rIVI
-# # try to merge the frequency, basal area and density for each scale??
-# 
-# 
-# df_IVI_3scales <- 
-#   select(df_IVI_plot, my_cols)  %>%
-#   bind_rows(select(df_IVI_mat_env, my_cols)) %>%
-#   bind_rows(select(df_IVI_adv_env, my_cols)) %>%
-#   #  tail()
-#   #  ungroup(.) %>% 
-#   group_by(trip_n, manag, species) %>% 
-#   summarize(mean_sp_IVI = mean(sp_IVI, na.rm = T))
-# 
-# 
-# 
-# 
 
 
 #  Find novel species -------------------------------------------------------
