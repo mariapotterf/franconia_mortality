@@ -23,14 +23,15 @@ library(ggpubr)
 
 
 
+
 # Input data -------------------------------------------------------------------
 getwd()
 load(file = paste(getwd(), "dataToPlot.Rdata", sep = '/'))
 
 # Identify data to use:
 head(df_full_plot)        # - full PLOT based data: df_full_plot, seedlings, advanced, mature 
-head(site_IVI)            # - df importance value:from plot, env mature, env advanced, merged by density/ha
-head(df_winners)          # - novel species:        df_novelty
+head(plot_IVI)            # - df importance value:from plot, env mature, env advanced, merged by density/ha
+#head(df_winners)          # - novel species:        df_novelty
 head(trait_df)            # - trait values for all species: eco_traits
 head(df_ground)           # - ground cover, in classes by 5%  
 head(df_mature_trees_env) # - trees in the surroundings: mature trees
@@ -43,16 +44,39 @@ head(plot_counts_df)      # - total count of the plots per triplets & categories
 # Master set for all triplets:
 master_tripl <- distinct(select(plot_counts_df_sum, trip_n))
 
+
+# Prepare teh data: get the all available tree species in each site; fill in with 0 is teh species is not present
+v_species <- unique(df_full_plot$species)
+
 # Reassembly: ------------------------------------------------------------------
 #
-site_IVI <- replace_na(site_IVI, list(rel_BA   = 0, rIVI = 0))
+nrow(plot_IVI)  # 2544 - rows with only existing species
 
-# add novelty info to the 'site_IVI':
-# inspect the rIVI values per comunity? per site, each species should be max 100?
-# can be > 100 because frequency: the occurence of species per plots: each species can have up to 100%
-site_IVI %>% 
-  filter(trip_n == '1' & manag == 'c') #%>% 
-  #select()
+
+
+
+
+# get the total table : combination of trip_n, sub_n, and unique specie
+df_master_species <-   plot_counts_df %>% 
+    mutate(species = 'Spruce') %>% 
+    group_by(trip_n, manag, sub_n) %>% 
+    complete(species = .env$v_species, fill = list(sp_count  = 0)) %>% 
+  select(!c(dom_sp))
+    
+
+
+# make full table, 
+# having all combination of teh species and plots (1244*12 = 14928)
+plot_IVI_exp <- 
+  plot_IVI %>% 
+  full_join(df_master_species) %>% 
+  ungroup(.) %>% 
+  select(!c(dom_sp))
+  
+
+
+
+
 
 
 # Get new propensity of forest reorganization: 
@@ -63,20 +87,75 @@ site_IVI %>%
 # get teh dominant species per plot (from species importance values) and its share
 # compare teh share of species between R and D: does it decrease, increase? 
 # Change is indicated by decrease 
+# need to find which species in dominant in Ref, and keep the variationof species importance values per 
+# species & site? get teh average values per species for REF site, then find the SD
+# important: every site needs to have all species, that the missing ones will have 0 to calculate the mean and SD
+
+# Get first values for the Ref = 'l', get the mean and sd
+# find first the average rIVI per species per site; 
+# then find the highest value and corresponding species
+# compare what value have the species in D and C?
+# need to get the SD: SD orgin from teh deviation of teh dominant species across teh plots
+RA1_dom_ref <- plot_IVI_exp %>%
+  #ungroup(.) %>% 
+  filter(manag == 'l') %>%
+  dplyr::select(trip_n, manag, sub_n, species, rIVI) %>%
+  group_by(trip_n, manag, species) %>%
+  summarize(ref_rIVI = mean(rIVI, na.rm = T)) %>% 
+  ungroup(.) %>% 
+  group_by(trip_n) %>% 
+  filter(ref_rIVI == max(ref_rIVI)) %>%
+  select(!c(manag))
+
+# Get SD: select the dominant species per trip_n from the REF ('l'); 
+# need to add 0 if teh species is not present 
+#RA1_dom_SD <- 
+plot_IVI_exp %>%
+  filter(manag == 'l') %>%
+  dplyr::select(trip_n, manag, sub_n, species, rIVI) #%>%
+  right_join(RA1_dom_ref) %>% 
+  mutate(ref_rIVI = replace_na(ref_rIVI, 0)) %>%   # if species is not present, it represents a 0
+  group_by(trip_n, manag, species) %>% 
+    mutate(ref_iIVI_sd = sd(rIVI, na.rm = T))
+
+
+
+
+#RA1_dom_dist <- 
+  plot_IVI %>%
+  filter(manag != 'l') %>%
+  dplyr::select(trip_n, manag, species, rIVI) %>%
+  full_join(RA1_dom_ref)
+  group_by(trip_n, manag, species) %>%
+  summarize(mean_rIVI = mean(rIVI, na.rm = T)) %>% 
+  ungroup(.) #%>% 
+  group_by(trip_n) %>% 
+  filter(mean_rIVI == max(mean_rIVI))# %>%
+
+
+
+
 
 
 # 
 #RA3 <-
-  site_IVI %>%
+  plot_IVI %>%
  # filter(manag != 'c') %>%
-  dplyr::select(trip_n, manag, species, rIVI) %>%
+  dplyr::select(trip_n, manag, sub_n, species, rIVI) %>%
+  group_by(trip_n, manag, sub_n) %>% 
   filter(rIVI == max(rIVI)) %>%
-  group_by(trip_n) %>%
+  group_by(trip_n, manag) %>% 
+  #group_by(trip_n) %>%
   mutate(maxIVI_l = species[which(c(manag == 'l'))[1]],
          IVI_l    = rIVI[which(c(manag == 'l'))[1]],
-         diff_IVI = rIVI -IVI_l) #,
-         sd_l = sd(rIVI[which(c(manag == 'l'))], na.rm = T)) # %>%   # get the relative value for Ref
-  #filter(manag == "d")  %>%  # to keep only one row per triplet
+         diff_IVI = rIVI -IVI_l) %>% # ,
+  filter(trip_n == 1) %>% 
+  print(n = 100)
+
+
+#         sd_l = sd(rIVI[which(c(manag == 'l'))], na.rm = T)) # %>%   # get the relative value for Ref
+
+#filter(manag == "d")  %>%  # to keep only one row per triplet
   mutate(RA1 = case_when(maxIVI_l == species ~ 0,
                          maxIVI_l != species ~ 1)) %>% 
   right_join(master_tripl) %>%  # fill in all triplets categories
@@ -96,7 +175,7 @@ site_IVI %>%
 # in my data, I have different species across 
 
 RA1_plot <- 
-  site_IVI %>% 
+  plot_IVI %>% 
   filter(manag != 'c') %>% 
   left_join(df_winners) %>% 
     ungroup(.) %>% 
@@ -159,7 +238,7 @@ p_RA1 <- RA1_plot %>%
 # NA -> 0: if no novel species => no change (NA == 0)
 
 RA2 <- 
-  site_IVI %>% 
+  plot_IVI %>% 
   left_join(df_winners, by = c("trip_n", "manag", "species")) %>% 
   left_join(trait_df, by = c('species')) %>% #, by = character()
   filter(manag != 'c') %>% 
@@ -207,7 +286,7 @@ p_RA2 <-RA2 %>%
 # identify species with teh highest VI bofore and after disturbance: is it still teh same species?
 # NA = interpret as change = 1 -> if teh species is missing, means that it is differenyt from reference
 RA3 <-
-  site_IVI %>%
+  plot_IVI %>%
   filter(manag != 'c') %>%
   dplyr::select(trip_n, manag, species, rIVI) %>%
   filter(rIVI == max(rIVI)) %>%
@@ -383,7 +462,7 @@ RA %>% print(n = 40)
 
 # NA -> 1
 RS1 <-
-  site_IVI %>%    # originally: df_full_plot %>%
+  plot_IVI %>%    # originally: df_full_plot %>%
   filter(manag != 'c') %>%
   group_by(trip_n, manag) %>%
   summarize(sum_count = sum(dens_sum)) %>% # sum up all of the stems per plot (all species together)
