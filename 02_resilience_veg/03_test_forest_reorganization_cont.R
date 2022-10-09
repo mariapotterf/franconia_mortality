@@ -71,9 +71,14 @@ plot_IVI_exp <-
   plot_IVI %>% 
   full_join(df_master_species) %>% 
   ungroup(.) %>% 
-  select(!c(dom_sp))
+  select(!c(dom_sp)) %>% 
+  replace_na(list(rIVI = 0))
   
 
+# CHeck if values are correct? Seems correct
+plot_IVI_exp %>% 
+  filter(trip_n == 1 & sub_n == 1 & manag == "c") %>% 
+  print(n = 40)
 
 
 
@@ -93,11 +98,10 @@ plot_IVI_exp <-
 
 # Get first values for the Ref = 'l', get the mean and sd
 # find first the average rIVI per species per site; 
-# then find the highest value and corresponding species
+# then find the highest average value and corresponding species
 # compare what value have the species in D and C?
 # need to get the SD: SD orgin from teh deviation of teh dominant species across teh plots
 RA1_dom_ref <- plot_IVI_exp %>%
-  #ungroup(.) %>% 
   filter(manag == 'l') %>%
   dplyr::select(trip_n, manag, sub_n, species, rIVI) %>%
   group_by(trip_n, manag, species) %>%
@@ -108,12 +112,13 @@ RA1_dom_ref <- plot_IVI_exp %>%
   select(!c(manag))
 
 # Get SD: select the dominant species per trip_n from the REF ('l'); 
-# need to add 0 if teh species is not present 
+# need to add 0 if teh species is not present to get the SD! 
 #RA1_dom_SD <- 
 plot_IVI_exp %>%
   filter(manag == 'l') %>%
-  dplyr::select(trip_n, manag, sub_n, species, rIVI) #%>%
-  right_join(RA1_dom_ref) %>% 
+  dplyr::select(trip_n, manag, sub_n, species, rIVI) %>%
+  right_join(RA1_dom_ref) %>% # filter only the dominant species in each REF triplet
+  full_join(plot_counts_df) %>% 
   mutate(ref_rIVI = replace_na(ref_rIVI, 0)) %>%   # if species is not present, it represents a 0
   group_by(trip_n, manag, species) %>% 
     mutate(ref_iIVI_sd = sd(rIVI, na.rm = T))
