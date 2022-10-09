@@ -197,7 +197,7 @@ dat %>%
 # from 06/28/2022 -> correct directly in the files
 #dat$trip_n <- replace(dat$trip_n, dat$trip_n == 644, 64) 
 #dat$trip_n <- replace(dat$trip_n, dat$trip_n == 35 &  dat$dom_sp == 'beech', 32) 
-#dat$trip_n <- replace(dat$dom_sp, dat$trip_n == 33 &  dat$dom_sp == 'spruce', 33) 
+#dat$trip_n <- replace(dat$dom_sp, dat$trip_n == 33 &  dat$dom_sp == 'spruce', 33) # meaning? 10/09/2022 ???
 #dat$trip_n <- replace(dat$trip_n, dat$trip_n == 91, 61) 
 #dat$trip_n <- replace(dat$trip_n, dat$trip_n == 2 & dat$dom_sp == 'pine', 62) 
 #dat$sub_n  <- replace(dat$sub_n,  dat$sub_n == 24, 14) 
