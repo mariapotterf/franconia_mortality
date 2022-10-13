@@ -69,7 +69,7 @@ rm(list=ls())
 
 
 # Input data -------------------------------------------------------------------
-load(file = "vegData.Rdata")
+load(file = "outData/vegData.Rdata")
 
 
 #### Source paths and functions  -----------------------------------------------
@@ -101,8 +101,8 @@ df_sub_count <-
 
 
 # Calculate values on plot level (average per site), including the distance density calculation
-# merge all data together on plot level (density, frequncy, basal area per species)
-# then calculate the rIVI = relative species importance value per PLOT (* surroundings)
+# merge all data together on plot level (density, frequency, basal area per species)
+# then calculate the rIVI = relative species importance value per PLOT (& surroundings)
 
 #############################################
 #                                           #
@@ -111,9 +111,9 @@ df_sub_count <-
 #############################################
 
 # Explore the data: --------------------------------------------------------------
-# get density of species for seedlings/samplings
-# advanced regeneration is all in height class HK7 
-# get counts for teh species in advanced regeneration, and then means per sample to merge it with the 
+# get density of species for seedlings/saplings
+# 'advanced regeneration' is in height class HK7 
+# get counts for the species in advanced regeneration, and then means per sample to merge it with the 
 # seedling data
 df_advanced_count <- 
   df_advanced2 %>% 
@@ -127,7 +127,7 @@ df_reg_onlyNatural <- df_reg_full %>%
   mutate(n_natural = n_total - n_planted)
 
 
-# merge counts of seedlings & saplings: 
+# Merge counts of seedlings & saplings: 
 df_regen_all <- df_reg_onlyNatural %>% 
   left_join(df_advanced_count, 
             by = c("trip_n", "dom_sp", "manag", "sub_n", "species"))
@@ -706,33 +706,6 @@ trait_df <- trait_df %>%
   ) %>% 
   rename(species = Species)
 
-
-# Slope correction factor:------------------------------------------------------
-# correct the measurements in the field to the map plane projection (e.g. 'shrinks the field sampling plot')
-# need to calculate the area of the study site on the pane: will change one axis, other stays the same 
-# then need to recalculate the correction factor: at plane, the factor is 2500 (4m2 to 10000m2); 
-#                                                 at slope it varies
-
-# Example of slope correction calculation of tree density:
-ha = 10000
-trees_field = 10
-gradient = 16.7  #(has to be in degrees!)
-
-# area of the subsite: 2x2 m
-r = 2    # m
-r1 = r
-r2 = r1*cos(gradient*pi/180)   # R works in radians: to get the value in degrees, it has to be in form cos(angle * pi/180) 
-# https://r-lang.com/r-cos-function-with-example/
-area_field = r^2# m2
-area_plane = r1*r2
-
-# Get the correction factor:
-ideal_factor   = ha/area_field
-correct_factor = ha/area_plane
-
-# Calculate teh tree deisnity based on field, and based on corrected area:
-trees_dens_field = trees_field*ideal_factor
-trees_dens_plane = trees_field*correct_factor
 
 
 
