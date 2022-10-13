@@ -21,3 +21,17 @@ Goal:
 - identify mortality hotspots to lead field sampling in summer 2022
 - generate random points for field sampling: stratified random sampling for disturbed, undisturbed forestrs
 - disturbance forests contains salvaged/unsalvaged sites: can I see them from aerial pcs for example??
+
+
+Identify resilience of Bavarian forests
+
+- input data: vegetations data collected by Juri and Sophia, summer 2022
+- on plot level, and capturing the plot surrounding: up to 15 m radius
+
+
+Process:
+- clean data from the raw datasets (from Survey123: 600 columns.. ) to extract the regeneration, advanced regeneration and mature trees for plot level, 
+ENV data for mature trees and advanced regeneration in surroundings
+
+- recalculate data on the plot level: but counts are on hectares! 
+- apply slope correction on each of them
