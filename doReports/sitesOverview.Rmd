@@ -1,0 +1,267 @@
+---
+title: "Sites overview Franconia"
+author: "Maria Potterf"
+date: "7/15/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, tidy = TRUE, tidy.opts = list(comment = FALSE), message = F)
+knitr::opts_chunk$set(fig.width=6, fig.height=2.5) 
+```
+
+#### MS: Early indication of post-disturbance reorganization in Central European forests
+
+The number of samples triplets by dominant tree species. Each triplet has 3 management categories: 
+
+- Cleared
+- Dead
+- Living
+
+```{r read-libs, eval = TRUE, echo=FALSE, include = FALSE, warning = FALSE, error = FALSE }
+# rm(list=ls())
+
+# Input data -------------------------------------------------------------------
+getwd()
+load(file = paste(getwd(), "dataToPlot.Rdata", sep = '/'))
+
+
+#### Source paths and functions  -----------------------------------------------
+
+source('myPaths.R')
+
+
+#### Read libraries  -----------------------------------------------------------
+library(knitr)
+library(readxl)
+library(dplyr)
+library(data.table)
+library(tidyr)
+library(ggplot2)
+library(stringr)  # use regex expressions
+#library(gridExtra)
+library(ggpubr)
+
+##### Stats
+library(MuMIn)
+library(vegan)
+library(mgcv)
+library(gratia) # visualization of mcv
+
+
+## Colors
+cols = c('#0072B2', # 
+         '#E69F00', # 
+         '#F0E442', # 
+         '#000000') # black: spruce
+
+
+```
+
+
+## Sites overview: 
+
+### Triplets counts:  `r length(unique(dat$trip_n))`
+
+Currently we have `r length(unique(dat$trip_n))` triplets. Stratification by dominant tree species:
+
+```{r triplet-count, echo=FALSE}
+out_summary <- dat %>% 
+  group_by(dom_sp) %>% 
+  distinct(trip_n) %>% 
+  tally() %>% 
+  rename(species=dom_sp,
+         triplets_count = n)
+
+```
+
+
+
+```{r print-summary, echo=F}
+# print nice table in knitr
+out_summary %>% knitr::kable("markdown")
+
+```
+
+
+```{r sites-count, echo=FALSE}
+n_sites <- 
+  dat %>% 
+  group_by(trip_n, dom_sp, manag, sub_n) %>% 
+  nrow() #%>% 
+  #pull()
+  #distinct() #%>% 
+  #tally() #%>% 
+  #rename(species=dom_sp,
+  #       triplets_count = n)
+
+```
+
+#### Number of plots (4m2) per triplet&category : `r n_sites`
+
+In total, we have `r n_sites` sites (~ 10 plots per triplet& category).
+
+
+
+####  Propensity for forest reorganization:
+
+Changes in forest structure and composition: 
+
+Outcomes: !!! complete!
+
+- restructuring - changes in structure
+- reassembly    - changes in composition
+- replacement   - 
+- resilience    - no changes
+
+
+- forest structure: 
+
+  - density of regeneration (here less< 2m height)
+  - height diversity*to be completed (not in report)
+
+- forest composition: 
+
+  - Shannon index 
+  - effective number of species 
+  
+- ecological traits (based on Niinements (2006)), community weighted means (CWM) 
+
+  - CWM shading tolerance
+  - CWM drought tolerance
+
+
+
+### Regeneration density 
+
+
+```{r, calc-summary-stat, include = F}
+# get summary statictics: 
+# how much regeneration is per each site? now it is splitted among several species on site
+# but it is calculated for each species as a value per hectar. So the means should be good here (accounting for species numbers)
+df_out <- df_reg_dens %>% 
+  group_by(manag, dom_sp) %>% 
+  summarize(mean_dens = mean(corr_density, na.rm = T),
+            sd_dens   = sd(corr_density, na.rm = T)) %>% 
+  mutate(dens_mean_sd = stringr::str_glue("{round(mean_dens,1)}±{round(sd_dens,1)}")) %>% 
+  dplyr::select(manag, dom_sp, dens_mean_sd) %>% 
+  pivot_wider(names_from = manag, 
+              values_from = dens_mean_sd )
+
+```  
+
+Regeneration density of the forest regeneration (<2m). Each subsite have been corrected for the differences in slope. The sum values of regenerated tree species counts were divided by the number of subsites. 
+
+```{r print-summary-dens, echo = F, include = T}
+df_out %>% knitr::kable("markdown")
+
+
+```
+
+```{r plot-density, fig.height = 5}
+
+p_density
+
+```
+
+
+Regeneration density (number of stems per site for trees > 20 cm and <2m tall). All tre species are grouped. Plots represent means +- standard error. 
+
+```{r plot-reg-density, echo = F}
+p_reg_dens
+
+```
+  
+
+
+
+#### Shannon index: 
+
+Plots represent means +- standard error. 
+
+
+```{r plot-shannon, echo = F, include = T}
+
+p_shannon
+
+```
+
+#### Shannon index: effective number of species
+
+Plots represent means +- standard error. 
+
+```{r plot-eff_number, echo = F, include = T}
+
+p_eff_number
+```
+
+
+
+
+### Community traits
+
+**shade tolerance**: 
+
+  - higher number = more tolerance (fir), 
+  - lower number = less tolerence (more sunny site, pine)
+  
+**drought tolerance**: 
+ 
+  - higher = more tolerance (pine), 
+  - lower  = less (more drought sensitive, spruce)
+
+
+
+
+```{r plot-traits}
+# Community weighted means ---------------------------------------------
+# https://rpubs.com/CPEL/cwm
+
+
+
+
+
+ggarrange(p_shade,p_drought, ncol = 2, nrow = 1 , 
+          common.legend = TRUE  )
+
+
+
+
+```
+
+#### Reorganization:
+
+- in structure* to be completed
+- in composition
+
+Outcomes for the paper:
+
+- no change -> resilience
+- in structure -> restructure
+- in composition -> reassemble
+- in structure&composition -> replace/shift
+
+Outcomes here just indicates if the regeneration species correspond to dominant species in the matre tree composition. 
+
+If the density of the regeneration tree species:
+
+ - more than 50% of stems: **resilience**
+ - if 25-50%: **decrease**
+ - if 0-25%: **species change** -> changes in compositions
+
+How do the sites change their composition?
+
+```{r plot-alluvial, fig.height=3.8, comment = F}
+
+p_alluvial
+
+```
+
+What are the species prevailing in regeneration?
+
+
+```{r plot-alluvial2, fig.height=7, comment = F}
+
+p_alluvial2
+
+```
