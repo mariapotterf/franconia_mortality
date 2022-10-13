@@ -4,6 +4,7 @@
 .Ruserdata
 img
 outReports
+outData
 plot1.png
 mortality_report.html
 mortality_report.Rmd
