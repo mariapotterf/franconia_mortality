@@ -54,9 +54,7 @@ nrow(plot_IVI)  # 2544 - rows with only existing species
 
 
 
-
-
-# get the total table : combination of trip_n, sub_n, and unique specie
+# get the 'total' table : combination of trip_n, sub_n, and unique specie
 df_master_species <-   plot_counts_df %>% 
     mutate(species = 'Spruce') %>% 
     group_by(trip_n, manag, sub_n) %>% 
@@ -65,8 +63,8 @@ df_master_species <-   plot_counts_df %>%
     
 
 
-# make full table, 
-# having all combination of teh species and plots (1244*12 = 14928)
+# make full table, Join the master one with the recorded species one
+# having all combination of the species and plots (1244*12 = 14928)
 plot_IVI_exp <- 
   plot_IVI %>% 
   full_join(df_master_species) %>% 
@@ -82,6 +80,13 @@ plot_IVI_exp %>%
 
 
 
+# Check how 0 values affect mean and sd:
+
+test <- c(1,2,3,0,0,0,0,0, 0, 0, 0, 0)
+
+mean(test)
+sd(test)
+
 
 
 # Get new propensity of forest reorganization: 
@@ -89,10 +94,10 @@ plot_IVI_exp %>%
 
 ## RA1: Dominant species ----------------------------------------
 # will the tree species dominating pre-disturbance dominate in post-disturbances?
-# get teh dominant species per plot (from species importance values) and its share
-# compare teh share of species between R and D: does it decrease, increase? 
+# get the dominant species per plot (from species importance values) and its share
+# compare the share of species between R and D: does it decrease, increase? 
 # Change is indicated by decrease 
-# need to find which species in dominant in Ref, and keep the variationof species importance values per 
+# need to find which species in dominant in Ref, and keep the variation of species importance values per 
 # species & site? get teh average values per species for REF site, then find the SD
 # important: every site needs to have all species, that the missing ones will have 0 to calculate the mean and SD
 
@@ -105,37 +110,79 @@ RA1_dom_ref <- plot_IVI_exp %>%
   filter(manag == 'l') %>%
   dplyr::select(trip_n, manag, sub_n, species, rIVI) %>%
   group_by(trip_n, manag, species) %>%
-  summarize(ref_rIVI = mean(rIVI, na.rm = T)) %>% 
+  summarize(ref_rIVI_mean = mean(rIVI, na.rm = T)) %>% 
   ungroup(.) %>% 
   group_by(trip_n) %>% 
-  filter(ref_rIVI == max(ref_rIVI)) %>%
+  filter(ref_rIVI_mean == max(ref_rIVI_mean)) %>%
   select(!c(manag))
 
-# Get SD: select the dominant species per trip_n from the REF ('l'); 
+# trip_n species ref_rIVI
+# <chr>  <chr>      <dbl>
+#   1 1      Rowan       10.6
+# 2 10     Spruce      27.8
+# 3 11     Fir         29.5
+# 4 12     Spruce      25  
+# 5 13     Beech       22.2
+# 6 14     Beech       26.4
+# 7 15     Spruce      24.3
+
+# Get SD: select the dominant species per trip_n from the REF ('l'); and have the value for each plot!!
 # need to add 0 if teh species is not present to get the SD! 
-#RA1_dom_SD <- 
-plot_IVI_exp %>%
+RA1_dom_SD <- plot_IVI_exp %>%
   filter(manag == 'l') %>%
   dplyr::select(trip_n, manag, sub_n, species, rIVI) %>%
   right_join(RA1_dom_ref) %>% # filter only the dominant species in each REF triplet
-  full_join(plot_counts_df) %>% 
-  mutate(ref_rIVI = replace_na(ref_rIVI, 0)) %>%   # if species is not present, it represents a 0
+  full_join(plot_counts_df)  %>% 
+ # filter(trip_n == 15  & manag == "l")# %>% # & sub_n == 1;  sd = filter(trip_n == 15  & manag == "l") sd = 15, mean = 24.3
+ # summarize(sd = sd(rIVI ),
+#            mean = mean(rIVI))
+#  mutate(ref_rIVI_sd = sd(rIVI)) #%>%   # if species is not present, it represents a 0
   group_by(trip_n, manag, species) %>% 
-    mutate(ref_iIVI_sd = sd(rIVI, na.rm = T))
+    mutate(ref_iIVI_sd = sd(rIVI, na.rm = T)) %>% 
+  ungroup(.) %>% 
+  select(!c(manag)) %>%  #, dom_sp
+  rename(ref_rIVI = rIVI)
 
 
+RA1_dom_SD %>% 
+  filter( trip_n == '15') #%>% 
+  
 
-
-#RA1_dom_dist <- 
-  plot_IVI %>%
+# Calculate the difference betwee disturbed and reference condistions:
+RA1_dom_dist <- 
+  plot_IVI_exp %>%
   filter(manag != 'l') %>%
-  dplyr::select(trip_n, manag, species, rIVI) %>%
-  full_join(RA1_dom_ref)
-  group_by(trip_n, manag, species) %>%
-  summarize(mean_rIVI = mean(rIVI, na.rm = T)) %>% 
-  ungroup(.) #%>% 
-  group_by(trip_n) %>% 
-  filter(mean_rIVI == max(mean_rIVI))# %>%
+  dplyr::select(trip_n, sub_n, manag, species, rIVI) %>%
+  full_join(RA1_dom_SD, by = c("trip_n", "sub_n" ,  "species")) %>%
+    filter(complete.cases(.)) %>%      # keep only full cases
+    mutate(RA1 = (ref_rIVI - rIVI) / ref_iIVI_sd ) #%>% 
+    #full_join(plot_counts_df)  %>% # complete zeros is the species is absent from plots in different treatment 
+    #filter(manag == "c" & trip_n == '1' & sub_n == 6) #%>% 
+    #print(n = 100)
+    
+
+# plot the values as scatter plot, group by managemnet and dominant species
+#ggplot()
+
+(5-10)/11
+# from wide to long format
+RA1_dom_dist %>% 
+  rename(dist_rIVI = rIVI) %>% 
+  pivot_longer(!c(trip_n, manag, sub_n, species, dom_sp, ref_rIVI_mean, ref_iIVI_sd, RA1 ), 
+               names_to = 'type',
+               values_to = 'IVI') %>% 
+  mutate(unique_ID = paste(trip_n, sub_n, sep = '_')) %>% 
+  filter(trip_n == 1 ) %>% # & manag == 'c'
+  ggplot(aes(x = IVI,
+             y = unique_ID)) + 
+  geom_line(aes(group = unique_ID)) +
+  geom_point(aes(color = type), size = 4) +
+  facet_wrap(.~manag)
+
+
+
+
+
 
 
 
