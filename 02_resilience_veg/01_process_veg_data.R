@@ -805,6 +805,6 @@ rm(dat_size,
 
 
 # Save all dfs as R object to use in further analyses: ------------------------------------------------------------
-save.image(file="vegData.Rdata")
+save.image(file="outData/vegData.Rdata")
 
   
