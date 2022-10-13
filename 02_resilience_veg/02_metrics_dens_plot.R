@@ -13,24 +13,23 @@
 # new regeneration: plot
 
 
-# relative frequencies, densities and basal area per whole site: 
-# for Mature trees: use mature trees metrics for site
-# for seedlings & saplings = freq per plot -> this old account for the different plot number per site (5-15)
+# relative frequencies, densities and basal area per plot: 
+# for Mature trees: use mature trees metrics for plot: just simple estimation of the number of trees/hectar per the distance radius
+# recalculate all to hectares
 
 # analyze several aspects of the composition and structure to see how does the site changes after the disturbances
-# skip first the 'managed site' - to see teh pure affect of the disturbance on changing forest structure
 # remove the planted seedlings!
 
 
-# 2022/10/06 - get data on plot level, kep nearest metrics for horizontal & vertical structure
-# Combine two data:  [plot and nearest tree]
+# 2022/10/06 - get data on plot level, keep nearest metrics for horizontal & vertical structure
+# Combine two data:  [plot and nearest tree] in one dataset, having 2 density metrics: from plot, from nearest distance
 # plot level: 
 #    - mature tree, 
 #    - advanced
 #    - regen
 # for vertical and horizontal structre: 
 #   - from nearest distance metrics : mature trees
-#   - advanced regen (missing height and DBH!)
+#   - advanced regen (missing height and DBH!) - skip DBH is missing 
 #   - make sure to add +100 cm (distance to the center )
 # dbh for advanced regen in ENV:  
 #   - skip from IVi calculation
@@ -46,23 +45,15 @@
 # simpler: only based on the plot and nearest distances
 
 # density from distance measure: based on nearest individual:
-# MA = (2*mean(distance)^2)  # MA = mean area
-# Density = 1/MA - > need to convert to common value with the sampling densities: hectar/m2
+# get the distance to nearest object as radius, calculate how many trees I can have per hectar
+# if the tree is too close (in the plot), then cap the value on ha/4m2 = 2500 trees/ha
+
+# get species Importance Value: density, basal area; can't get frequency on plot level;
+# ok, just keep the values on [0-100] range
 
 
-# get species Importance Value: density, basal area; can't get frequency on plot level
-# identify novel species against reference conditions - do they change the shade tolerance of comunity?
 
 
-
-# Get data about community structure : --------------------------------
-# 
-# ecological traits
-# shannon diversity
-# gap fraction: how many of the 4m2 plots with no trees <10cm
-
-# test different categories and community resemblance?
-# remove all previous data from R memory
 
 # Slope correction? -------------------------------------
 # Convert the regeneration counts into density/ha - takes into account the difference in sampling plot!
@@ -109,8 +100,8 @@ df_sub_count <-
   mutate(trip_n = as.character(trip_n))
 
 
-# Calculate values on plot level (average per site), and on site level (distance density)
-# merge all data together on plot level (density, freuqncy, basal area per species)
+# Calculate values on plot level (average per site), including the distance density calculation
+# merge all data together on plot level (density, frequncy, basal area per species)
 # then calculate the rIVI = relative species importance value per PLOT (* surroundings)
 
 #############################################
