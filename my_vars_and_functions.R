@@ -26,6 +26,7 @@ gradient = 16.7  #(has to be in degrees!)
 r = 2    # m
 r1 = r
 r2 = r1*cos(gradient*pi/180)   # R works in radians: to get the value in degrees, it has to be in form cos(angle * pi/180) 
+
 # https://r-lang.com/r-cos-function-with-example/
 area_field = r^2# m2
 area_plane = r1*r2
@@ -37,5 +38,27 @@ correct_factor = ha/area_plane
 # Calculate teh tree deisnity based on field, and based on corrected area:
 trees_dens_field = trees_field*ideal_factor
 trees_dens_plane = trees_field*correct_factor
+
+
+
+
+# Density correction function --------------------------------------------------
+# the gradient is subset specific: therefore, first adjust the number of the 
+# area per subset, and teh number of densities
+# slope_corr <- function(gradient, ...) {
+#   
+#   # get the dimension of the corrected plane sampling plot
+#   r1 = 2
+#   r2 = r1*cos(gradient*pi/180) 
+#   
+#   # calculate the expansion factor
+#   correct_factor = ha/r1*r2
+#   
+#   # correct the number of trees/ha
+#   dens_corr = trees_field*correct_factor
+#   return(dens_corr)
+#   
+# }
+
 
 
