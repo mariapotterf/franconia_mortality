@@ -18,7 +18,6 @@ library(data.table)
 library(tidyr)
 library(ggplot2)
 library(stringr)  # use regex expressions
-#library(gridExtra)
 library(ggpubr)
 
 
@@ -26,7 +25,8 @@ library(ggpubr)
 
 # Input data -------------------------------------------------------------------
 getwd()
-load(file = paste(getwd(), "dataToPlot.Rdata", sep = '/'))
+load(file = paste(getwd(), "outData/dataToPlot.Rdata", sep = '/'))
+load(file = paste(getwd(), "outData/eco_traits.Rdata", sep = '/'))
 
 # Identify data to use:
 head(df_full_plot)        # - full PLOT based data: df_full_plot, seedlings, advanced, mature 
