@@ -186,9 +186,9 @@ fwrite(dat, outDat)
 
 
 # check !!! on Aug 19th: check the regeneration species of the 42-d-5 ??? it is spruce, but should be oak!!!
-dat %>% 
-  filter(trip_n == 42 & sub_n == 5)  %>% 
-  dplyr::select(matches(c('Spruce', 'Oak', 'uniqueID'))) #%>% replaced amnually in week 1-2! 
+#dat %>% 
+#  filter(trip_n == 42 & sub_n == 5)  %>% 
+#  dplyr::select(matches(c('Spruce', 'Oak', 'uniqueID'))) #%>% replaced amnually in week 1-2! 
 
 # dat$trip_n <- replace(dat$trip_n, dat$trip_n == 35 &  dat$dom_sp == 'beech', 32) 
 
@@ -360,11 +360,13 @@ fwrite(df_ground, outGround)
 # at max: two mature trees per 4m2 plot (MatTree_order)
 df_mature_trees_plot <-   
   dat %>% 
-  dplyr::select(matches(c(plot_info, '_Mature_', 'uniqueID'))) %>% 
+  dplyr::select(matches(c(plot_info, plot_geo, '_Mature_', 'uniqueID'))) %>% 
   dplyr::select(!matches(c('_subplot', 'gc_Mature_Trees'))) %>%  # remove cols if contains 'subplot' in colname: this only contains YES/NO information
   dplyr::select(-all_of(plot_info)) %>% 
   mutate(across(.fns = as.character)) %>% # convert all values to characters to be able to use pivot_longer
-  pivot_longer(!uniqueID, names_to = 'class', values_to = 'val') %>%
+  pivot_longer(!c(uniqueID, gradient, exposure), 
+               names_to = 'class', 
+               values_to = 'val') %>%
   mutate(class = gsub('_Mature_Trees_', '_', class)) %>%
   separate(class, c('MatTree_order', 'class1'), '_') %>%
   group_by(MatTree_order , class1) %>% 
@@ -392,7 +394,7 @@ df_mature_trees_plot <-
 
 
 
-# Check if teh higher gc_tree cover fits with the larger dbh per plot?? ------------------
+### Check if the higher gc_tree cover fits with the larger dbh per plot?? ------------------
 # subset first the data from both
 df_mature_plot2 <- df_mature_trees_plot %>% 
   group_by(trip_n, dom_sp, manag, sub_n) %>% 
@@ -428,8 +430,9 @@ fwrite(df_mature_trees_plot, outMaturePlot)
 # The regeneration is combined regeneration and advanced regeneration!
 
 # Extract data in several steps:
-# for regen - seedlings
-# for advanced regen - saplings??
+# Naming: 
+# - for regen = seedlings
+# - for advanced regen = saplings??
 # steps: 
 #     select the columns
 #     convert them from wide to long format
@@ -620,27 +623,27 @@ df_advanced %>% filter(height <200)  # change the values to cm in next step
 #  4 Beech       4      6 26_beech_c_1          2
 
 
-df_advanced2 <- 
+df_advanced <- 
   df_advanced %>% 
   # replace the values: some have been recorded in meters instead of cm
   mutate(height = case_when(height< 200 ~ height*100,
                             TRUE ~ height)) %>% 
   mutate(height_class = "HK7") %>% 
   mutate(tree_numb = 1) %>% # # Replace 'tree number' (originally 1-8) by 1: 
-                                # to corresponds to counts, not to the order of recording :
+                            # to corresponds to counts, not to the order of recording :
   rename(count = tree_numb) %>% 
   separate(uniqueID, c('trip_n', 'dom_sp', 'manag', 'sub_n'), '_')# %>% 
   #mutate(reg_height = 'saplings') %>% 
   #dplyr::select(colnames(df_regen))
 
   
-rm(df_advanced)
+#rm(df_advanced)
 
 ##### Rbind regeneration data into single dataframe: --------------------------------
 #df_regen_fin <- rbind(df_regen, df_advanced2)
 
 # Export the advanced regeneration table 
-fwrite(df_advanced2, outRegenAdvanced )
+fwrite(df_advanced, outRegenAdvanced )
 
 
 
@@ -652,7 +655,6 @@ fwrite(df_advanced2, outRegenAdvanced )
 
 
 df_mature_trees_env <-
-#test<-
   dat %>% 
   dplyr::select(matches(paste(c(plot_info, plot_geo, 'env_'), collapse = '|'))) %>%
   dplyr::select(matches(paste(c(plot_info, plot_geo, 'MatureTree'), collapse = '|'))) %>%
@@ -702,7 +704,6 @@ fwrite(df_mature_trees_env, outMatureENV )
 
 # Teh advanced trees in the ENV  do not have recorded the DBH!!! I can regress it from teh  
 df_advanced_env <-
-  #test<-
   dat %>% 
   dplyr::select(matches(paste(c(plot_info, plot_geo, 'env_'), collapse = '|'))) %>%
   dplyr::select(matches(paste(c(plot_info, plot_geo, 'Advanced_regeneration'), collapse = '|'))) %>%
@@ -734,12 +735,12 @@ df_advanced_env <-
 
 
 # Check teh distribution of values:
-hist(df_advanced_env$distance)
-df_advanced_env %>% 
-  ggplot(aes(distance), fill = 'white', col = 'black') +
-  geom_histogram(bins = 100) +
-  theme_bw() +
-  facet_grid(.~manag)
+#hist(df_advanced_env$distance)
+#df_advanced_env %>% 
+#  ggplot(aes(distance), fill = 'white', col = 'black') +
+#  geom_histogram(bins = 100) +
+#  theme_bw() +
+#  facet_grid(.~manag)
 
 
 # # Get the list of the corresponding photos: from extremely low (< 100 cm) and high numbers (> 1500cm) 
@@ -794,17 +795,19 @@ df_photo_video_nearest %>%
 fwrite(df_photo_video_nearest, outPhotoVideoNearestTree)
 
 
-# Remove unnecessary df ------------------------------------
-rm(dat_size, 
-   dat1, dat2, dat3, dat4, dat5, 
-   dd, df_mature_plot2,
-   # df_photo, df_video, 
-   EN_heading)
 
 
 
-
-# Save all dfs as R object to use in further analyses: ------------------------------------------------------------
-save.image(file="outData/vegData.Rdata")
+# Save selected dfs in R object: ------------------------------------------------------------
+save(dat,                   # all raw data together  
+     df_reg_full,           # full regeneration, included planted and damaged trees
+     df_regen,              # full plot regeneration
+     df_ground,             # ground cover
+     df_advanced,          # advanced regeneration PLOT, corrected distances
+     df_advanced_env,       # advanced regeneration in ENV
+     df_mature_trees_env,   # mature trees ENV
+     df_mature_trees_plot,  # mature trees PLOT
+     plot_counts_df,        # master table having all triplets and subsets structure
+     file="outData/vegData.Rdata")
 
   
