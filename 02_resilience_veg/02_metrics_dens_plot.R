@@ -62,7 +62,7 @@
 # our inclinometer Suunto is in degrees: goes 0-90
 # slope correction: only needed for slopes > 10% (7 degrees) # https://www.archtoolbox.com/calculating-slope/
 # 100% slope = 45 degrees (1:1 gradient)
-# NA% slope = 90 degrees  (1:0 gradient)
+# NA% slope  = 90 degrees  (1:0 gradient)
 
 
 rm(list=ls())
@@ -83,7 +83,6 @@ library(data.table)
 library(tidyr)
 library(ggplot2)
 library(stringr)  # use regex expressions
-#library(gridExtra)
 library(ggpubr)
 
 
@@ -97,12 +96,38 @@ df_sub_count <-
   group_by(trip_n, dom_sp, manag) %>% 
   count() %>% 
   rename(sub_counts = n) %>% 
-  mutate(trip_n = as.character(trip_n))
+  mutate(trip_n = as.character(trip_n)) %>% 
+  ungroup(.)
 
 
 # Calculate values on plot level (average per site), including the distance density calculation
-# merge all data together on plot level (density, frequency, basal area per species)
+# merge all data together on plot level (density, basal area per species)
 # then calculate the rIVI = relative species importance value per PLOT (& surroundings)
+# cap the densities to exclude the unrealistic ones: for density estimation, e.g. max 2500 trees/ha
+
+# Process: -----------------------------------------------------------------------
+
+# for PLOT: merge all data (regeneration, advanced regen, mature trees) on plot; recalculate density to ha
+# need to do slope correction! keep the gradient value
+# make slope correction across tree heights
+
+# for ENV: calculate distance dependent density per plot
+nrow(df_regen)             # have all columns, all species, height classes, gradient
+#nrow(df_regen_all)        # 2406
+nrow(df_reg_full)          # 2406, contains infor if planted&damaged
+#nrow(df_reg_onlyNatural)   # 2406
+nrow(df_mature_trees_plot) # 4976
+
+# Environment
+nrow(df_advanced_env)      # 2406
+nrow(df_mature_trees_env)  # 1155 
+
+
+df_regen %>% 
+  count(species, height_class) %>% 
+  print(n = 100)
+
+
 
 #############################################
 #                                           #
@@ -110,13 +135,102 @@ df_sub_count <-
 #                                           #
 #############################################
 
+
+# Correct for slope all of teh plots:
+# use data for the PLOT (regen, advanced, mature), and for ENV (advanced, mature)
+# correct across the different height classes
+# use distance density approach for the ENV
+
+my_cols_plot = c('gradient',
+                  'trip_n', 
+                 # 'dom_sp', 
+                  'manag', 
+                  'sub_n',
+                  'species',   
+                  'DBH',  
+                  'count', 
+                  'height_class') #  'height'
+
+
+# regen PLOT
+head(df_regen)
+df_regen2 <- df_regen %>% 
+  rename(count = n_total) %>% 
+  mutate(height = case_when(height_class == 'HK1' ~ 0.3,
+                            height_class == 'HK2' ~ 0.5,
+                            height_class == 'HK3' ~ 0.7,
+                            height_class == 'HK4' ~ 0.9,
+                            height_class == 'HK5' ~ 1.2,
+                            height_class == 'HK6' ~ 1.7
+  )) %>% 
+  mutate(DBH = case_when(height == 1.7 ~ 0.8,  # DBH is ~ 1 cm for the HK6
+                         height != 1.7 ~ 0)) %>% 
+  dplyr::select(all_of(my_cols_plot))
+
+
+# advanced PLOT
+df_advanced2 <- df_advanced %>% 
+  dplyr::select(all_of(my_cols_plot))
+
+# mature PLOT
+df_mature_trees_plot2 <- 
+  df_mature_trees_plot %>% 
+  drop_na() %>% 
+  mutate(height_class = 'mature',
+         count = 1) %>% 
+  ungroup(.) %>% 
+  dplyr::select(all_of(my_cols_plot)) 
+
+
+
+# merge all PLOT data into single df
+df_full_plot = rbind(df_regen2,
+                     df_advanced2,
+                     df_mature_trees_plot2)
+
+
+# Slope correct the number of trees per ha: 
+ha     <- 10000
+r_side <- 2 # 2m as the lenght of the square
+
+# this table has extimated densities per tree species and per height class
+df_full_plot_corr <-
+  df_full_plot %>%
+  mutate(gradient = as.numeric(gradient)) %>%
+  mutate(
+    length_corr = r_side * cos(gradient * pi / 180),
+    area_corr   = r_side * length_corr,
+    correct_factor = ha / area_corr,
+    corr_count = count * correct_factor
+  ) # %>%
+#filter(corr_density != 0) %>%
+#ungroup(.) %>%
+# distinct()
+
+
+# Histogram of the species coiunts per ha (by species and height c --------
+df_full_plot_corr %>% 
+  filter(corr_count > 0) %>% 
+  ggplot(aes(corr_count)) + 
+  geom_histogram(binwidth = 1000)
+
+
+# sum up by plot level:
+df_full_plot_corr %>% 
+  group_by(trip_n, manag, sub_n) %>% 
+  summarise(sum_plot = sum(corr_count, na.rm = T )) %>% 
+ # filter(corr_count > 0) %>% 
+  ggplot(aes(sum_plot)) + 
+  geom_histogram(binwidth = 1000)
+
+
 # Explore the data: --------------------------------------------------------------
-# get density of species for seedlings/saplings
+# get density of species for seedlings&saplings
 # 'advanced regeneration' is in height class HK7 
 # get counts for the species in advanced regeneration, and then means per sample to merge it with the 
 # seedling data
 df_advanced_count <- 
-  df_advanced2 %>% 
+  df_advanced %>% 
   group_by(trip_n, dom_sp, manag, sub_n, species) %>% 
   summarize(sum_sapln = sum(count, na.rm = T)) #,
 
@@ -131,80 +245,6 @@ df_reg_onlyNatural <- df_reg_full %>%
 df_regen_all <- df_reg_onlyNatural %>% 
   left_join(df_advanced_count, 
             by = c("trip_n", "dom_sp", "manag", "sub_n", "species"))
-
-
-
-# Plot: Regeneration counts: ------------------------------------------------------------
-# get total density per species: get diversity of the regeneration species???
-# need to show as average counts!!!
-df_regen_all2 <- df_regen_all %>% 
-  group_by(trip_n, dom_sp, manag, sub_n, species) %>% 
-  summarize(seedlings = mean(n_natural, na.rm = T),
-            sapling = mean(sum_sapln, na.rm = T)) %>%
-  mutate_all(~replace(., is.nan(.), 0)) %>% # convert all NaN to zeros
-  pivot_longer(!c(trip_n, dom_sp, manag, sub_n, species), 
-               names_to = 'veg_class',
-               values_to = 'count') # %>%
-
-
-# get barplot: counts of regeneration by species: -----------------------------------
-# p_treeComp_categ <- 
-#   df_regen_all2 %>% 
-#   ggplot(aes(x = reorder(species, -count), #species,
-#              y = count,
-#              fill = factor(veg_class))) +
-#   stat_summary(fun = mean, 
-#                position=position_dodge(0.95), 
-#                geom = "bar",
-#                color = 'black') + 
-#   stat_summary(fun.data = mean_se, 
-#                geom = "errorbar", 
-#                position=position_dodge(0.95),
-#                width = .3) +
-#     labs(fill = "Natural\nRegeneration") + 
-#  scale_fill_manual(values = c('sapling' = '#E69F00',
-#                               'seedling' = 'grey90'),
-#                    labels = c('sapling [2-5 m]', 
-#                               'seedling [0.2-2m]')) +
-#   xlab('') +
-#   ylab('Mean counts per tree species') + 
-#   theme_bw() +
-#   facet_grid(dom_sp~manag, scales = 'free') + # 
-#   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size = 8),
-#          legend.position = 'bottom')# + 
-#   
-#   
-#   
-# # order by prevelanec of spcies: 
-# p_prevalence <- df_regen_all2 %>% 
-#     ggplot(aes(x = reorder(species, -count), #species,
-#                y = count,
-#                fill = factor(veg_class))) +
-#     stat_summary(fun = mean, 
-#                  position=position_dodge(0.95), 
-#                  geom = "bar",
-#                  color = 'black') + 
-#     stat_summary(fun.data = mean_se, 
-#                  geom = "errorbar", 
-#                  position=position_dodge(0.95),
-#                  width = .3) +
-#     labs(fill = "Natural\nRegeneration") + 
-#     scale_fill_manual(values = c('sapling' = '#E69F00',
-#                                  'seedling' = 'grey90'),
-#                       labels = c('sapling [>2-5 m]', 
-#                                  'seedling [0.2-2m]')) +
-#     xlab('') +
-#     ylab('Mean counts\nper tree species') + 
-#     theme_bw() +
-#     #  facet_grid(dom_sp~manag) + # , scales = 'free'
-#     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size = 8),
-#           legend.position = 'right')# + 
-# 
-#            
-# 
-# 
-# 
-
 
 
 
@@ -297,7 +337,8 @@ df_regen_all2 <- df_regen_all %>%
 # Create full dataset per 4m2 to calculate Importance value: ------------------------------
 # data for seedlings & samplings
 # get counts, dbh -> basal area to calculate the frequency, deminity and dominance per species:
-my_cols_regen = c('trip_n', 
+my_cols_regen = c('gradient',
+                  'trip_n', 
                   'dom_sp', 
                   'manag', 
                   'sub_n',
@@ -324,7 +365,7 @@ df_reg_onlyNatural2 <- df_reg_onlyNatural %>%
 
 # filter and process seedlings, sampling and mature trees to fit in this database, and then 'rbind' 3 tables:
 # calculate BA for each (skip seedlings < 1.3 m = BA is NA)
-df_advanced3 <- df_advanced2 %>% 
+df_advanced2 <- df_advanced %>% 
   dplyr::select(all_of(my_cols_regen))
 
 
@@ -339,7 +380,7 @@ df_mature_trees_plot3 <- df_mature_trees_plot %>%
 
 # check names: correct, can be merged (r bind)
 names(df_reg_onlyNatural2)
-names(df_advanced3)
+names(df_advanced2)
 names(df_mature_trees_plot3)
 
 
@@ -531,202 +572,6 @@ plot_IVI <-
 
 
 
-#  Find novel species -------------------------------------------------------
-
-# Identify winners, losers from the 'site' dataset, not only from the regeneration:
-# reason: the mature trees should be simply present as the mature trees ?? so we can still see the
-# the appearance of new species?
-
-# Identify novel species in the community: ----------------------------------------
-# are there any new species in the regeneration? compare the reference vs disturbed sites:
-# just identify which species are new compared to Reference (Living) conditions
-# eg ignore height's classes, counts...
-
-
-
-
-
-# Get winnders and loser species between Ref-Dist:
-# df_winners <- site_IVI %>% 
-#   filter(manag !='c' ) %>% # & trip_n == 11
-#   group_by(trip_n, manag) %>% 
-#   distinct(species) %>% 
-#   select(trip_n, manag, species) %>% 
-#   ungroup() %>% 
-#   group_by(trip_n) %>% 
-#   filter(manag == 'd' & !species %in% species[manag == 'l'] ) %>%
-#   mutate(novelty = 'novel')
-# 
-# 
-# # identify loosers: species that were present at reference; not present after disturbance
-# df_loosers <- 
-#   site_IVI %>% 
-#   filter(manag !='c') %>% 
-#   group_by(trip_n, manag) %>% 
-#   distinct(species) %>% 
-#   select(trip_n, manag, species) %>% 
-#   ungroup() %>% 
-#   group_by(trip_n) %>% 
-#   filter(manag == 'l' & !species %in% species[manag == 'd']) %>% 
-#   mutate(novelty = 'lost')
-
-
-# Merge loosers and winners species together: ----------------------------------------
-# df_novelty = 
-#   rbind(df_winners, df_loosers) %>% 
-#   group_by(species, novelty) %>% 
-#   tally() %>% 
-#   mutate(n2 = case_when(novelty == 'lost' ~ -n,
-#                         novelty == 'novel' ~ n)) #TRUE ~ species
-# 
-# #windows()
-# p_win_loos_sp <- ggplot(df_novelty, aes(x = species, fill = novelty, y = n2)) +
-#   geom_col(position = 'identity', col = 'black')  +
-#   theme_bw() +
-#   ylab('Counts (mean)') + 
-#   theme(axis.text = element_text(angle = 90)) 
-# #facet_wrap(vars(species), strip.position = "bottom")
-# 
-# 
-# p_winners <- ggplot(df_winners, aes(x = species, fill = species)) + 
-#   geom_bar() +
-#   ggtitle('Novel species', subtitle= 'Appear after disturbance)') + 
-#   theme_bw()
-# 
-# p_loosers <- ggplot(df_loosers, aes(x = species, fill = species)) + 
-#   geom_bar() + 
-#   ggtitle('Lost species', subtitle= 'Disappear after disturbance)') + 
-#   theme_bw()
-# 
-# ggarrange(p_winners, p_loosers, nrow = 2)
-# 
-# 
-# 
-# head(df_winners)
-
-
-
-
-# vertical distribution: how many trees is in which height category?
-
-
-# Get tree species traits:  ----------------------------------------------------------
-
-eco_traits <- read_excel(paste(myPath,
-                               'notes/litterature/traits_database',  
-                               'Niinemets_2006.xls', sep = '/'),
-                         skip = 3,
-                         sheet = 'Niinemets_2006_appendix',
-                         .name_repair = function(x) gsub("\\s+", "_", x)) # replace the spaces in colnames by '_'
-
-
-# Interpretation: 
-# shade tolerance: 
-#             higher number = more tolerance (fir), 
-#             lower number = less tolarence (more sunny site, pine)
-# drought tolerance: 
-#             higher  = more tolerance (pine), 
-#             lower = less (more drought sensitive, spruce)
-
-# Filter only relevant species:  # how to handle the Other sftwoos and Other harvwood? now just skipped 
-# Any way it is likely not dominant
-trees_lat <- c(
-  'Picea abies',
-  'Fagus sylvatica',
-  'Sorbus aucuparia',
-  'Abies alba',
-  'Acer pseudoplatanus',
-  'Betula pendula',
-  'Pinus sylvestris',
-  'Fraxinus excelsior'
-) 
-
-quercus_spp <- c('Quercus petraea',  # Quercus will be averaged later
-                 'Quercus robur')
-
-salix_spp <- c('Salix caprea',     # Salix will be averaged later
-               'Salix alba')
-
-# Get Quercus spp: average the values for the :
-# Quercus petraea , Quercus robur
-# For salix: Salix alba, Salix caprea  (S. fragilis is not that common)
-
-#'OtherHardwood',
-# 'OtherSoftwood'
-
-# Filter eco traits database by species: 
-# need to do individuall for Quercis, salix and for other species 
-# that we have full name identification
-traits_Qc <- 
-  eco_traits %>% 
-  dplyr::select(c('Species','Shade_tolerance', 'Drought_tolerance')) %>% 
-  filter(Species %in% quercus_spp)  %>% 
-    mutate(Species = 'Quercus') %>% 
-    group_by(Species) %>% 
-    summarize(Shade_tolerance = mean(Shade_tolerance),
-              Drought_tolerance = mean(Drought_tolerance))
-
-traits_Sx <- 
-  eco_traits %>% 
-  dplyr::select(c('Species','Shade_tolerance', 'Drought_tolerance')) %>% 
-  filter(Species %in% salix_spp)  %>% 
-  mutate(Species = 'Salix') %>% 
-  group_by(Species) %>% 
-  summarize(Shade_tolerance   = mean(Shade_tolerance),
-            Drought_tolerance = mean(Drought_tolerance))
-
-# remianing species:
-traits_sp <- 
-  eco_traits %>% 
-  dplyr::select(c('Species','Shade_tolerance', 'Drought_tolerance')) %>% 
-  filter(Species %in% trees_lat)
-
-# Merge traits into single df
-trait_df <- rbind(traits_Qc,
-                  traits_Sx,
-                  traits_sp) 
-
-# Change naming to be able to merge them with denity dataset:
-trait_df <- trait_df %>%
-  mutate(
-    Species = case_when(
-      Species == "Fraxinus excelsior"    ~ "Ash",
-      #Species == "Sonstiges NH"         ~ "OtherSoftwood",
-      # Species == "Sonstiges LH"        ~ "OtherHardwood",
-      Species == "Fagus sylvatica"       ~ "Beech" ,
-      Species == "Sorbus aucuparia"      ~ "Rowan",
-      Species == "Acer pseudoplatanus"   ~ "Maple",
-      Species == "Picea abies"           ~ "Spruce",
-      Species == "Quercus"               ~ "Oak",
-      Species == "Pinus sylvestris"      ~ "Pine",
-      Species == "Betula pendula"        ~ "Birch",
-      Species == "Salix"                 ~ "Willow",
-      Species == "Abies alba"            ~ "Fir"
-    )
-  ) %>% 
-  rename(species = Species)
-
-
-
-
-
-# Density correction function --------------------------------------------------
-# the gradient is subset specific: therefore, first adjust the number of the 
-# area per subset, and teh number of densities
-# slope_corr <- function(gradient, ...) {
-#   
-#   # get the dimension of the corrected plane sampling plot
-#   r1 = 2
-#   r2 = r1*cos(gradient*pi/180) 
-#   
-#   # calculate the expansion factor
-#   correct_factor = ha/r1*r2
-#   
-#   # correct the number of trees/ha
-#   dens_corr = trees_field*correct_factor
-#   return(dens_corr)
-#   
-# }
 
 
 
@@ -735,23 +580,6 @@ trait_df <- trait_df %>%
 
 
 # Get tree densities ------------------------------------------------------
-
-# Define sample area per patch - correct the density/ha estimation----------------
-# calculate from the original data table
-subsample_n <- 
-  dat %>%
-  group_by(trip_n , dom_sp , manag ) %>% 
-  distinct(sub_n ) %>% 
-  tally() %>%
-  mutate(trip_n = as.character(trip_n),
-         dom_sp = factor(dom_sp),
-         manag = factor(manag)) %>% 
-  mutate(manag = case_when(manag == 'c' ~ 'cleared',
-                           manag == 'l' ~ 'living',
-                           manag == 'd' ~ 'dead'#,
-                           )) %>%   #Species == "Fagus sylvatica"       ~ "Beech" ,))
-  rename(n_subsites = n) %>% 
-  as.data.frame()
 
 
 
@@ -772,15 +600,16 @@ df_regen <- df_regen %>%
 # need to account for the different number of subsites: 5-15
 # calculate the sums and then divide by number of subsamples
 #df_reg_dens <-
-
+ha= 10000
 # Calculate the sum of tree counts per species, ignore tree heights categories!!
-df_reg_dens <- df_regen %>%
+#df_reg_dens <- 
+  df_regen %>%
   dplyr::select(-c(height_class)) %>%
-  dplyr::left_join(subsample_n,
+  dplyr::left_join(df_sub_count,
                    by = c('trip_n', 'manag', 'dom_sp')) %>% #, 'dom_sp', 'manag'
-  ungroup() %>%
-  group_by(trip_n, dom_sp, manag, species,  n_subsites)  %>% #height_class,
-  summarize(dens_sum = sum(n_total, na.rm = T)/n_subsites) %>%
+  ungroup(.) %>%
+  group_by(gradient, trip_n, dom_sp, manag, species,  sub_counts)  %>% #height_class,
+  summarize(dens_sum = sum(n_total, na.rm = T)/sub_counts) #%>%
   mutate(
     length_corr = 2 * cos(gradient * pi / 180),
     area_corr   = 2 * length_corr,
