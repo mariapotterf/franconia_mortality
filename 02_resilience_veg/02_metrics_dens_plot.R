@@ -203,9 +203,6 @@ df_full_plot_corr <-
     correct_factor = ha / area_corr,
     corr_count = count * correct_factor
   ) # %>%
-#filter(corr_density != 0) %>%
-#ungroup(.) %>%
-# distinct()
 
 
 # Histogram of the species coiunts per ha (by species and height c --------
@@ -222,6 +219,85 @@ df_full_plot_corr %>%
  # filter(corr_count > 0) %>% 
   ggplot(aes(sum_plot)) + 
   geom_histogram(binwidth = 1000)
+
+
+# maybe cap values? based on 
+df_full_plot_corr %>% 
+  group_by(trip_n, manag, sub_n) %>% 
+  summarise(sum_plot = sum(corr_count, na.rm = T )) %>% 
+  ungroup(.) %>% 
+  filter(sum_plot > 125000) # 50 
+
+# for 4 m2 real counts: 
+# trip_n manag sub_n sum_plot
+# <chr>  <chr> <chr>    <dbl>
+# 1 12     d     1           65
+# 2 12     d     5           72
+# 3 15     d     2           61
+# 4 42     d     5           54
+# 5 43     l     3           51
+#   
+
+# corrected counts
+# trip_n manag sub_n sum_plot
+# <chr>  <chr> <chr>    <dbl>
+# 1 12     d     1      165007.
+# 2 12     d     5      184021.
+# 3 15     d     2      152872.
+# 4 42     d     5      135185.
+# 5 43     d     3      125019.
+# 6 43     l     3      127519.
+
+
+# Get the density based on distance; also correct for slope:
+# adjust area of teh circle and then calculate the area 
+# get the numbers of trees per ha
+head(df_advanced_env)
+
+df_advanced_env_corr <- 
+  df_advanced_env %>% 
+  #mutate(gradient = as.numeric(gradient)) %>%
+  mutate(count     = 1, 
+    length_corr    = distance/100 * cos(gradient * pi / 180),
+    area_corr      = pi * length_corr^2, #r_side * length_corr,
+    correct_factor = ha / area_corr,
+    corr_count     = round(count * correct_factor, 0)
+  ) %>%
+  mutate(corr_count = case_when(corr_count <= 2500 ~ corr_count,
+                                corr_count > 2500 ~ 2500)) 
+  #dplyr::select(gradient, trip_n, manag, species, count, corr_count) 
+  
+
+df_mature_env_corr <- 
+  df_mature_trees_env %>% 
+  #mutate(gradient = as.numeric(gradient)) %>%
+  mutate(count          = 1, 
+         length_corr    = distance/100 * cos(gradient * pi / 180),
+         area_corr      = pi * length_corr^2, #r_side * length_corr,
+         correct_factor = ha / area_corr,
+         corr_count     = round(count * correct_factor)
+  ) %>% 
+  mutate(corr_count = case_when(corr_count <= 2500 ~ corr_count,
+                                 corr_count > 2500 ~ 2500)) 
+
+# make distribution plots to share with RS and WR
+# to merge data: select the onces that are closer to site
+df_mature_env_corr %>% 
+  ggplot(aes(corr_count,
+             fill = species)) +
+  geom_histogram()
+
+
+df_advanced_env_corr %>% 
+  ggplot(aes(corr_count,
+             fill = species)) +
+  geom_histogram()
+
+
+# merge the densities 
+
+
+
 
 
 # Explore the data: --------------------------------------------------------------
