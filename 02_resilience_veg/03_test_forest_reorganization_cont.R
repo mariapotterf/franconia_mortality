@@ -101,10 +101,10 @@ plot_IVI_exp %>%
 
 ## RA1: Dominant species ----------------------------------------
 # will the tree species dominating pre-disturbance dominate in post-disturbances?
-# Process: 
-# - REF: average rIVI per species and plot get, get the species with max rIVI 
-#        filter this species for each plot to gets its variability (SD)
-# - compare with DIST: get average value per species for DIST, and compare with REF
+# Process: in 3 steps: 
+# - for REF: 1. average rIVI per species and plot get, get the species with max rIVI 
+#            2. get SD: filter this species for each plot to gets its variability (SD)
+# - for DIST: 3. compare with DIST: get average value per species for DIST, and compare with REF
  
 # Change is indicated by decrease (REF > DIST) within the range of variation (SDref)
 
@@ -152,8 +152,7 @@ df_RA1 <-
   drop_na(.) %>% # remove NA values, to keep only species that are REF value (dominant under REF conditions)
   mutate(RA1 = (ref_rIVI_mean - avg_iIVI_dist) / ref_iIVI_sd)
 
-# plot the values as scatter plot, group by managemnet and dominant species
-#ggplot()
+# plot the values as density plot
 
 df_RA1 %>% 
   ggplot(aes(RA1, fill = manag)) +
@@ -179,6 +178,48 @@ df_RA1 %>%
 
 
 
+# RA2: tree species richness ---------------------------------------------------------------------
+# compare tree species richness: REF <-> DIST, if richness decrease: indication of change!
+# get from counts! 
+# steps:
+# 1. richness: count number of species average number of species REF, SD same
+# 2. D - average number of species post-disturbance
+RA2_ref <- 
+  plot_IVI_exp %>%
+  filter(sp_count  != 0 ) %>% 
+  filter(manag == 'l') %>%
+  group_by(trip_n, sub_n) %>% 
+  summarise(richness = n()) %>% 
+  ungroup(.) %>% 
+  group_by(trip_n) %>%
+  summarize(ref_sd_rich  = sd(richness, na.rm = F),
+            ref_avg_rich = mean(richness, na.rm = F)) 
+
+
+df_RA2 <-   
+  plot_IVI_exp %>%
+  filter(sp_count  != 0 ) %>% 
+  filter(manag != 'l') %>%
+  group_by(trip_n, manag, sub_n) %>% 
+  summarise(richness = n()) %>% 
+  ungroup(.) %>% 
+  group_by(trip_n, manag) %>%
+  summarize(dist_avg_rich = mean(richness, na.rm = F)) %>% 
+  full_join(RA2_ref) %>% 
+  mutate(RA2 = (ref_avg_rich - dist_avg_rich)/ref_sd_rich )
+
+
+# plot the values as density plot
+df_RA2 %>% 
+  ggplot(aes(RA2, fill = manag)) +
+  geom_density(alpha = 0.6)
+
+
+
+
+
+# RA3: competition --------------------------------------------------------
+# community weighted means of shade tolerance DIST <-> REF
 
 
 
