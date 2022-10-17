@@ -165,7 +165,10 @@ df_regen2 <- df_regen %>%
   )) %>% 
   mutate(DBH = case_when(height == 1.7 ~ 0.8,  # DBH is ~ 1 cm for the HK6
                          height != 1.7 ~ 0)) %>% 
-  dplyr::select(all_of(my_cols_plot))
+  dplyr::select(all_of(my_cols_plot)) %>% 
+  mutate(species = case_when(species == "OtherHardwood" ~ "O_Hard",
+                             species == "OtherSoftwood" ~ "O_Soft",
+                             TRUE ~ species))
 
 
 # advanced PLOT
@@ -189,7 +192,7 @@ df_full_plot = rbind(df_regen2,
                      df_mature_trees_plot2)
 
 
-# Slope correct the number of trees per ha: 
+# Slope correct the number of trees per ha: ------------------------------------------
 ha     <- 10000
 r_side <- 2 # 2m as the lenght of the square
 
