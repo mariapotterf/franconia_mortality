@@ -220,6 +220,70 @@ df_RA2 %>%
 
 # RA3: competition --------------------------------------------------------
 # community weighted means of shade tolerance DIST <-> REF
+RA3_ref <- 
+  plot_IVI_exp %>% 
+  left_join(trait_df, by = c('species')) %>% #, by = character()
+  filter(manag == 'l') %>% 
+  ungroup(.) %>% 
+  group_by(trip_n) %>% 
+  summarize(ref_mean_shade   = weighted.mean(Shade_tolerance,   
+                                        rIVI, na.rm = TRUE),
+            ref_sd_shade   = sd(Shade_tolerance, na.rm = TRUE)) #%>%
+  
+
+df_RA3 <- 
+  plot_IVI_exp %>% 
+  left_join(trait_df, by = c('species')) %>% #, by = character()
+  filter(manag != 'l') %>% 
+  ungroup(.) %>% 
+  group_by(trip_n,  manag) %>% 
+  summarize(dist_mean_shade   = weighted.mean(Shade_tolerance,   
+                                             rIVI, na.rm = TRUE)) %>%
+    left_join(RA3_ref, by = 'trip_n') %>% 
+    mutate(RA3 = (dist_mean_shade -ref_mean_shade )/ref_sd_shade)
+
+
+
+# plot the values as density plot
+df_RA3 %>% 
+  ggplot(aes(RA3, fill = manag)) +
+  geom_density(alpha = 0.6)
+
+
+
+
+
+# RS1: stem density --------------------------------------------------------
+RS1_ref <- 
+  plot_IVI_exp %>% 
+  filter(manag == 'l') %>% 
+  group_by(trip_n) %>% 
+  summarize(ref_mean_dens   = mean(all_count, na.rm = TRUE),
+            ref_sd_dens     = sd(all_count, na.rm = TRUE)) #%>%
+
+
+df_RS1 <- 
+  plot_IVI_exp %>% 
+  filter(manag != 'l') %>% 
+  group_by(trip_n, manag) %>% 
+  summarize(dist_mean_dens   = mean(all_count, na.rm = TRUE)) %>%
+  left_join(RS1_ref, by = 'trip_n') %>% 
+  mutate(RS1 = (ref_mean_dens  -dist_mean_dens  )/ref_sd_dens)
+
+
+# plot the values as density plot
+df_RS1 %>% 
+  ggplot(aes(RS1, fill = manag)) +
+  geom_density(alpha = 0.6)
+
+
+
+
+# RS2: Horizontal structure -----------------------------------------------
+
+# RS3: Vertical structure -------------------------------------------------
+
+
 
 
 
