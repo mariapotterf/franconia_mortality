@@ -29,11 +29,11 @@ load(file = paste(getwd(), "outData/dataToPlot.Rdata", sep = '/'))
 load(file = paste(getwd(), "outData/eco_traits.Rdata", sep = '/'))
 
 # Identify data to use:
-head(df_full_plot)        # - full PLOT based data: df_full_plot, seedlings, advanced, mature 
+head(df_full_corr)        # - full PLOT based data: df_full_corr, seedlings, advanced, mature 
 head(plot_IVI)            # - df importance value:from plot, env mature, env advanced, merged by density/ha
 #head(df_winners)          # - novel species:        df_novelty
 head(trait_df)            # - trait values for all species: eco_traits
-head(df_ground)           # - ground cover, in classes by 5%  
+#head(df_ground)           # - ground cover, in classes by 5%  
 head(df_mature_trees_env) # - trees in the surroundings: mature trees
 head(df_advanced_env)     # - trees in the surroundings: advanced
 
@@ -41,16 +41,30 @@ head(df_advanced_env)     # - trees in the surroundings: advanced
 head(plot_counts_df)      # - total count of the plots per triplets & categories: to standardize the densities...
 
 
+plot_counts_df <- plot_counts_df %>% 
+  select(!c(dom_sp))
+
 # Master set for all triplets:
+plot_counts_df_sum <- plot_counts_df %>% 
+  group_by(trip_n, manag) %>%
+  tally()
+
+# get list of triplets
 master_tripl <- distinct(select(plot_counts_df_sum, trip_n))
 
 
 # Prepare teh data: get the all available tree species in each site; fill in with 0 is teh species is not present
-v_species <- unique(df_full_plot$species)
+v_species <- unique(df_full_corr$species)
 
-# Reassembly: ------------------------------------------------------------------
+# RA: Reassembly: ------------------------------------------------------------------
 #
-nrow(plot_IVI)  # 2544 - rows with only existing species
+nrow(plot_IVI)  # 15189 - rows with only existing species
+# does it contains all species and height classes?
+
+plot_IVI_exp %>% 
+  group_by(species) %>% 
+  tally()
+
 
 
 
@@ -58,7 +72,7 @@ nrow(plot_IVI)  # 2544 - rows with only existing species
 df_master_species <-   plot_counts_df %>% 
     mutate(species = 'Spruce') %>% 
     group_by(trip_n, manag, sub_n) %>% 
-    complete(species = .env$v_species, fill = list(sp_count  = 0)) %>% 
+    complete(species = .env$v_species, fill = list(corr_count  = 0)) %>% 
   select(!c(dom_sp))
     
 
@@ -69,7 +83,6 @@ plot_IVI_exp <-
   plot_IVI %>% 
   full_join(df_master_species) %>% 
   ungroup(.) %>% 
-  select(!c(dom_sp)) %>% 
   replace_na(list(rIVI = 0))
   
 
@@ -80,12 +93,6 @@ plot_IVI_exp %>%
 
 
 
-# Check how 0 values affect mean and sd:
-
-test <- c(1,2,3,0,0,0,0,0, 0, 0, 0, 0)
-
-mean(test)
-sd(test)
 
 
 
@@ -94,18 +101,18 @@ sd(test)
 
 ## RA1: Dominant species ----------------------------------------
 # will the tree species dominating pre-disturbance dominate in post-disturbances?
-# get the dominant species per plot (from species importance values) and its share
-# compare the share of species between R and D: does it decrease, increase? 
-# Change is indicated by decrease 
-# need to find which species in dominant in Ref, and keep the variation of species importance values per 
-# species & site? get teh average values per species for REF site, then find the SD
-# important: every site needs to have all species, that the missing ones will have 0 to calculate the mean and SD
+# Process: 
+# - REF: average rIVI per species and plot get, get the species with max rIVI 
+#        filter this species for each plot to gets its variability (SD)
+# - compare with DIST: get average value per species for DIST, and compare with REF
+ 
+# Change is indicated by decrease (REF > DIST) within the range of variation (SDref)
 
 # Get first values for the Ref = 'l', get the mean and sd
 # find first the average rIVI per species per site; 
 # then find the highest average value and corresponding species
 # compare what value have the species in D and C?
-# need to get the SD: SD orgin from teh deviation of teh dominant species across teh plots
+# need to get the SD: SD origin from the deviation of the dominant species across the plots
 RA1_dom_ref <- plot_IVI_exp %>%
   filter(manag == 'l') %>%
   dplyr::select(trip_n, manag, sub_n, species, rIVI) %>%
@@ -116,71 +123,59 @@ RA1_dom_ref <- plot_IVI_exp %>%
   filter(ref_rIVI_mean == max(ref_rIVI_mean)) %>%
   select(!c(manag))
 
-# trip_n species ref_rIVI
-# <chr>  <chr>      <dbl>
-#   1 1      Rowan       10.6
-# 2 10     Spruce      27.8
-# 3 11     Fir         29.5
-# 4 12     Spruce      25  
-# 5 13     Beech       22.2
-# 6 14     Beech       26.4
-# 7 15     Spruce      24.3
 
 # Get SD: select the dominant species per trip_n from the REF ('l'); and have the value for each plot!!
 # need to add 0 if teh species is not present to get the SD! 
-RA1_dom_SD <- plot_IVI_exp %>%
+RA1_dom_SD <- 
+  plot_IVI_exp %>%
   filter(manag == 'l') %>%
   dplyr::select(trip_n, manag, sub_n, species, rIVI) %>%
   right_join(RA1_dom_ref) %>% # filter only the dominant species in each REF triplet
-  full_join(plot_counts_df)  %>% 
- # filter(trip_n == 15  & manag == "l")# %>% # & sub_n == 1;  sd = filter(trip_n == 15  & manag == "l") sd = 15, mean = 24.3
- # summarize(sd = sd(rIVI ),
-#            mean = mean(rIVI))
-#  mutate(ref_rIVI_sd = sd(rIVI)) #%>%   # if species is not present, it represents a 0
+  full_join(filter(plot_counts_df, manag == 'l'))  %>% # add 0 for missing plots (dominated by different species)
   group_by(trip_n, manag, species) %>% 
     mutate(ref_iIVI_sd = sd(rIVI, na.rm = T)) %>% 
   ungroup(.) %>% 
-  select(!c(manag)) %>%  #, dom_sp
-  rename(ref_rIVI = rIVI)
+  select(!c(manag)) %>%  
+  rename(ref_rIVI = rIVI) %>% 
+  select(c(trip_n, species, ref_rIVI_mean, ref_iIVI_sd)) %>% 
+  distinct()
 
 
-RA1_dom_SD %>% 
-  filter( trip_n == '15') #%>% 
-  
-
-# Calculate the difference betwee disturbed and reference condistions:
-RA1_dom_dist <- 
+# Calculate the difference betwee disturbed and reference condistions: --------------------------
+df_RA1 <-
   plot_IVI_exp %>%
   filter(manag != 'l') %>%
-  dplyr::select(trip_n, sub_n, manag, species, rIVI) %>%
-  full_join(RA1_dom_SD, by = c("trip_n", "sub_n" ,  "species")) %>%
-    filter(complete.cases(.)) %>%      # keep only full cases
-    mutate(RA1 = (ref_rIVI - rIVI) / ref_iIVI_sd ) #%>% 
-    #full_join(plot_counts_df)  %>% # complete zeros is the species is absent from plots in different treatment 
-    #filter(manag == "c" & trip_n == '1' & sub_n == 6) #%>% 
-    #print(n = 100)
-    
+  dplyr::select(trip_n, manag, species, rIVI) %>%
+  group_by(trip_n, manag, species) %>%
+  summarize(avg_iIVI_dist = mean(rIVI, na.rm = T)) %>%
+  full_join(RA1_dom_SD, by = c("trip_n", "species")) %>%
+  drop_na(.) %>% # remove NA values, to keep only species that are REF value (dominant under REF conditions)
+  mutate(RA1 = (ref_rIVI_mean - avg_iIVI_dist) / ref_iIVI_sd)
 
 # plot the values as scatter plot, group by managemnet and dominant species
 #ggplot()
 
-(5-10)/11
-# from wide to long format
-RA1_dom_dist %>% 
-  rename(dist_rIVI = rIVI) %>% 
-  pivot_longer(!c(trip_n, manag, sub_n, species, dom_sp, ref_rIVI_mean, ref_iIVI_sd, RA1 ), 
-               names_to = 'type',
-               values_to = 'IVI') %>% 
-  mutate(unique_ID = paste(trip_n, sub_n, sep = '_')) %>% 
-  filter(trip_n == 1 ) %>% # & manag == 'c'
-  ggplot(aes(x = IVI,
-             y = unique_ID)) + 
-  geom_line(aes(group = unique_ID)) +
-  geom_point(aes(color = type), size = 4) +
-  facet_wrap(.~manag)
+df_RA1 %>% 
+  ggplot(aes(RA1, fill = manag)) +
+  geom_density(alpha = 0.8)
 
-
-
+# 
+# # from wide to long format
+# RA1_dom_dist %>% 
+#   rename(dist_rIVI = rIVI) %>% 
+#   pivot_longer(!c(trip_n, manag, sub_n, species, dom_sp, ref_rIVI_mean, ref_iIVI_sd, RA1 ), 
+#                names_to = 'type',
+#                values_to = 'IVI') %>% 
+#   mutate(unique_ID = paste(trip_n, sub_n, sep = '_')) %>% 
+#   filter(trip_n == 1 ) %>% # & manag == 'c'
+#   ggplot(aes(x = IVI,
+#              y = unique_ID)) + 
+#   geom_line(aes(group = unique_ID)) +
+#   geom_point(aes(color = type), size = 4) +
+#   facet_wrap(.~manag)
+# 
+# 
+# 
 
 
 
@@ -387,7 +382,7 @@ p_RA3 <-
 # !!!!!!! Check both here, with and without nearest Mature trees!!! if teh output is different??
 # ?? why Ref is less then 40??
 # RA4 <- 
-#   df_full_plot %>% 
+#   df_full_corr %>% 
 #   select(c('trip_n', 'sub_n', 'manag', 'species', 'DBH', 'height_class')) %>% 
 #  # bind_rows(select(df_mature_trees_env, c('trip_n', 'sub_n', 'manag', 'species', 'DBH'))) %>% 
 #  # dplyr::select(!height_class) %>% 
@@ -441,7 +436,7 @@ df_advanced_env <-
 
 
 RA4 <- 
-  df_full_plot %>% 
+  df_full_corr %>% 
   select(., c('trip_n', 'sub_n', 'manag', 'species', 'height_class')) %>% 
   bind_rows(select(df_advanced_env, c('trip_n', 'sub_n', 'manag', 'species', 'height_class'))) %>% 
   # find species most often the tallest tree?
@@ -514,7 +509,7 @@ RA %>% print(n = 40)
 
 # NA -> 1
 RS1 <-
-  plot_IVI %>%    # originally: df_full_plot %>%
+  plot_IVI %>%    # originally: df_full_corr %>%
   filter(manag != 'c') %>%
   group_by(trip_n, manag) %>%
   summarize(sum_count = sum(dens_sum)) %>% # sum up all of the stems per plot (all species together)
@@ -560,7 +555,7 @@ p_RS1 <-
 # !!! the threshold is 1.1!!!
 
 RS2 <-
-  df_full_plot %>%
+  df_full_corr %>%
   select(c('trip_n', 'manag', 'sub_n', 'species', 'DBH')) %>% 
   #bind_rows(select(df_advanced_env, c('trip_n', 'manag', 'species', 'DBH'))) #%>% # !does not have dbh, and less then 10 cm
   bind_rows(select(df_mature_trees_env, c('trip_n', 'manag','sub_n', 'species', 'DBH'))) %>% 
@@ -674,7 +669,7 @@ df_mature_trees_env2 <- df_mature_trees_env %>%
 
 
 # Make plot
-df_dbh_distrib <- df_full_plot %>% 
+df_dbh_distrib <- df_full_corr %>% 
   select(c('trip_n', 'manag', 'species', 'DBH', 'height_class')) %>% 
   bind_rows(df_mature_trees_env2) %>%
   filter(height_class %in% c("HK7", 'mature', 'mature_ENV')) %>% # get only data that contain DBH
@@ -715,7 +710,7 @@ df_mature_trees_env3 <- df_mature_trees_env %>%
 # Get counst of living trees: take into account the average distances between trees
 ha <- 10000         
 
-df_living <- df_full_plot %>% 
+df_living <- df_full_corr %>% 
   filter(DBH>10) %>% 
   mutate(distance = 100) %>% # get distance for plot in [cm]: tree is located in plot
   select(c('trip_n', 'manag','sub_n', 'species', 'DBH', 'distance', 'height_class')) %>% 
@@ -769,7 +764,7 @@ p_n_living <- df_living %>%
 
 # Get RS4 values -----------------------------------------------------------
 RS4_ref <- 
-  df_full_plot %>% 
+  df_full_corr %>% 
   select(c('trip_n', 'sub_n', 'manag', 'species', 'DBH')) %>% 
   ##
   #filter(height_class != 'mature') %>% 
