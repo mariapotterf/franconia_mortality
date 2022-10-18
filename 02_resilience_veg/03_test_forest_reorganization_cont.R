@@ -279,6 +279,57 @@ df_RS1 %>%
 
 
 # RS2: Horizontal structure -----------------------------------------------
+# define the overall layers: same as for vertical structure
+df_full_corr <- 
+  df_full_corr %>%
+  mutate(vert_layer = case_when(height_class %in% c("HK1", "HK2", "HK3", "HK4", "HK5","HK6") ~ 'regen',
+                                height_class %in% c("HK7","adv_ENV" ) ~ 'advanced',
+                                height_class %in% c("mature","mat_ENV" ) ~ 'mature')) 
+
+# 3 layers: 
+# - regeneration (<= less then 2 m height)
+# - internediate (> 2 m height & <= 10 cm DBH)
+# - mature (> 10 cm dbh )
+# if the mean number of layers per DIST > REF -> indication of change
+
+# Process: 
+# - get average nearest distance
+RS2_ref <- 
+  df_full_corr %>%
+  filter(count  != 0 ) %>% 
+  filter(manag == 'l') %>%
+  dplyr::select(trip_n, manag, sub_n, distance, vert_layer) %>%
+  group_by(trip_n, manag, sub_n, vert_layer) %>% 
+  summarise(mean_distance = mean(distance, na.rm = T)) %>%
+  ungroup(.) %>% 
+  group_by(trip_n, vert_layer) %>% 
+  summarize(ref_mean_distance   = mean(mean_distance, na.rm = TRUE),
+            ref_sd_distance     = sd(mean_distance, na.rm = TRUE)) #%>%
+
+# for DIST
+df_RS2 <- 
+  df_full_corr %>% 
+  filter(count  != 0 ) %>% 
+  filter(manag != 'l') %>%
+  dplyr::select(trip_n, manag, sub_n, distance, vert_layer) %>%
+  group_by(trip_n, manag, sub_n, vert_layer) %>% 
+  summarise(mean_distance = mean(distance, na.rm = T)) %>%
+  ungroup(.) %>% 
+  group_by(trip_n, manag) %>% 
+  summarize(dist_mean_distance   = mean(mean_distance, na.rm = TRUE)) %>% 
+  left_join(RS2_ref, by  = "trip_n") %>% 
+  mutate(RS2 = (dist_mean_distance  - ref_mean_distance )/ref_sd_distance)
+
+
+# plot the values as density plot
+df_RS2 %>% 
+  ggplot(aes(RS2, fill = manag)) +
+  geom_density(alpha = 0.6)
+
+
+
+  
+
 
 # RS3: Vertical structure -------------------------------------------------
 # 3 layers: 
@@ -291,9 +342,6 @@ df_RS1 %>%
 # - define vertical layers, count them
 RS3_ref <- 
   df_full_corr %>%
-  mutate(vert_layer = case_when(height_class %in% c("HK1", "HK2", "HK3", "HK4", "HK5","HK6") ~ 'regen',
-                                height_class %in% c("HK7","adv_ENV" ) ~ 'advanced',
-                                height_class %in% c("mature","mat_ENV" ) ~ 'mature')) %>% 
   filter(count  != 0 ) %>% 
   filter(manag == 'l') %>%
   dplyr::select(trip_n, manag, sub_n, vert_layer) %>%
@@ -308,9 +356,6 @@ RS3_ref <-
 # for DIST
 df_RS3 <- 
   df_full_corr %>% 
-  mutate(vert_layer = case_when(height_class %in% c("HK1", "HK2", "HK3", "HK4", "HK5","HK6") ~ 'regen',
-                                height_class %in% c("HK7","adv_ENV" ) ~ 'advanced',
-                                height_class %in% c("mature","mat_ENV" ) ~ 'mature')) %>% 
   filter(count  != 0 ) %>% 
   filter(manag != 'l') %>%
   dplyr::select(trip_n, manag, sub_n, vert_layer) %>%
@@ -332,19 +377,49 @@ df_RS3 %>%
 
 
 
-# Join databases into one ndicator by triplet -----------------------------
+# Join databases into one indicator by triplet -----------------------------
+# change is always indicated by the + values, - indicates the no change
+# convert - and Inf values to 0
 
-
-
-#out_RA_RS <- 
-  select(df_RA1, c(trip_n, manag, RA1)) %>% #select(df_RS1, c(trip_n, RS1)) %>%
+out_reorg <- 
+  select(df_RA1, c(trip_n, manag, RA1)) %>% 
   full_join(select(df_RA2, c(trip_n, manag, RA2))) %>%
   full_join(select(df_RA3, c(trip_n, manag, RA3))) %>% 
   full_join(select(df_RS1, c(trip_n, manag, RS1))) %>% #,
-  # full_join(select(df_RS2, c(trip_n, manag, RS2))) %>%
-  full_join(select(df_RS3, c(trip_n, manag, RS3))) #%>% #,
- # mutate() # combine indicators together
+  full_join(select(df_RS2, c(trip_n, manag, RS2))) %>%
+  full_join(select(df_RS3, c(trip_n, manag, RS3)))#%>% 
   
+ # mutate() # combine indicators together
+#
+out_reorg_pos <- out_reorg
+
+# Change negative values to 0 (no change)
+out_reorg_pos[out_reorg_pos <0] <- 0
+out_reorg_pos[is.na(out_reorg_pos)]<-0
+
+
+# merge indicators: -----------------------------------------
+out_reorg_pos <- out_reorg_pos %>% 
+  mutate(RA = RA1*RA2*RA3/3,
+         RS = RS1*RS2*RS3/3) 
+
+
+# Reorganization plot -----------------------------------------------------
+
+
+
+
+
+
+
+#
+is.finite(out_reorg)
+
+
+
+
+df <- data.frame(vals <- c(1, Inf, NA, NaN))
+df[!is.finite(df)] <- 0
 
 
 
@@ -385,18 +460,7 @@ df_RS3 %>%
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+df %>% mutate(across(everything(), !is.finite(), -99))
 
 
 # 
