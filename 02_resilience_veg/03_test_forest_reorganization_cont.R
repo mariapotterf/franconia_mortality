@@ -332,6 +332,71 @@ df_RS3 %>%
 
 
 
+# Join databases into one ndicator by triplet -----------------------------
+
+
+
+#out_RA_RS <- 
+  select(df_RA1, c(trip_n, manag, RA1)) %>% #select(df_RS1, c(trip_n, RS1)) %>%
+  full_join(select(df_RA2, c(trip_n, manag, RA2))) %>%
+  full_join(select(df_RA3, c(trip_n, manag, RA3))) %>% 
+  full_join(select(df_RS1, c(trip_n, manag, RS1))) %>% #,
+  # full_join(select(df_RS2, c(trip_n, manag, RS2))) %>%
+  full_join(select(df_RS3, c(trip_n, manag, RS3))) #%>% #,
+ # mutate() # combine indicators together
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # 
@@ -1130,4 +1195,4 @@ p_stacked_reorg <- d2 %>%
 # 
 # Export objects -----------------------------------------------------------
 #save(list=ls(pat="R"),file="dat_restr.Rdata") 
-save.image(file="dat_restr.Rdata")
+#save(file="outData/dat_restr.Rdata")
