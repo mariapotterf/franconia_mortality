@@ -72,8 +72,7 @@ plot_IVI_exp %>%
 df_master_species <-   plot_counts_df %>% 
     mutate(species = 'Spruce') %>% 
     group_by(trip_n, manag, sub_n) %>% 
-    complete(species = .env$v_species, fill = list(corr_count  = 0)) %>% 
-  select(!c(dom_sp))
+    complete(species = .env$v_species, fill = list(corr_count  = 0))
     
 
 
@@ -282,8 +281,54 @@ df_RS1 %>%
 # RS2: Horizontal structure -----------------------------------------------
 
 # RS3: Vertical structure -------------------------------------------------
+# 3 layers: 
+# - regeneration (<= less then 2 m height)
+# - internediate (> 2 m height & <= 10 cm DBH)
+# - mature (> 10 cm dbh )
+# if the mean number of layers per DIST > REF -> indication of change
+
+# Process: 
+# - define vertical layers, count them
+RS3_ref <- 
+  df_full_corr %>%
+  mutate(vert_layer = case_when(height_class %in% c("HK1", "HK2", "HK3", "HK4", "HK5","HK6") ~ 'regen',
+                                height_class %in% c("HK7","adv_ENV" ) ~ 'advanced',
+                                height_class %in% c("mature","mat_ENV" ) ~ 'mature')) %>% 
+  filter(count  != 0 ) %>% 
+  filter(manag == 'l') %>%
+  dplyr::select(trip_n, manag, sub_n, vert_layer) %>%
+  distinct(.) %>%
+  group_by(trip_n, manag, sub_n) %>% 
+  summarise(vertical_n = n()) %>%
+  ungroup(.) %>% 
+  group_by(trip_n) %>% 
+  summarize(ref_mean_vLayer   = mean(vertical_n, na.rm = TRUE),
+            ref_sd_vLayer     = sd(vertical_n, na.rm = TRUE)) #%>%
+
+# for DIST
+df_RS3 <- 
+  df_full_corr %>% 
+  mutate(vert_layer = case_when(height_class %in% c("HK1", "HK2", "HK3", "HK4", "HK5","HK6") ~ 'regen',
+                                height_class %in% c("HK7","adv_ENV" ) ~ 'advanced',
+                                height_class %in% c("mature","mat_ENV" ) ~ 'mature')) %>% 
+  filter(count  != 0 ) %>% 
+  filter(manag != 'l') %>%
+  dplyr::select(trip_n, manag, sub_n, vert_layer) %>%
+  distinct(.) %>%
+  #filter(trip_n == '7' & manag == 'l' & sub_n == '1') 
+  group_by(trip_n, manag, sub_n) %>% 
+  summarise(vertical_n = n()) %>%
+  ungroup(.) %>% 
+  group_by(trip_n, manag) %>% 
+  summarize(dist_mean_vLayer   = mean(vertical_n, na.rm = TRUE)) %>%
+  left_join(RS3_ref, by  = "trip_n") %>% 
+  mutate(RS3 = (dist_mean_vLayer - ref_mean_vLayer)/ref_sd_vLayer)
 
 
+# plot the values as density plot
+df_RS3 %>% 
+  ggplot(aes(RS3, fill = manag)) +
+  geom_density(alpha = 0.6)
 
 
 
