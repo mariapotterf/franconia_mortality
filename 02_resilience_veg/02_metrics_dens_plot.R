@@ -471,21 +471,21 @@ df_full_corr %>%
 #  group_by(trip_n, manag, sub_n) %>% 
   
 # dummy example: filter groups that have at least two of values 
-dd <- data.frame(grp = c(1,1,1,2,2,2,2,3,3),
-                 cat = c('a', 'b', 'd',
-                         'a', 'b', 'd', 'e',
-                         'a', 'b'))
-
-dd <- data.frame(grp = c(1,2,2,2,3), cat = c("a", "a", "b", "c", "c"))
-
-# filter by two types of filtering:
-dd %>% 
-  group_by(grp) %>% 
-  filter(cat %in% c('a', 'd')) %>% 
-  filter(all(c("a", "d") %in% cat))
-#filter(all(c("a", "b") %in% cat))
-filter(any(cat=="a") & any(cat=="b"))
-
+# dd <- data.frame(grp = c(1,1,1,2,2,2,2,3,3),
+#                  cat = c('a', 'b', 'd',
+#                          'a', 'b', 'd', 'e',
+#                          'a', 'b'))
+# 
+# dd <- data.frame(grp = c(1,2,2,2,3), cat = c("a", "a", "b", "c", "c"))
+# 
+# # filter by two types of filtering:
+# dd %>% 
+#   group_by(grp) %>% 
+#   filter(cat %in% c('a', 'd')) %>% 
+#   filter(all(c("a", "d") %in% cat))
+# #filter(all(c("a", "b") %in% cat))
+# filter(any(cat=="a") & any(cat=="b"))
+# 
 
 
 # Get species rIVI Plot + ENV--------------------------------------------------------------
@@ -534,26 +534,8 @@ plot_IVI <- df_rel_density %>%
 
 
 
-# Remove objects: ---------------------------------------------------------
-# remove all of teh values:
-# https://stackoverflow.com/questions/43626229/how-to-delete-all-values-in-rstudio-environment
 
-rm(list = ls.str(mode = 'numeric'))
-rm(list = ls.str(mode = 'character'))
-rm(list = lsf.str())
-
-# remove all objects starting with 'a'
-# rm(list = ls()[grep("A", ls())])
-
-# https://stackoverflow.com/questions/11761992/how-do-i-clear-only-a-few-specific-objects-from-the-workspace
-
-# save only specific objects instead of the whole image: !!!
-#save(list=c("temp","temp2"),file="Test.Rdata") #saves those 2 objects
-# save(list=ls(pat="temp")),file="Test2.Rdata") #saves any object with name containing "temp"
-
-# Save all dfs as R object: ------------------------------------------------------------
-#save.image(file="dataToPlot.Rdata")
-
+# Save specific objects: ------------------------------------------------------------
 save(plot_IVI,
      df_full_corr,
      df_regen,              # full plot regeneration
