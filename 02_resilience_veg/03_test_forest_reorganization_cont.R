@@ -156,7 +156,7 @@ RA1_dom_SD <-
   distinct()
 
 
-# Calculate the difference betwee disturbed and reference condistions: --------------------------
+# Calculate the difference betwee disturbed and reference condistions: 
 df_RA1 <-
   plot_IVI_exp %>%
   filter(manag != 'l') %>%
@@ -167,9 +167,9 @@ df_RA1 <-
   drop_na(.) %>% # remove NA values, to keep only species that are REF value (dominant under REF conditions)
   mutate(RA1 = (ref_rIVI_mean - avg_iIVI_dist) / ref_iIVI_sd)
 
-# plot the values as density plot
+### Plot the values as density plot --------------------------------------------
 
-df_RA1 %>% 
+p_RA1 <- df_RA1 %>% 
   ggplot(aes(RA1, fill = manag)) + 
   xlim(-5,5) +
   dens_plot_details()
@@ -180,7 +180,7 @@ df_RA1 %>%
 
 
 
-# RA2: tree species richness ---------------------------------------------------------------------
+# RA2: Tree species richness ---------------------------------------------------------------------
 # compare tree species richness: REF <-> DIST, if richness decrease: indication of change!
 # get from counts! 
 # steps:
@@ -213,8 +213,8 @@ df_RA2 <-
                          TRUE ~ RA2)) #%>% 
 
 
-# plot the values as density plot
-df_RA2 %>% 
+## Plot the values as density plot --------------------------------------------
+p_RA2 <-df_RA2 %>% 
   ggplot(aes(RA2, fill = manag)) +
   xlim(-3,3) +
   dens_plot_details()
@@ -249,8 +249,8 @@ df_RA3 <-
 
 
 
-# plot the values as density plot
-df_RA3 %>% 
+### Plot the values as density plot --------------------------------------
+p_RA3 <- df_RA3 %>% 
   ggplot(aes(RA3, fill = manag)) +
   xlim(-1.5,1.5) +
   dens_plot_details()
@@ -277,8 +277,8 @@ df_RS1 <-
   mutate(RS1 = (ref_mean_dens  -dist_mean_dens  )/ref_sd_dens)
 
 
-# plot the values as density plot
-df_RS1 %>% 
+###  Plot the values as density plot -------------------------------------------
+p_RS1 <- df_RS1 %>% 
   ggplot(aes(RS1, fill = manag)) +
   xlim(-15,15) +
   dens_plot_details()
@@ -332,7 +332,7 @@ df_RS2 <-
 
 
 # plot the values as density plot
-df_RS2 %>% 
+p_RS2 <- df_RS2 %>% 
   ggplot(aes(RS2, fill = manag)) +
   xlim(-3,3) +
   dens_plot_details()
@@ -393,7 +393,7 @@ df_RS3[as.matrix(df_RS3) == Inf]  <- 0
 
 
 # plot the values as density plot
-df_RS3 %>% 
+p_RS3 <- df_RS3 %>% 
   ggplot(aes(RS3, fill = manag)) +
   xlim(-4.3,4.3) +
   dens_plot_details()
@@ -440,7 +440,7 @@ out_reorg_pos %>%
 
 
 # plot averages:
-out_reorg_pos %>% 
+p_scatter_mean <- out_reorg_pos %>% 
   left_join(trip_species) %>% 
   ggplot(aes(x = RA_mean,
              y = RS_mean,
@@ -463,11 +463,10 @@ out_reorg_pos %>%
 
 
 # plot of sums -----------------------------------------------------
-out_reorg_pos %>% 
+p_reorg_manag_dom_sp <- out_reorg_pos %>% 
   left_join(trip_species) %>% 
   ggplot(aes(x = RA_sum,
-             y = RS_sum,
-             color = dom_sp)) +
+             y = RS_sum)) +
   geom_point() +
   xlim(0,7) +
   ylim(0,7) +
@@ -483,7 +482,7 @@ out_reorg_pos %>%
 
 # plot sums: just two colors: ----------------------------------------
 windows()
-out_reorg_pos %>% 
+p_scatter_manag_sum <- out_reorg_pos %>% 
   left_join(trip_species) %>% 
   ggplot(aes(x = RA_sum,
              y = RS_sum,
@@ -521,47 +520,47 @@ out_reorg_pos %>%
 
 
 
-#windows()
-# Tree plots
-tree_plot <- d2%>%  
-  ggplot(aes(area = n, 
-             fill = dom_sp,
-             label = paste( 
-                           reorganization, 
-                           paste(n/0.4, '%'),
-                           sep = "\n"))) +
-  geom_treemap(color = 'black') +
-  geom_treemap_text(colour = "white") +
-  theme(legend.position = "bottom")
-  
-
-# Bar plot
-tree_plot_cols<- d2%>%  
-  #arrange(desc(n)) %>%
-  #mutate(comb = factor(comb, 
-  #                     levels = comb)) %>% 
-  mutate(reorganization = factor(reorganization,
-                                 levels = c('resilience',
-                                            'reassembly',
-                                            'restructuring',
-                                            'replacement'))) %>% 
-  ggplot(aes(x = reorganization, 
-             y = n,
-             fill = reorganization)) +
-  geom_col(col = 'black') + 
-  facet_wrap(.~ dom_sp) +
-  theme(legend.position = 'right') + 
-  theme_bw()
-
-
-p_stacked_reorg <- d2 %>% 
-  ggplot(aes(y = n,
-             x = dom_sp,
-             fill = reorganization)) + 
-  geom_bar(position="fill", stat="identity", col = 'black') + 
-  theme_bw() +
-  ylab('Share of classes [%]') +
-  xlab('')
+# #windows()
+# # Tree plots
+# tree_plot <- d2%>%  
+#   ggplot(aes(area = n, 
+#              fill = dom_sp,
+#              label = paste( 
+#                            reorganization, 
+#                            paste(n/0.4, '%'),
+#                            sep = "\n"))) +
+#   geom_treemap(color = 'black') +
+#   geom_treemap_text(colour = "white") +
+#   theme(legend.position = "bottom")
+#   
+# 
+# # Bar plot
+# tree_plot_cols<- d2%>%  
+#   #arrange(desc(n)) %>%
+#   #mutate(comb = factor(comb, 
+#   #                     levels = comb)) %>% 
+#   mutate(reorganization = factor(reorganization,
+#                                  levels = c('resilience',
+#                                             'reassembly',
+#                                             'restructuring',
+#                                             'replacement'))) %>% 
+#   ggplot(aes(x = reorganization, 
+#              y = n,
+#              fill = reorganization)) +
+#   geom_col(col = 'black') + 
+#   facet_wrap(.~ dom_sp) +
+#   theme(legend.position = 'right') + 
+#   theme_bw()
+# 
+# 
+# p_stacked_reorg <- d2 %>% 
+#   ggplot(aes(y = n,
+#              x = dom_sp,
+#              fill = reorganization)) + 
+#   geom_bar(position="fill", stat="identity", col = 'black') + 
+#   theme_bw() +
+#   ylab('Share of classes [%]') +
+#   xlab('')
 
 # library(waffle)
 #   
@@ -581,4 +580,4 @@ p_stacked_reorg <- d2 %>%
 # 
 # Export objects -----------------------------------------------------------
 #save(list=ls(pat="R"),file="dat_restr.Rdata") 
-#save(file="outData/dat_restr.Rdata")
+save.image(file="outData/dat_restr.Rdata")
