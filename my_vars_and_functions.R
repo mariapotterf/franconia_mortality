@@ -8,7 +8,8 @@ triplets_exclude = c(45, # no permission, no sampled
                     )
 
 
-
+# Get euclidean distance
+euclidean <- function(a, b) sqrt(sum((a - b)^2))
 
 
 # Slope correction factor:------------------------------------------------------
