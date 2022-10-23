@@ -23,6 +23,10 @@ library(ggrepel)
 
 # set theme: plotting: 
 theme_set(theme_bw())
+theme_update(legend.position = 'bottom') 
+
+
+
 
 # make a function to store details about plotting
 dens_plot_details <- function() {
@@ -31,13 +35,14 @@ dens_plot_details <- function() {
     geom_vline(xintercept = 0, colour="red", linetype = "dashed"),
     scale_fill_discrete(name = "Management", 
                         breaks=c("c", "d"),
-                        labels=c("Clear-cut", "Dead")),
-    theme_test()
-  )
+                        labels=c("Clear-cut", "Dead")
+  ))
 }
 
 
 # Input data -------------------------------------------------------------------
+source('my_vars_and_functions.R')
+
 getwd()
 load(file = paste(getwd(), "outData/dataToPlot.Rdata", sep = '/'))
 load(file = paste(getwd(), "outData/eco_traits.Rdata", sep = '/'))
@@ -54,7 +59,7 @@ head(df_advanced_env)     # - trees in the surroundings: advanced
 head(plot_counts_df)      # - total count of the plots per triplets & categories: to standardize the densities...
 
 
-# get dataframe of the species
+# Get dataframes of the species --------------------------------------------------
 trip_species <- plot_counts_df %>% 
   select(trip_n, dom_sp) %>% 
   distinct(.)
@@ -62,7 +67,6 @@ trip_species <- plot_counts_df %>%
 
 plot_counts_df <- plot_counts_df %>% 
   select(!c(dom_sp))
-
 
 
 # Master set for all triplets:
@@ -370,7 +374,7 @@ p_avg_distance_nearest <- df_full_corr %>%
                      labels=c("mature", "advanced"),
                      values = c("darkgreen","red")) +
   ylab('Nearest tree\n Mature/advanced reg [m]') +
-  ggtitle('Nearest Mature/advanced reg [m]') +
+  ggtitle('Nearest Tree\nMature/advanced reg [m]') +
   ylim(0,6) +
   theme(legend.position = 'bottom')
 
@@ -393,7 +397,7 @@ p_avg_distance_mature <-
                        values = c("red","black")) +
   ylab('Mean distance to\nthe nearest Mature tree\n [m]') +
   ylim(0,6)+
-  ggtitle('Mature tree') +
+  ggtitle('Mature\ntree') +
   theme(legend.position = 'bottom') 
 
 
@@ -417,7 +421,7 @@ p_avg_distance_adv <-
                        values = c("red","black")) +
     ylab('Mean distance to\nthe nearest Advanced tree\n [m]') +
   ylim(0,6) +
-  ggtitle('Advanced reg tree') +
+  ggtitle('Advanced reg\ntree') +
   theme(legend.position = 'bottom') 
 
   
@@ -534,29 +538,147 @@ out_reorg_pos <- out_reorg_pos %>%
          RS_sum  = RS1+RS2+RS3) 
 
 
-# Reorganization plot -----------------------------------------------------
-out_reorg_pos %>% 
+
+# Dummy example:  classify the points--------------------------------------------
+# classify the scatter points based on the 
+# euclidian distance and proximity to axis X or Y?
+dd <- data.frame(x = runif(10, min=0, max=2),
+                 y = runif(10, min=0, max=2))
+
+# Get euclidean distance
+euclidean <- function(a, b) sqrt(sum((a - b)^2))
+
+dd <- dd %>% 
+  mutate(euclid_dist = euclidean(x, y))
+
+dd %>% 
+  ggplot(aes(x = x,
+             y = y)) +
+  geom_point() +
+  theme_bw() +
+  theme_update(aspect.ratio=1)
+         
+         
+         
+# Get Euclidean distance: scatter points from [0,0] --------------------------
+out_reorg_pos <- out_reorg_pos %>% 
+  mutate(euclid_dist = euclidean(RA_mean, RS_mean)) #%>%
+  # classify the poinst by sector: make as squares, as simpler way
+  #mutate(sector =  )
+
+
+# plot Euclidean distance : -----------------------------------------------
+manag.labs <- c("Clear-Cut", "Dead")
+names(manag.labs) <- c("c", "d")
+
+
+# show euclidean distances for each triplet
+p_euclid_lollipop <- 
+  out_reorg_pos %>% 
   left_join(trip_species) %>% 
+    mutate(trip_manag = paste(trip_n, manag, '_')) %>% 
+    na.omit() %>% 
+  ggplot(aes(x = reorder(trip_manag,-euclid_dist) ,
+             y = euclid_dist,
+             color = dom_sp,
+             group = manag)) +
+  geom_point(size = 5) +
+  geom_segment( aes(x=reorder(trip_manag, -euclid_dist) , 
+                    xend=reorder(trip_manag, -euclid_dist) , 
+                    y=0, 
+                    yend=euclid_dist)) +
+  scale_color_manual(values = c('spruce' = 'darkgreen',
+                                'beech' = 'limegreen', #'forestgreen',
+                                'oak' = 'gold',
+                                  'pine' = 'tomato2'),
+                     name = 'Dominant species') +
+  #scale_x_discrete(labels = 'trip_manag') %>% 
+    facet_wrap(.~manag, 
+               scale = 'free_x', 
+               labeller = labeller(manag = manag.labs)) +
+    
+    xlab('Triplet number') +
+  ylab('Euclidean distance') +
+  geom_text(aes(label = trip_n), color = "white", size = 2.5) +
+  theme_update(axis.text.x = element_text(angle = 45, 
+                                          vjust = 0.5, 
+                                          hjust = 1, size = 5),
+               legend.position = 'bottom') +
+  guides(colour = guide_legend(title.position = "top"))
+
+windows()
+(p_euclid_lollipop)
+
+
+# Reorganization plot: conifer/deciduous    -------------------------------------
+out_reorg_pos <- out_reorg_pos %>% 
+  left_join(trip_species) %>% 
+  mutate(conif_decid = case_when(dom_sp %in% c('beech', 'oak') ~ 'deciduous',
+                             dom_sp %in% c('spruce', 'pine') ~ 'coniferous'))  #%>% 
+  
+
+
+# add hull polygons
+hull_data_conif_dec <- 
+  out_reorg_pos %>%
+  select(trip_n, manag, RS_mean, RA_mean,conif_decid) %>% 
+  group_by(conif_decid, manag) %>%
+  slice(chull(RA_mean, RS_mean)) 
+
+# plot conif/decid with polygons
+p_conif_dec_poly <- 
+  out_reorg_pos %>% 
   ggplot(aes(x = RA_mean,
              y = RS_mean,
-             color = dom_sp)) +
-  geom_point()
+             color = conif_decid)) +
+  geom_point() +
+  geom_polygon(data = hull_data_conif_dec,
+               aes(fill = conif_decid,
+                   color = conif_decid),
+               alpha = 0.3,
+               show.legend = TRUE) +
+  scale_color_manual(values = c('deciduous' = 'darkgreen',
+                                'coniferous' = 'limegreen'),
+                     name = 'Dominant Tree') +
+    scale_fill_manual(name = 'Dominant Tree',
+                      values = c('deciduous' = 'darkgreen',
+                                  'coniferous' = 'limegreen')) +
+     facet_grid(.~manag, labeller = labeller(manag = manag.labs) ) +
+  guides(colour = guide_legend(title.position = "top")) #+
+  
+  
+# point plot decid/coniferous ------------------------------------------- 
+p_conif_dec_pts <- 
+  out_reorg_pos %>% 
+  ggplot(aes(x = RA_mean,
+             y = RS_mean,
+             color = conif_decid)) +
+  geom_point() +
+  scale_color_manual(values = c('deciduous' = 'darkgreen',
+                                'coniferous' = 'limegreen'),
+                     name = 'Dominant Tree') +
+  facet_grid(.~manag, labeller = labeller(manag = manag.labs) ) +
+  guides(colour = guide_legend(title.position = "top")) #+
 
 
 
 
-# plot averages: ---------------------------------
+
+
+
+# Reorganization: plot averages: ---------------------------------
 p_scatter_mean <- 
   out_reorg_pos %>% 
   left_join(trip_species) %>% 
   ggplot(aes(x = RA_mean,
              y = RS_mean,
-             color = manag)) +
-  scale_color_manual(name = "Management", 
-                     breaks=c("c", "d"),
-                     labels=c("Clear-cut", "Dead"),
-                     values = c("red","black")) +
-  geom_point() +
+             color = dom_sp)) +
+  scale_color_manual(values = c('spruce' = 'darkgreen',
+                                'beech' = 'limegreen', #'forestgreen',
+                                'oak' = 'gold',
+                                'pine' = 'tomato2'),
+                     name = 'Dominant species') +
+    geom_point() +
   xlim(0,2) +
   ylim(0,2) +
   geom_abline(intercept = 0, # add diagnal line
@@ -564,7 +686,7 @@ p_scatter_mean <-
               col = "grey",
               size = .5,
               lty = 'dashed') +
-  facet_grid(manag~dom_sp, scales = 'free') +
+  facet_grid(manag~dom_sp, scales = 'free',labeller = labeller(manag = manag.labs)) +
   theme_update(legend.position = 'bottom') +
   theme_update(aspect.ratio=1) # make plots perfect square
 
@@ -572,56 +694,6 @@ p_scatter_mean <-
 p_scatter_mean
 
 
-
-# plot of sums -----------------------------------------------------
-p_reorg_manag_dom_sp <- out_reorg_pos %>% 
-  left_join(trip_species) %>% 
-  ggplot(aes(x = RA_sum,
-             y = RS_sum)) +
-  geom_point() +
-  xlim(0,7) +
-  ylim(0,7) +
-  geom_abline(intercept = 0, # add diagonal line
-              slope = c(0.5,2),
-              col = "grey",
-              size = .5,
-              lty = 'dashed') +
-  facet_grid(manag~dom_sp) +
-  theme_update(legend.position = 'bottom') +
-  theme_update(aspect.ratio=1) # make plots perfect square
-
-
-# plot sums: just two colors: ----------------------------------------
-windows()
-#p_scatter_manag_sum <- 
-  out_reorg_pos %>% 
-  left_join(trip_species) %>% 
-  ggplot(aes(x = RA_sum/3,
-             y = RS_sum/3,
-             shape = manag,
-             color = manag
-             )) +
-  geom_point() +
-  scale_color_manual(name = "Management", 
-                     breaks=c("c", "d"),
-                     labels=c("Clear-cut", "Dead"),
-                     values = c("red","black")) +
-  scale_shape_manual(name = "Management", 
-                     breaks=c("c", "d"),
-                     labels=c("Clear-cut", "Dead"),
-                     values = c(17, # triangle
-                                16)) + # circle
-  xlim(0,2.5) +
-  ylim(0,2.5) +
-  geom_abline(intercept = 0, # add diagnal line
-              slope = c(0.5,2),
-              col = "grey",
-              size = .5,
-              lty = 'dashed') +
-  xlab('Reassembly [sum]\n [Z-score]') + 
-  ylab('Restructure [sum]\n [Z-score]') +
-  theme_update(legend.position = 'bottom') +
-  theme_update(aspect.ratio=1) # make plots perfect square
 
 
 
@@ -638,8 +710,8 @@ hull_data <-
     slice(chull(RA_mean, RS_mean)) 
 
   
-windows()
-#p_scatter_manag_sum <- 
+#windows()
+p_scatter_manag_mean_poly <- 
   out_reorg_pos %>% 
   left_join(trip_species) %>% 
   mutate(dom_sp = factor(dom_sp, # change order of dom_sp
@@ -650,15 +722,22 @@ windows()
              color = dom_sp
   )) +
    # geom_text_repel(aes(label = trip_n)) +
-   scale_color_viridis_d(direction = -1) +
-    scale_fill_viridis_d(direction = -1) +
-    geom_polygon(data = hull_data,
+  scale_color_manual(values = c('spruce' = 'darkgreen',
+                                'beech' = 'limegreen', #'forestgreen',
+                                'oak' = 'gold',
+                                'pine' = 'tomato2'),
+                     name = 'Dominant species') +
+  geom_polygon(data = hull_data,
                  aes(fill = dom_sp,
                      color = dom_sp),
                  alpha = 0.3,
                  show.legend = TRUE) +
+  scale_fill_manual(values = c('spruce' = 'darkgreen',
+                                'beech' = 'limegreen', #'forestgreen',
+                                'oak' = 'gold',
+                                'pine' = 'tomato2'),
+                     name = 'Dominant species') +
     geom_point() +
- 
   xlim(0,2.5) +
   ylim(0,2.5) +
   geom_abline(intercept = 0, # add diagonal line
@@ -666,7 +745,40 @@ windows()
               col = "grey",
               size = .5,
               lty = 'dashed') +
-    facet_grid(.~manag) +
+    facet_grid(.~manag,
+               labeller = labeller(manag = manag.labs)) +
+  xlab('Reassembly [mean]\n [Z-score]') + 
+  ylab('Restructure [mean]\n [Z-score]') +
+  theme_update(legend.position = 'bottom') +
+  theme_update(aspect.ratio=1) # make plots perfect square
+
+
+#windows()
+p_scatter_manag_mean_pts <- 
+  out_reorg_pos %>% 
+  left_join(trip_species) %>% 
+  mutate(dom_sp = factor(dom_sp, # change order of dom_sp
+                         level = c('spruce','beech', 'oak', 'pine'))) %>% 
+  ggplot(aes(x = RA_mean,
+             y = RS_mean,
+             #shape = dom_sp,
+             color = dom_sp
+  )) +
+  geom_point() +
+  scale_color_manual(values = c('spruce' = 'darkgreen',
+                                'beech' = 'limegreen', #'forestgreen',
+                                'oak' = 'gold',
+                                'pine' = 'tomato2'),
+                     name = 'Dominant species') +
+  xlim(0,2.5) +
+  ylim(0,2.5) +
+  geom_abline(intercept = 0, # add diagonal line
+              slope = c(0.5,2),
+              col = "grey",
+              size = .5,
+              lty = 'dashed') +
+  facet_grid(.~manag, 
+             labeller = labeller(manag = manag.labs)) +
   xlab('Reassembly [mean]\n [Z-score]') + 
   ylab('Restructure [mean]\n [Z-score]') +
   theme_update(legend.position = 'bottom') +
@@ -674,69 +786,132 @@ windows()
 
 
 
+# Classify points by sectors ---------------------------------------
+library(tidyverse)
+library(ggthemes)
+set.seed(123)
+dd <- data.frame(x = runif(200, min=0, max=2),
+                 y = runif(200, min=0, max=2))
+
+slope = 30 #degrees
+
+# categorize the triplets categories -------------------------------------------
+res_classes <- 
+  out_reorg_pos %>% 
+  left_join(trip_species) %>% 
+  #calculate dfistance from origin
+  mutate(orig_dist = sqrt(RA_mean^2 + RS_mean^2)) %>%
+  #calculate position (origin, far, etc..)
+  mutate(position = case_when(orig_dist < 0.5 ~ "resilience",
+                              orig_dist >= 1.5 ~ "-extreme",
+                              TRUE ~ "")) %>%
+  #calculate XY label
+  mutate(labelXY = case_when((180*atan(RA_mean / RS_mean) / pi) < slope ~ "RS",
+                             (180*atan(RA_mean / RS_mean) / pi) > (90 - slope) ~ "RA", 
+                             TRUE ~ "RA-RS")) %>%
+  #create group category
+  mutate(group = ifelse(position == "resilience", 
+                        position, 
+                        paste0(labelXY, position)))# %>%
+
+#plot
+
+
+# Define the slopes of the lines that divide the area into x, y, xy
+slope1 <- 0.5
+slope2 <- 2
+
+# Define the radii of the circles that define the origin,?, far areas,
+# which I've called near, mid, far
+r1 <- 0.5
+r2 <- 1.5
+
+  
+p_res_classes <- res_classes %>%   
+  ggplot(aes(x = RA_mean, y = RS_mean, color = group)) + 
+  geom_point(alpha = 0.7) +
+  ggthemes::scale_color_colorblind() +
+  theme_bw() + theme_update(aspect.ratio=1) +
+  geom_abline(intercept = 0, slope = 0.5, size = 0.3, lty = 'dashed', color = 'grey') +
+  geom_abline(intercept = 0, slope = 1.8, size = 0.3, lty = 'dashed', color = 'grey') +
+  annotate("path",
+           x = r1*cos(seq(0,2*pi,length.out=100)),
+           y = r1*sin(seq(0,2*pi,length.out=100)),
+           size = 0.3, lty = 'dashed', color = 'grey'
+  ) +
+  annotate("path",
+           x = r2*cos(seq(0,2*pi,length.out=100)),
+           y = r2*sin(seq(0,2*pi,length.out=100)),
+           size = 0.3, lty = 'dashed', color = 'grey'
+  ) +
+  scale_x_continuous(expand = c(0, 0), limits = c(0, 2.5)) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) +
+  facet_grid(.~manag, labeller = labeller(manag = manag.labs)) +
+  xlab('Reassembly') +
+  ylab('Restructure')
+  
+
+windows()
+p_res_classes
+
+# Dumy 2: ---------------------------------------------------
+set.seed(4242)
+dd <- data.frame(x = runif(20, min=0, max=2),
+                 y = runif(20, min=0, max=2))
+
+# I changed your euclidean distance function to return distance of each point from the origin
+euclidean <- function(a, b) {
+  sqrt((dd$x)^2 + (dd$y)^2)
+}
+
+# Define the slopes of the lines that divide the area into x, y, xy
+slope1 <- 0.5
+slope2 <- 2
+
+# Define the radii of the circles that define the origin,?, far areas,
+# which I've called near, mid, far
+r1 <- 0.5
+r2 <- 1.5
+
+dd2 <- dd %>% 
+  mutate(
+    euclid_dist = euclidean(x, y),
+    computed_y1 = x * slope1,
+    computed_y2 = x * slope2,
+    dist = cut(euclid_dist, breaks=c(0, r1, r2, 5), label=c('near', 'mid', 'far'))
+  )
+
+# There's presumably a way to do this within the above mutate function using case_when()
+dd2$pos <- 'xy'
+dd2$pos[dd2$y < dd2$computed_y1] <- 'x'
+dd2$pos[dd2$y > dd2$computed_y2] <- 'y'
+dd2$pos <- as.factor(dd2$pos)
+
+ggplot(dd2) +
+  geom_point(aes(x = x, y = y, col=dist, shape=pos), size=3) +
+  
+  annotate("path",
+           x = r1*cos(seq(0,2*pi,length.out=100)),
+           y = r1*sin(seq(0,2*pi,length.out=100))
+  ) +
+  annotate("path",
+           x = r2*cos(seq(0,2*pi,length.out=100)),
+           y = r2*sin(seq(0,2*pi,length.out=100))
+  ) +
+  
+  geom_abline(intercept = 0, slope=0.5, col='red') +
+  geom_abline(intercept = 0, slope=2, col='blue') +
+  scale_x_continuous(expand = c(0, 0), limits = c(0, 2)) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 2)) +
+  #theme_classic() +
+  theme_update(legend.position = 'bottom') +
+  theme_update(aspect.ratio=1) 
 
 
 
 
 
 
-# #windows()
-# # Tree plots
-# tree_plot <- d2%>%  
-#   ggplot(aes(area = n, 
-#              fill = dom_sp,
-#              label = paste( 
-#                            reorganization, 
-#                            paste(n/0.4, '%'),
-#                            sep = "\n"))) +
-#   geom_treemap(color = 'black') +
-#   geom_treemap_text(colour = "white") +
-#   theme(legend.position = "bottom")
-#   
-# 
-# # Bar plot
-# tree_plot_cols<- d2%>%  
-#   #arrange(desc(n)) %>%
-#   #mutate(comb = factor(comb, 
-#   #                     levels = comb)) %>% 
-#   mutate(reorganization = factor(reorganization,
-#                                  levels = c('resilience',
-#                                             'reassembly',
-#                                             'restructuring',
-#                                             'replacement'))) %>% 
-#   ggplot(aes(x = reorganization, 
-#              y = n,
-#              fill = reorganization)) +
-#   geom_col(col = 'black') + 
-#   facet_wrap(.~ dom_sp) +
-#   theme(legend.position = 'right') + 
-#   theme_bw()
-# 
-# 
-# p_stacked_reorg <- d2 %>% 
-#   ggplot(aes(y = n,
-#              x = dom_sp,
-#              fill = reorganization)) + 
-#   geom_bar(position="fill", stat="identity", col = 'black') + 
-#   theme_bw() +
-#   ylab('Share of classes [%]') +
-#   xlab('')
-
-# library(waffle)
-#   
-# out_reorg %>% 
-#   mutate(shift = factor(shift, levels = c('resilience',
-#                                           'reassembly',
-#                                           'restructuring',
-#                                           'replacement'))) %>%
-#   
-#   group_by(shift) %>% 
-#   count()  %>%
-#   ggplot(aes(values = n, 
-#              fill = shift)) +
-#   geom_waffle() 
-# 
-# 
 # 
 # Export objects -----------------------------------------------------------
 #save(list=ls(pat="R"),file="dat_restr.Rdata") 
