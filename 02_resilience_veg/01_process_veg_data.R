@@ -83,6 +83,7 @@ reg_trees <- c(
 # Input data -------------------------------------------------------------------
 #### Source paths and functions  -----------------------------------------------
 
+setwd('C:/Users/ge45lep/Documents/2021_Franconia_mortality/r_franconia_mortality')
 source('myPaths.R')
 
 
