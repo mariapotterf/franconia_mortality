@@ -373,7 +373,7 @@ p_avg_distance_nearest <- df_full_corr %>%
                      breaks=c("mature", "advanced"),
                      labels=c("mature", "advanced"),
                      values = c("darkgreen","red")) +
-  ylab('Nearest tree\n Mature/advanced reg [m]') +
+  ylab('Avg Distance [m]') +
   ggtitle('Nearest Tree\nMature/advanced reg [m]') +
   ylim(0,6) +
   theme(legend.position = 'bottom')
@@ -395,8 +395,8 @@ p_avg_distance_mature <-
                        breaks=c("mat_ENV", "mature"),
                        labels=c("ENV", "Plot"),
                        values = c("red","black")) +
-  ylab('Mean distance to\nthe nearest Mature tree\n [m]') +
-  ylim(0,6)+
+  ylab('Avg Distance [m]') +
+   ylim(0,6)+
   ggtitle('Mature\ntree') +
   theme(legend.position = 'bottom') 
 
@@ -419,7 +419,7 @@ p_avg_distance_adv <-
                        breaks=c("adv_ENV", "HK7"),
                        labels=c("ENV", "Plot"),
                        values = c("red","black")) +
-    ylab('Mean distance to\nthe nearest Advanced tree\n [m]') +
+  ylab('Avg Distance [m]') +
   ylim(0,6) +
   ggtitle('Advanced reg\ntree') +
   theme(legend.position = 'bottom') 
@@ -429,7 +429,7 @@ p_avg_distance_adv <-
 p_distances <- ggarrange(p_avg_distance_nearest, 
                          p_avg_distance_adv,
                          p_avg_distance_mature,
-                         nrow = 1, ncol = 3,
+                         nrow = 2, ncol = 2,
                          hjust=-0.8)
 
 (p_distances)
@@ -482,6 +482,22 @@ df_RS3 <-
 # replace Inf value by 0:
 df_RS3[as.matrix(df_RS3) == Inf]  <- 0
 
+# Plot distribution of vertical classes: by management and tree species
+# !!!??? showhow often which layer is missing? by species, manag, height class? 
+# df_full_corr %>% 
+#   filter(count  != 0 ) %>% 
+#   dplyr::select(trip_n, manag, sub_n, vert_layer) %>%
+#   distinct(.) %>%
+#  # filter(trip_n == '7' & manag == 'l' & sub_n == '1') 
+#   group_by(trip_n, manag, sub_n, vert_layer) %>% 
+#   summarise(vertical_n = n()) #%>%
+#   ungroup(.) %>% 
+#   group_by(trip_n, manag, vert_layer) %>% 
+#   summarize(mean_vLayer   = mean(vertical_n, na.rm = TRUE))# %>%
+#   ggplot(aes(x = as.factor(manag),
+#              y = mean_vLayer)) +
+#   geom_col(identity = )
+  
 
 # plot the values as density plot
 p_RS3 <- df_RS3 %>% 
