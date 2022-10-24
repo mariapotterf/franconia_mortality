@@ -30,7 +30,7 @@
 # for vertical and horizontal structre: 
 #   - from nearest distance metrics : mature trees
 #   - advanced regen (missing height and DBH!) - skip DBH is missing 
-#   - make sure to add +100 cm (distance to the center )
+#   - make sure to add +100 cm (distance to the center, if missing )
 # dbh for advanced regen in ENV:  
 #   - skip from IVi calculation
 # outcome: get the species importance value per plot! nearest trees add as 
@@ -113,9 +113,7 @@ df_sub_count <-
 
 # for ENV: calculate distance dependent density per plot
 nrow(df_regen)             # have all columns, all species, height classes, gradient
-#nrow(df_regen_all)        # 2406
 nrow(df_reg_full)          # 2406, contains infor if planted&damaged
-#nrow(df_reg_onlyNatural)   # 2406
 nrow(df_mature_trees_plot) # 4976
 
 # Environment
@@ -143,7 +141,6 @@ df_regen %>%
 
 my_cols_plot = c('gradient',
                   'trip_n', 
-                 # 'dom_sp', 
                   'manag', 
                   'sub_n',
                   'species',   
@@ -163,7 +160,7 @@ df_regen2 <- df_regen %>%
                             height_class == 'HK5' ~ 1.2,
                             height_class == 'HK6' ~ 1.7
   )) %>% 
-  mutate(DBH = case_when(height == 1.7 ~ 0.8,  # DBH is ~ 1 cm for the HK6
+  mutate(DBH = case_when(height == 1.7 ~ 0.8,  # DBH is ~ 0.8 cm for the HK6
                          height != 1.7 ~ 0)) %>% 
   dplyr::select(all_of(my_cols_plot)) %>% 
   mutate(species = case_when(species == "OtherHardwood" ~ "O_Hard",
@@ -196,7 +193,7 @@ df_full_plot = rbind(df_regen2,
 ha     <- 10000
 r_side <- 2 # 2m as the lenght of the square
 
-# this table has extimated densities per tree species and per height class
+# PLOT: Estimate densities per tree species and per height class; slop corrected
 df_full_plot_corr <-
   df_full_plot %>%
   mutate(gradient = as.numeric(gradient)) %>%
@@ -219,7 +216,7 @@ df_full_plot_corr %>%
   geom_histogram(binwidth = 1000)
 
 
-# sum up by plot level:
+# Sum up by plot level:
 df_full_plot_corr %>% 
   group_by(trip_n, manag, sub_n) %>% 
   summarise(sum_plot = sum(corr_count, na.rm = T )) %>% 
@@ -267,7 +264,7 @@ df_dbh_mean_advanced <-
 
 
 
-# adjust area of teh circle and then calculate the area 
+# adjust area of the circle and then calculate the area 
 # get the numbers of trees per ha
 head(df_advanced_env)
 
@@ -310,32 +307,31 @@ df_mature_env_corr <-
 df_mature_env_corr %>% 
   ggplot(aes(corr_count,
              fill = species)) +
-  geom_histogram()
+  geom_histogram() +
+  ggtitle('Mature tree-Surroundings\n[capped]')
 
 
 df_advanced_env_corr %>% 
   ggplot(aes(corr_count,
              fill = species)) +
-  geom_histogram()
-
-
-
+  geom_histogram() +
+  ggtitle('Advanced regen-Surroundings\n[capped]')
 
 
 # Merge the densities for PLOT and ENV: ------------------------------------------
 
 
 # Plot DBH range Mean_se(): ----------------------------------------------
-# #p_dbh_dist <- 
-# df_full_plot %>% 
-#   filter(height_class == 'HK7') %>% 
-#   ggplot(aes(y = DBH,
-#              x = factor(species), 
-#              color = factor(manag))) +
-#   stat_summary() +
-#   theme_bw() +
-#   theme(legend.position = 'bottom') 
-# 
+p_dbh_dist <-
+ df_full_plot %>%
+  filter(height_class == 'HK7') %>%
+  ggplot(aes(y = DBH,
+             x = factor(species),
+             color = factor(manag))) +
+  stat_summary() +
+  theme_bw() +
+  theme(legend.position = 'bottom')
+
 
 
 # merge all PLOT data into single df !!! continue from here!!
@@ -545,6 +541,8 @@ save(plot_IVI,
      df_mature_trees_env,   # mature trees ENV
      df_mature_trees_plot,  # mature trees PLOT
      plot_counts_df,        # master table having all triplets and subsets structure
+     df_dbh_mean_advanced,  # DBH of advanced regeneration on plot
+     p_dbh_dist,            # plot of DBH of advanced regeneration
      file="outData/dataToPlot.Rdata")
 
 
