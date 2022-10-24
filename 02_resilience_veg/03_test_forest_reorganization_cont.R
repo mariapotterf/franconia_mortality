@@ -6,7 +6,7 @@
 # for inpt data: use the plot + nearest distance tree data to get the dbh, BA, stem density, etc...
 
 # To do:
-# how to show sensitivity analysis instead of thersold values? ; eg for novelty??
+# how to show sensitivity analysis instead of threshold values? ; eg for novelty??
 # run analysis for Disturbed and Cleared? - > make respective lists of novel species fr CC, D
 
 rm(list=ls())
@@ -35,7 +35,7 @@ dens_plot_details <- function() {
     geom_vline(xintercept = 0, colour="red", linetype = "dashed"),
     scale_fill_discrete(name = "Management", 
                         breaks=c("c", "d"),
-                        labels=c("Clear-cut", "Dead")
+                        labels=c("Managed", "Unmanaged")
   ))
 }
 
@@ -584,7 +584,7 @@ out_reorg_pos <- out_reorg_pos %>%
 
 
 # plot Euclidean distance : -----------------------------------------------
-manag.labs <- c("Clear-Cut", "Dead")
+manag.labs <- c("Managed", "Unmanaged")
 names(manag.labs) <- c("c", "d")
 
 
@@ -615,12 +615,12 @@ p_euclid_lollipop <-
     
     xlab('Triplet number') +
   ylab('Euclidean distance') +
-  geom_text(aes(label = trip_n), color = "white", size = 2.5) +
-  theme_update(axis.text.x = element_text(angle = 45, 
-                                          vjust = 0.5, 
-                                          hjust = 1, size = 5),
-               legend.position = 'bottom') +
-  guides(colour = guide_legend(title.position = "top"))
+  geom_text(aes(label = trip_n), color = "white", size =2.5) +
+  theme_update(axis.text.x=element_blank(),
+    #axis.text.x = element_text(angle = 45, 
+              #                            vjust = 0.5, 
+              #                            hjust = 1, size = 6),
+               legend.position = 'bottom') 
 
 windows()
 (p_euclid_lollipop)
@@ -828,7 +828,14 @@ res_classes <-
   #create group category
   mutate(group = ifelse(position == "resilience", 
                         position, 
-                        paste0(labelXY, position)))# %>%
+                        paste0(labelXY, position))) %>%
+  mutate(group = factor(group, levels = c('resilience',
+                                          'RA',
+                                          'RA-extreme',
+                                          'RS',
+                                          'RS-extreme',
+                                          "RA-RS",
+                                          "RA-RS-extreme")))
 
 #plot
 
