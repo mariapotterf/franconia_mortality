@@ -203,11 +203,16 @@ df_full_plot_corr <-
     correct_factor = ha / area_corr,
     corr_count = count * correct_factor
   )  %>%
+  #  filter(corr_count > 100000)
+  #  distinct(gradient) %>% 
+  #  print(n = 100)
+  # summarize(min(corr_count), max(corr_count))
   mutate(distance = 50) %>% 
   select(trip_n, manag, sub_n, species, 
          DBH, distance, height_class, count, corr_count) # correctly order the columns
 
-
+df_full_plot_corr %>% 
+  filter(trip_n == '16' & sub_n == '4' & species == 'Spruce' & manag == 'l')
 
 # Histogram of the species counts per ha (by species and height c --------
 df_full_plot_corr %>% 
@@ -277,14 +282,17 @@ df_advanced_env_corr <-
     correct_factor = ha / area_corr,
     corr_count     = round(count * correct_factor, 0)
   ) %>%
+ 
   mutate(corr_count = case_when(corr_count <= 2500 ~ corr_count,
                                 corr_count > 2500 ~ 2500)) %>% 
+  #   summarize(min(corr_count), max(corr_count)) 
   mutate(height_class = 'adv_ENV') %>% 
   right_join(df_dbh_mean_advanced, by = c('manag', 'species')) %>%
   select(trip_n, manag, sub_n, species, 
          DBH, distance, height_class, count, corr_count) # correctly order the columns
 
 
+range(df_advanced_env_corr$corr_count)
   
 ## ENV: mature: -------------------------------------------------------------------
 df_mature_env_corr <- 
@@ -297,28 +305,28 @@ df_mature_env_corr <-
   ) %>% 
   mutate(corr_count = case_when(corr_count <= 2500 ~ corr_count,
                                  corr_count > 2500 ~ 2500)) %>% 
+ # summarize(min(corr_count), max(corr_count)) 
   mutate(height_class = 'mat_ENV') %>% 
   select(trip_n, manag, sub_n, species, 
          DBH, distance, height_class, count, corr_count) # correctly order the columns
 
 
+range(df_mature_env_corr$corr_count)
+
 # make distribution plots to share with RS and WR ------------------
 # to merge data: select the onces that are closer to site
-df_mature_env_corr %>% 
+p_mature_hist <- df_mature_env_corr %>% 
   ggplot(aes(corr_count,
              fill = species)) +
   geom_histogram() +
   ggtitle('Mature tree-Surroundings\n[capped]')
 
 
-df_advanced_env_corr %>% 
+p_advanced_hist <- df_advanced_env_corr %>% 
   ggplot(aes(corr_count,
              fill = species)) +
   geom_histogram() +
   ggtitle('Advanced regen-Surroundings\n[capped]')
-
-
-# Merge the densities for PLOT and ENV: ------------------------------------------
 
 
 # Plot DBH range Mean_se(): ----------------------------------------------
@@ -330,7 +338,11 @@ p_dbh_dist <-
              color = factor(manag))) +
   stat_summary() +
   theme_bw() +
-  theme(legend.position = 'bottom')
+  xlab('') + 
+  theme(legend.position = 'bottom',
+        axis.text.x = element_text(angle = 45, 
+                                   vjust = 0.5, 
+                                   hjust = 1, size = 5))
 
 
 
@@ -339,11 +351,15 @@ df_full_corr = rbind(df_full_plot_corr,
                      df_advanced_env_corr,
                      df_mature_env_corr)
 
+
+
 head(df_full_corr)
 nrow(df_full_corr)
 
 
-
+# test data 
+#df_full_plot_corr %>% 
+#  filter(trip_n == '16' & sub_n == '4' & species == 'Spruce' & manag == 'l')
 
 
 # Plot + ENV: rIVI ------------------------------------------------------------------------
@@ -413,7 +429,6 @@ nrow(df_full_corr)
 
 
 
-
 ###################################################################
 #                                                                 #
 # Plot + ENV/ha : Species Importance Value (regen, adv, mature)   #
@@ -429,6 +444,10 @@ nrow(df_full_corr)
 # select the density of the one that is closer? if both present, average them? 
 # bt how is they are of different species?
 
+
+# 
+# Get the list of plots with with having both trees in PLOT and ENV: ---------
+
 head(df_full_corr)
 
 # check how often I have categories: 
@@ -442,13 +461,67 @@ df_full_corr %>%
 # 10 mat_ENV  # mature ENV
 
 # cca 110 plots with mature trees in plot
-# cca 670 plots with advanced regen in plot
-df_full_corr %>% 
+# cca 670 plots with advanced regen in plot:
+# get teh list of teh trip_n, manag and sub_n to compare density of two groups:
+df_mature_both <- df_full_corr %>% 
   group_by(trip_n, manag, sub_n) %>% 
   dplyr::filter(height_class  %in% c("mature", 'mat_ENV' )) %>% # filter specific classes
   filter(all(c("mature", 'mat_ENV') %in% height_class)) %>% 
-  arrange(trip_n, manag, sub_n)
+  arrange(trip_n, manag, sub_n) %>% 
+  distinct(trip_n, manag, sub_n) %>% 
+  mutate(tree_on_plot = 'mat_plot_env')
 
+
+df_advanced_both <- df_full_corr %>% 
+  group_by(trip_n, manag, sub_n) %>% 
+  dplyr::filter(height_class  %in% c("HK7", 'adv_ENV' )) %>% # filter specific classes
+  filter(all(c("HK7", 'adv_ENV') %in% height_class)) %>% 
+  arrange(trip_n, manag, sub_n) %>% 
+  distinct(trip_n, manag, sub_n) %>% 
+  mutate(tree_on_plot = 'adv_plot_env')
+
+# try first only with mature trees: how different are densities if both metrics are implemented?
+df_full_corr %>% 
+  full_join(df_mature_both, by = c("trip_n", "manag", "sub_n")) %>% 
+  filter(height_class %in% c('mature', 'mat_ENV')) %>% 
+  group_by(trip_n, manag, sub_n, tree_on_plot) %>% 
+  summarize(sum_corr_count  = sum(corr_count)) %>% 
+  ggplot(aes(x = factor(tree_on_plot),
+             y = sum_corr_count,
+             color = manag)) + 
+  stat_summary()
+
+
+# !!!!!! strill not sure how to correctly adress this??
+
+
+df_both = df_mature_both %>% # 100 plots
+  bind_rows(df_advanced_both) #263 plots
+
+
+df_full_corr %>% 
+  filter(trip_n == '16' & sub_n == '4' & species == 'Spruce' & manag == 'l')
+
+range(df_full_corr$corr_count)
+# [1]  -2660.444 140341.866
+
+df_full_corr %>% 
+  filter(corr_count <0)
+
+# trip_n manag sub_n species   DBH distance height_class count corr_count
+# <chr>  <chr> <chr> <chr>   <dbl>    <dbl> <chr>        <dbl>      <dbl>
+#1 16     l     4     Spruce     40       50 mature           1     -2660.
+
+df_full_corr %>% 
+  filter(corr_count >100000)
+
+# trip_n manag sub_n species   DBH distance height_class count corr_count
+# <chr>  <chr> <chr> <chr>   <dbl>    <dbl> <chr>        <dbl>      <dbl>
+# 1 42     d     1     Oak         0       50 HK1             42    105064.
+# 2 42     d     5     Oak         0       50 HK1             54    135185.
+# 3 43     l     3     Oak         0       50 HK1             49    122519.
+# 4 15     d     2     Spruce      0       50 HK1             56    140342.
+# 5 15     d     3     Spruce      0       50 HK1             42    105144.
 
 # example:
 
@@ -516,15 +589,88 @@ df_rel_BA_plot <-
 
 
 
-
-
-
 # SITE: Calculate IVI: species importance value -----------------------------------------------
 # merge the rel frequeny, density and basal area ------------------------------------------
 plot_IVI <- df_rel_density %>% 
   full_join(df_rel_BA_plot) %>% 
   replace_na(., list(all_BA = 0, rel_BA   = 0)) %>% 
   mutate(rIVI = ( rel_density +rel_BA)/2)  # relative IVI
+
+
+
+
+
+# Get species rIVI Plot + ENV: no DBH for advanced regeneration--------------------------------------------------------------
+# how to handle it? now, I have filled in values from the PLOT estimates
+# or handle in the the average value (5 cm?)
+# # relative density: 
+# # the number of individuals per area as a percent of the number of individuals of all species.
+
+# # Relative basal area: DBH for advanced is NA: can't' be true!! then I can't get the relative shares!   
+# try with value of 5cm: average values of the advanced regen DBH;
+# compare the rIVI (dhb supplemented) and rIVI_5
+# # the total basal area of Species A as a percent of the total basal area of all species.  
+df_rel_BA_plot_6 <- 
+  df_full_corr %>%
+  mutate(DBH = case_when(height_class == 'adv_ENV' ~ 6,
+                         height_class != 'adv_ENV' ~ DBH)) %>% 
+  #filter(height_class == 'adv_ENV') %>% 
+  mutate(r = DBH/2,
+         BA = pi*r^2)  %>%
+  group_by(trip_n, manag, sub_n, species) %>%
+  summarize(sp_BA = sum(BA, na.rm = T)) %>%
+  ungroup(.) %>%
+  group_by(trip_n, sub_n, manag) %>%
+  mutate(all_BA = sum(sp_BA, na.rm = T),
+         rel_BA = sp_BA/all_BA*100) %>%
+  mutate(rel_BA = replace_na(rel_BA, 0)) #%>%  # replace NA by 0 if BA is missing
+#  filter(trip_n == 1 & manag == 'c' & sub_n == 1)
+
+
+
+# SITE: Calculate IVI: species importance value -----------------------------------------------
+# merge the rel frequeny, density and basal area ------------------------------------------
+plot_IVI_6 <-
+  df_rel_density %>% 
+  full_join(df_rel_BA_plot_6) %>% 
+  replace_na(., list(all_BA = 0, rel_BA   = 0)) %>% 
+  mutate(rIVI = ( rel_density +rel_BA)/2)  # relative IVI
+
+
+# Compare the IVI values between the suplemented DBH, and DBH = 6 for advanced regen?
+nrow(plot_IVI_6)
+nrow(plot_IVI)
+
+# Compare the two metrics:
+select(plot_IVI, c(trip_n, manag, sub_n, species, rIVI))  %>% #sp_BA, rel_BA, 
+  full_join(select(plot_IVI_6, c(trip_n, manag, sub_n, species, rIVI)), 
+            by = c('trip_n', 'manag', 'sub_n', 'species')) %>% # sp_BA, rel_BA,
+  rename(rIVI_DBH = rIVI.x,
+         rIVI_DBH6 = rIVI.y) %>% 
+  mutate(diff = rIVI_DBH-rIVI_DBH6) %>%
+  #filter(diff< -10) 
+
+  ggplot(aes(rIVI_DBH)) + 
+ geom_density()
+  
+
+windows()
+p_compare_density_rIVI <-
+  select(plot_IVI, c(trip_n, manag, sub_n, species, rIVI))  %>% #sp_BA, rel_BA, 
+  full_join(select(plot_IVI_6, c(trip_n, manag, sub_n, species, rIVI)), 
+            by = c('trip_n', 'manag', 'sub_n', 'species')) %>% # sp_BA, rel_BA,
+  rename(rIVI_DBH = rIVI.x,
+         rIVI_DBH6 = rIVI.y) %>% 
+  mutate(diff = rIVI_DBH-rIVI_DBH6) %>%
+  pivot_longer(!c(trip_n, manag, sub_n, species, diff),
+               names_to = 'type', values_to = 'vals')  %>% 
+  ggplot(aes(vals,
+             color = type)) + 
+  geom_density(alpha = 0.5) + 
+  facet_grid(.~type)
+
+
+
 
 
 
@@ -541,8 +687,11 @@ save(plot_IVI,
      df_mature_trees_env,   # mature trees ENV
      df_mature_trees_plot,  # mature trees PLOT
      plot_counts_df,        # master table having all triplets and subsets structure
-     df_dbh_mean_advanced,  # DBH of advanced regeneration on plot
+     df_dbh_mean_advanced,  # df - DBH of advanced regeneration on plot
      p_dbh_dist,            # plot of DBH of advanced regeneration
+     p_compare_density_rIVI, # plot: compare density dist. between 2 types of rIVI vals
+     p_mature_hist,         # histogram of MATURe trees in ENV
+     p_advanced_hist,       # histogram of ADV trees in ENV
      file="outData/dataToPlot.Rdata")
 
 
