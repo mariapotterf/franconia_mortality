@@ -528,14 +528,15 @@ p_6vars <- ggarrange(
 # Join databases into one indicator by triplet -----------------------------
 # change is always indicated by the + values, - indicates the no change
 # convert - and Inf values to 0
+# add reference values
 
 out_reorg <- 
-  select(df_RA1, c(trip_n, manag, RA1)) %>% 
-  full_join(select(df_RA2, c(trip_n, manag, RA2))) %>%
-  full_join(select(df_RA3, c(trip_n, manag, RA3))) %>% 
-  full_join(select(df_RS1, c(trip_n, manag, RS1))) %>% #,
-  full_join(select(df_RS2, c(trip_n, manag, RS2))) %>%
-  full_join(select(df_RS3, c(trip_n, manag, RS3)))#%>% 
+  select(df_RA1,           c(trip_n, manag, RA1, ref_rIVI_mean )) %>% 
+  full_join(select(df_RA2, c(trip_n, manag, RA2, ref_avg_rich    ))) %>%
+  full_join(select(df_RA3, c(trip_n, manag, RA3, ref_mean_shade ))) %>% 
+  full_join(select(df_RS1, c(trip_n, manag, RS1, ref_mean_dens ))) %>% #,
+  full_join(select(df_RS2, c(trip_n, manag, RS2, ref_mean_distance ))) %>%
+  full_join(select(df_RS3, c(trip_n, manag, RS3, ref_mean_vLayer )))#%>% 
   
  # mutate() # combine indicators together
 #
@@ -890,7 +891,6 @@ p_res_sp <-
     geom_circle(aes(x0 = 0, y0 = 0, r = 0.5),
                 inherit.aes = FALSE, fill = 'grey70',
                 lty = 'dotted', color = 'grey50', alpha = 0.5) +
-  
      geom_abline(intercept = 0, slope = 0.5, size = 0.5, lty = 'dashed', color = 'grey20') +
     geom_abline(intercept = 0, slope = 1.8, size = 0.5, lty = 'dashed', color = 'grey20') +
     geom_point(alpha = 0.7, size = 2.7) +
@@ -915,9 +915,33 @@ dev.off()
 
 
 
+# Evaluate the drivers: change by indicators ---------------------------------------------------------
 
-
-
+# dot plot between ref and management conditions for each species
+# to visualize what characeteristics were driving the change? how often?
+# need to get the REF in the table! 
+#out_reorg_pos %>%   
+#  left_join(trip_species) %>%
+#  mutate(diff_
+  
+# how to show the drivers??? per indicator, per speies, per management?
+out_reorg_pos %>% 
+ 
+  select(all_of(c('RA1', 'RA2', 'RA3', 'RS1', 'RS2', 'RS3'))) %>% 
+  pivot_longer(c(RA1, RA2, RA3, RS1, RS2, RS3),
+               names_to = 'indicator',
+               values_to = 'vals') %>% 
+  left_join(trip_species) %>%
+  mutate(ind_manag = paste(indicator, manag)) %>% 
+  ggplot(aes(x = factor(ind_manag),
+             y = vals,
+             color = dom_sp)) +
+  stat_summary() + 
+  facet_grid(manag~dom_sp) +
+  theme_base() + 
+  theme(axis.text.x = element_text(angle = 45, 
+                                   vjust = 0.5, 
+                                   hjust = 1, size = 5))
 
 
 
