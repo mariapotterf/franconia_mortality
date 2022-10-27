@@ -126,6 +126,17 @@ df_regen %>%
   print(n = 100)
 
 
+# Check for JurI: prevalence of teh fir? ----------------------
+# df_mature_trees_env %>% 
+#   filter(trip_n== 10 & manag == 'l') %>% 
+#   mutate(tree_n_ha = 10000/(pi*(distance/100)^2)) %>% 
+#   group_by(species) %>% 
+#   summarise(sum_sp = sum(tree_n_ha)) %>% 
+#   mutate(all_trees = sum(sum_sp),
+#          share = sum_sp/all_trees*100)
+
+
+
 
 #############################################
 #                                           #
