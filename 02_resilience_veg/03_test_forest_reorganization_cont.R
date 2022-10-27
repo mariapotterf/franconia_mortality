@@ -589,6 +589,7 @@ names(manag.labs) <- c("c", "d")
 
 
 # show euclidean distances for each triplet
+library(ggrepel)
 p_euclid_lollipop <- 
   out_reorg_pos %>% 
   left_join(trip_species) %>% 
@@ -612,16 +613,12 @@ p_euclid_lollipop <-
     facet_wrap(.~manag, 
                scale = 'free_x', 
                labeller = labeller(manag = manag.labs)) +
-    
     xlab('Triplet number') +
   ylab('Euclidean distance') +
-  geom_text(aes(label = trip_n), color = "white", size =2.5) +
-  theme_update(axis.text.x=element_blank(),
-    #axis.text.x = element_text(angle = 45, 
-              #                            vjust = 0.5, 
-              #                            hjust = 1, size = 6),
-               legend.position = 'bottom') 
-
+  #geom_text(aes(label = trip_n), color = "white", size =3.5) +
+    ggrepel::geom_text_repel(aes(label = trip_n, color = dom_sp),  size =3.5) +
+  theme_update(axis.text.x= element_blank())  
+                 
 windows()
 (p_euclid_lollipop)
 
@@ -855,20 +852,20 @@ p_res_classes <- res_classes %>%
   geom_point(alpha = 0.7) +
   ggthemes::scale_color_colorblind() +
   theme_bw() + theme_update(aspect.ratio=1) +
-  geom_abline(intercept = 0, slope = 0.5, size = 0.3, lty = 'dashed', color = 'grey') +
-  geom_abline(intercept = 0, slope = 1.8, size = 0.3, lty = 'dashed', color = 'grey') +
+  geom_abline(intercept = 0, slope = 0.5, size = 0.5, lty = 'dashed', color = 'grey20') +
+  geom_abline(intercept = 0, slope = 1.8, size = 0.5, lty = 'dashed', color = 'grey20') +
   annotate("path",
            x = r1*cos(seq(0,2*pi,length.out=100)),
            y = r1*sin(seq(0,2*pi,length.out=100)),
-           size = 0.3, lty = 'dashed', color = 'grey'
+           size = 0.5, lty = 'dashed', color = 'grey20'
   ) +
   annotate("path",
            x = r2*cos(seq(0,2*pi,length.out=100)),
            y = r2*sin(seq(0,2*pi,length.out=100)),
-           size = 0.3, lty = 'dashed', color = 'grey'
+           size = 0.5, lty = 'dashed', color = 'grey20'
   ) +
-  scale_x_continuous(expand = c(0, 0), limits = c(0, 2.5)) +
-  scale_y_continuous(expand = c(0, 0), limits = c(0, 2.5)) +
+  scale_x_continuous(expand = c(0, 0), limits = c(0, 2.3)) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 2.3)) +
   facet_grid(.~manag, labeller = labeller(manag = manag.labs)) +
   xlab('Reassembly') +
   ylab('Restructure')
@@ -876,6 +873,55 @@ p_res_classes <- res_classes %>%
 
 windows()
 p_res_classes
+
+
+
+# Show species by sectors:
+library(ggforce)
+
+windows()
+p_res_sp <- 
+  res_classes %>%   
+  left_join(trip_species) %>% 
+  ggplot(aes(x = RA_mean, y = RS_mean, color = dom_sp)) + 
+      geom_circle(aes(x0 = 0, y0 = 0, r = 2),
+                inherit.aes = FALSE, fill = 'grey90',
+                lty = 'dotted', color = 'grey70', alpha = 0.5) +
+    geom_circle(aes(x0 = 0, y0 = 0, r = 0.5),
+                inherit.aes = FALSE, fill = 'grey70',
+                lty = 'dotted', color = 'grey50', alpha = 0.5) +
+  
+     geom_abline(intercept = 0, slope = 0.5, size = 0.5, lty = 'dashed', color = 'grey20') +
+    geom_abline(intercept = 0, slope = 1.8, size = 0.5, lty = 'dashed', color = 'grey20') +
+    geom_point(alpha = 0.7, size = 2.7) +
+    scale_color_manual(values = c('spruce' = 'darkgreen',
+                                  'beech' = 'limegreen', #'forestgreen',
+                                  'oak' = 'gold',
+                                  'pine' = 'tomato2'),
+                       name = 'Dominant species') +
+    theme_bw() + 
+    theme_update(aspect.ratio=1) +
+  coord_cartesian(xlim = c(0,2.5),
+                  ylim = c(0,2.5)) +
+  facet_grid(.~manag, labeller = labeller(manag = manag.labs)) +
+  xlab('Reassembly') +
+  ylab('Restructure')
+
+windows()
+
+png(filename= paste(getwd(), 'outImg/class_triplets.png', sep = '/'))
+p_res_sp
+dev.off()
+
+
+
+
+
+
+
+
+
+
 
 # Dumy 2: ---------------------------------------------------
 set.seed(4242)
