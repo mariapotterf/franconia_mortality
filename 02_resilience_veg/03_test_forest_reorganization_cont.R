@@ -982,7 +982,7 @@ out_reorg_pos %>%
              color = dom_sp,
              #shape = manag,
              group = dom_sp)) +
- stat_summary(size = 0.5) +
+ stat_summary(size = 0.3) +
   scale_color_manual(values = my_sp_vals ,
                      name = 'Dominant species') +
   scale_x_continuous(breaks = seq(0, 1.9, by = 1)) +
@@ -993,7 +993,7 @@ facet_grid(manag~indicator,
              labeller = labeller(manag = manag.labs)) +
   theme(axis.text.x = element_text(size = 8),
         legend.position = 'none',
-        panel.grid.major = element_blank(),
+        panel.grid.major = element_line(color="grey90", linetype ='dotted'),#element_blank(),
         panel.grid.minor = element_blank())
 
 
