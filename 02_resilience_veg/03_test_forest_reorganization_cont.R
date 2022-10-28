@@ -979,9 +979,9 @@ out_reorg_pos %>%
                              levels = c('RS3', 'RS2', 'RS1', 'RA3', 'RA2', 'RA1'))) %>% 
   ggplot(aes(y = reorder(dom_sp, vals),#indicator2,
              x = vals,
-             color = dom_sp,
+             color = factor(dom_sp),
              #shape = manag,
-             group = dom_sp)) +
+             group = factor(dom_sp))) +
  stat_summary(size = 0.3) +
   scale_color_manual(values = my_sp_vals ,
                      name = 'Dominant species') +
@@ -996,6 +996,50 @@ facet_grid(manag~indicator,
         panel.grid.major = element_line(color="grey90", linetype ='dotted'),#element_blank(),
         panel.grid.minor = element_blank())
 
+
+
+
+
+#  Test why grouping does not work?? --------------------------------------
+
+out_reorg_pos %>% 
+  select(all_of(c('RA1', 'RA2', 'RA3', 'RS1', 'RS2', 'RS3'))) %>% 
+  pivot_longer(c(RA1, RA2, RA3, RS1, RS2, RS3),
+               names_to = 'indicator',
+               values_to = 'vals') %>% 
+  left_join(trip_species) %>%
+ # mutate(ind_manag = paste(indicator, manag)) %>% 
+  group_by(dom_sp, manag, indicator) %>% 
+  mutate(indicator2 = factor(indicator, 
+                             levels = c('RS3', 'RS2', 'RS1', 'RA3', 'RA2', 'RA1'))) %>% 
+  ggplot(aes(y = indicator2, #reorder(dom_sp, vals),#indicator2,
+             x = vals,
+             color = dom_sp)) +#,
+             #shape = manag)) +
+#  geom_boxplot()
+#stat_summary(size = 0.3, position = 'dodge') +
+  stat_summary(geom = 'point',
+               fun = 'mean', #, 
+              position =  position_dodge(width = 0.6)
+              ) +
+  stat_summary(geom = 'errorbar', 
+               fun.data = mean_sdl, #mean_cl_normal,# mean_sdl, #, 
+               fun.args=list(mult = 3), 
+               position =  position_dodge(width = 0.6)
+               ) +
+  scale_color_manual(values = my_sp_vals ,
+                     name = 'Dominant species') +
+  scale_x_continuous(breaks = seq(0, 1.9, by = 1)) +
+  ylab('') +
+  xlab('Z-score') +
+  facet_grid(.~manag) +
+ # facet_grid(manag~indicator,
+#             #scale = 'free_x', 
+#             labeller = labeller(manag = manag.labs)) +
+  theme(axis.text.x = element_text(size = 8),
+       # legend.position = 'none',
+        panel.grid.major = element_line(color="grey90", linetype ='dotted'),#element_blank(),
+        panel.grid.minor = element_blank())
 
 
 
