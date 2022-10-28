@@ -605,10 +605,7 @@ p_euclid_lollipop <-
                     xend=reorder(trip_manag, -euclid_dist) , 
                     y=0, 
                     yend=euclid_dist)) +
-  scale_color_manual(values = c('spruce' = 'darkgreen',
-                                'beech' = 'limegreen', #'forestgreen',
-                                'oak' = 'gold',
-                                  'pine' = 'tomato2'),
+  scale_color_manual(values = my_sp_vals ,
                      name = 'Dominant species') +
   #scale_x_discrete(labels = 'trip_manag') %>% 
     facet_wrap(.~manag, 
@@ -687,12 +684,9 @@ p_scatter_mean <-
   ggplot(aes(x = RA_mean,
              y = RS_mean,
              color = dom_sp)) +
-  scale_color_manual(values = c('spruce' = 'darkgreen',
-                                'beech' = 'limegreen', #'forestgreen',
-                                'oak' = 'gold',
-                                'pine' = 'tomato2'),
+  scale_color_manual(values = my_sp_vals ,
                      name = 'Dominant species') +
-    geom_point() +
+  geom_point() +
   xlim(0,2) +
   ylim(0,2) +
   geom_abline(intercept = 0, # add diagnal line
@@ -725,7 +719,35 @@ hull_data <-
 
   
 #windows()
-p_scatter_manag_mean_poly <- 
+# my_sp_vals = c('spruce' = 'darkgreen',
+#   'beech' = 'limegreen', #'forestgreen',
+#   'oak' = 'gold',
+#   'pine' = 'tomato2')
+# 
+
+my_sp_vals = c('spruce'= '#33a02c', # dark green
+               'beech' = '#b2df8a', # lightgreen,
+               'oak'   = '#e31a1c', # red
+               'pine' = '#ff7f00')  # orange
+
+
+# my_sp_vals = c('spruce'= '#33a02c', # dark green
+#                'beech' =  '#ff7f00',  # orange'#1f78b4', # blue,
+#                'oak'   = '#e31a1c', # red
+#                'pine'  =  '#6a3d9a')  # dark violet 
+# 
+
+# from: https://colorbrewer2.org/#type=qualitative&scheme=Set1&n=9
+my_sp_vals = c('spruce'= '#4daf4a', # green
+               'beech' =  '#ff7f00',  # orange,
+               'oak'   = '#e41a1c', # red
+               'pine'  =  '#377eb8')  # blue
+
+
+
+
+
+#p_scatter_manag_mean_poly <- 
   out_reorg_pos %>% 
   left_join(trip_species) %>% 
   mutate(dom_sp = factor(dom_sp, # change order of dom_sp
@@ -736,20 +758,14 @@ p_scatter_manag_mean_poly <-
              color = dom_sp
   )) +
    # geom_text_repel(aes(label = trip_n)) +
-  scale_color_manual(values = c('spruce' = 'darkgreen',
-                                'beech' = 'limegreen', #'forestgreen',
-                                'oak' = 'gold',
-                                'pine' = 'tomato2'),
+  scale_color_manual(values = my_sp_vals ,
                      name = 'Dominant species') +
   geom_polygon(data = hull_data,
                  aes(fill = dom_sp,
                      color = dom_sp),
                  alpha = 0.3,
                  show.legend = TRUE) +
-  scale_fill_manual(values = c('spruce' = 'darkgreen',
-                                'beech' = 'limegreen', #'forestgreen',
-                                'oak' = 'gold',
-                                'pine' = 'tomato2'),
+  scale_fill_manual(values = my_sp_vals,
                      name = 'Dominant species') +
     geom_point() +
   xlim(0,2.5) +
@@ -779,10 +795,7 @@ p_scatter_manag_mean_pts <-
              color = dom_sp
   )) +
   geom_point() +
-  scale_color_manual(values = c('spruce' = 'darkgreen',
-                                'beech' = 'limegreen', #'forestgreen',
-                                'oak' = 'gold',
-                                'pine' = 'tomato2'),
+  scale_color_manual(values = my_sp_vals ,
                      name = 'Dominant species') +
   xlim(0,2.5) +
   ylim(0,2.5) +
@@ -894,12 +907,9 @@ p_res_sp <-
      geom_abline(intercept = 0, slope = 0.5, size = 0.5, lty = 'dashed', color = 'grey20') +
     geom_abline(intercept = 0, slope = 1.8, size = 0.5, lty = 'dashed', color = 'grey20') +
     geom_point(alpha = 0.7, size = 2.7) +
-    scale_color_manual(values = c('spruce' = 'darkgreen',
-                                  'beech' = 'limegreen', #'forestgreen',
-                                  'oak' = 'gold',
-                                  'pine' = 'tomato2'),
-                       name = 'Dominant species') +
-    theme_bw() + 
+  scale_color_manual(values = my_sp_vals ,
+                     name = 'Dominant species') +
+  theme_bw() + 
     theme_update(aspect.ratio=1) +
   coord_cartesian(xlim = c(0,2.5),
                   ylim = c(0,2.5)) +
@@ -918,7 +928,7 @@ dev.off()
 # Evaluate the drivers: change by indicators ---------------------------------------------------------
 
 # dot plot between ref and management conditions for each species
-# to visualize what characeteristics were driving the change? how often?
+# What indicators drive the change? 
 # need to get the REF in the table! 
 #out_reorg_pos %>%   
 #  left_join(trip_species) %>%
@@ -926,83 +936,128 @@ dev.off()
   
 # how to show the drivers??? per indicator, per speies, per management?
 out_reorg_pos %>% 
+  select(all_of(c('RA1', 'RA2', 'RA3', 'RS1', 'RS2', 'RS3'))) %>% 
+  pivot_longer(c(RA1, RA2, RA3, RS1, RS2, RS3),
+               names_to = 'indicator',
+               values_to = 'vals') %>% 
+   left_join(trip_species) %>%
+  mutate(ind_manag = paste(indicator, manag)) %>% 
+  group_by(dom_sp, manag, indicator) %>% 
+  summarize(mean = mean(vals, na.rm = T)) %>% 
+  mutate(indicator2 = factor(indicator, 
+                            levels = c('RS3', 'RS2', 'RS1', 'RA3', 'RA2', 'RA1'))) %>% 
+  ggplot(aes(y = reorder(indicator, mean),#indicator2,
+             x = mean,
+             color = dom_sp,
+             shape = manag,
+             group = manag)) +
+   geom_point(size = 2) +
+  geom_segment( aes(x=0,
+                    xend=mean,
+                    y=reorder(indicator, mean),
+                    yend=reorder(indicator, mean))) +
+  scale_color_manual(values = my_sp_vals ,
+                     name = 'Dominant species') +
+  facet_grid(manag~ dom_sp, 
+             scale = 'free_x', 
+             labeller = labeller(manag = manag.labs))# +
  
+
+
+# put species y: -------------------------------------------------------
+
+# how to show the drivers??? per indicator, per speies, per management?
+out_reorg_pos %>% 
   select(all_of(c('RA1', 'RA2', 'RA3', 'RS1', 'RS2', 'RS3'))) %>% 
   pivot_longer(c(RA1, RA2, RA3, RS1, RS2, RS3),
                names_to = 'indicator',
                values_to = 'vals') %>% 
   left_join(trip_species) %>%
   mutate(ind_manag = paste(indicator, manag)) %>% 
-  ggplot(aes(x = factor(ind_manag),
-             y = vals,
-             color = dom_sp)) +
-  stat_summary() + 
-  facet_grid(manag~dom_sp) +
-  theme_base() + 
-  theme(axis.text.x = element_text(angle = 45, 
-                                   vjust = 0.5, 
-                                   hjust = 1, size = 5))
+  group_by(dom_sp, manag, indicator) %>% 
+  mutate(indicator2 = factor(indicator, 
+                             levels = c('RS3', 'RS2', 'RS1', 'RA3', 'RA2', 'RA1'))) %>% 
+  ggplot(aes(y = reorder(dom_sp, vals),#indicator2,
+             x = vals,
+             color = dom_sp,
+             #shape = manag,
+             group = dom_sp)) +
+ stat_summary(size = 0.5) +
+  scale_color_manual(values = my_sp_vals ,
+                     name = 'Dominant species') +
+  scale_x_continuous(breaks = seq(0, 1.9, by = 1)) +
+  ylab('') +
+  xlab('Z-score') +
+facet_grid(manag~indicator,
+             #scale = 'free_x', 
+             labeller = labeller(manag = manag.labs)) +
+  theme(axis.text.x = element_text(size = 8),
+        legend.position = 'none',
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
 
 
 
 
 
-# Dumy 2: ---------------------------------------------------
+
+# Dummy 2: ---------------------------------------------------
+library(ggforce)
+
 set.seed(4242)
 dd <- data.frame(x = runif(20, min=0, max=2),
                  y = runif(20, min=0, max=2))
 
-# I changed your euclidean distance function to return distance of each point from the origin
-euclidean <- function(a, b) {
-  sqrt((dd$x)^2 + (dd$y)^2)
-}
-
-# Define the slopes of the lines that divide the area into x, y, xy
-slope1 <- 0.5
-slope2 <- 2
-
-# Define the radii of the circles that define the origin,?, far areas,
-# which I've called near, mid, far
-r1 <- 0.5
-r2 <- 1.5
-
-dd2 <- dd %>% 
-  mutate(
-    euclid_dist = euclidean(x, y),
-    computed_y1 = x * slope1,
-    computed_y2 = x * slope2,
-    dist = cut(euclid_dist, breaks=c(0, r1, r2, 5), label=c('near', 'mid', 'far'))
-  )
 
 # There's presumably a way to do this within the above mutate function using case_when()
-dd2$pos <- 'xy'
-dd2$pos[dd2$y < dd2$computed_y1] <- 'x'
-dd2$pos[dd2$y > dd2$computed_y2] <- 'y'
-dd2$pos <- as.factor(dd2$pos)
-
-ggplot(dd2) +
-  geom_point(aes(x = x, y = y, col=dist, shape=pos), size=3) +
+ggplot(dd) +
   
-  annotate("path",
-           x = r1*cos(seq(0,2*pi,length.out=100)),
-           y = r1*sin(seq(0,2*pi,length.out=100))
-  ) +
-  annotate("path",
-           x = r2*cos(seq(0,2*pi,length.out=100)),
-           y = r2*sin(seq(0,2*pi,length.out=100))
-  ) +
-  
+  geom_circle(aes(x0 = 0, y0 = 0, r = 2),
+              inherit.aes = FALSE, fill = 'grey90',
+              lty = 'dotted', color = 'grey70', alpha = 0.5) +
+  geom_circle(aes(x0 = 0, y0 = 0, r = 0.5),
+              inherit.aes = FALSE, fill = 'grey70',
+              lty = 'dotted', color = 'grey50', alpha = 0.5) +
+  geom_abline(intercept = 0, slope = 0.5, size = 0.5, lty = 'dashed', color = 'grey20') +
+  geom_abline(intercept = 0, slope = 1.8, size = 0.5, lty = 'dashed', color = 'grey20') +
+  geom_point(aes(x = x, y = y), size=1)+
   geom_abline(intercept = 0, slope=0.5, col='red') +
-  geom_abline(intercept = 0, slope=2, col='blue') +
-  scale_x_continuous(expand = c(0, 0), limits = c(0, 2)) +
-  scale_y_continuous(expand = c(0, 0), limits = c(0, 2)) +
-  #theme_classic() +
+  geom_abline(intercept = 0, slope=1.8, col='blue') +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  #scale_x_continuous(expand = c(0, 0), limits = c(0, 2)) +
+  #scale_y_continuous(expand = c(0, 0), limits = c(0, 2)) +
+  coord_cartesian(xlim = c(0,2.5),
+                  ylim = c(0,2.5)) +
+  theme_bw() +
   theme_update(legend.position = 'bottom') +
   theme_update(aspect.ratio=1) 
 
 
+windows()
+library(ggforce)
+library(ggplot2)
+set.seed(4242)
+dd <- data.frame(x = runif(20, min=0, max=2),
+                 y = runif(20, min=0, max=2))
 
-
+ggplot(dd) +
+  geom_circle(aes(x0 = 0, y0 = 0, r = 2),
+              inherit.aes = FALSE, fill = 'grey90',
+              lty = 'dotted', color = 'grey70', alpha = 0.5) +
+  geom_circle(aes(x0 = 0, y0 = 0, r = 0.5),
+              inherit.aes = FALSE, fill = 'grey70',
+              lty = 'dotted', color = 'grey50', alpha = 0.5) +
+  geom_point(aes(x = x, y = y), size=1)+
+  geom_abline(intercept = 0, slope=0.5, col='red') +
+  geom_abline(intercept = 0, slope=1.8, col='blue') +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  coord_cartesian(xlim = c(0,2.5),   # try to limit the xy axis in two ways
+                  ylim = c(0,2.5)) +
+  theme_bw() +
+  theme_update(legend.position = 'bottom') +
+  theme_update(aspect.ratio=1) 
 
 
 # 
