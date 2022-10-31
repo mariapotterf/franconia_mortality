@@ -556,32 +556,104 @@ out_reorg_pos <- out_reorg_pos %>%
 
 
 
-# Dummy example:  classify the points--------------------------------------------
-# classify the scatter points based on the 
-# euclidian distance and proximity to axis X or Y?
-dd <- data.frame(x = runif(10, min=0, max=2),
-                 y = runif(10, min=0, max=2))
-
-# Get euclidean distance
-euclidean <- function(a, b) sqrt(sum((a - b)^2))
-
-dd <- dd %>% 
-  mutate(euclid_dist = euclidean(x, y))
-
-dd %>% 
-  ggplot(aes(x = x,
-             y = y)) +
-  geom_point() +
-  theme_bw() +
-  theme_update(aspect.ratio=1)
-         
-         
+       
          
 # Get Euclidean distance: scatter points from [0,0] --------------------------
 out_reorg_pos <- out_reorg_pos %>% 
   mutate(euclid_dist = euclidean(RA_mean, RS_mean)) #%>%
   # classify the poinst by sector: make as squares, as simpler way
   #mutate(sector =  )
+
+
+
+# color scheme testing  ---------------------------------------------------
+
+
+#windows()
+# my_sp_vals = c('spruce' = 'darkgreen',
+#   'beech' = 'limegreen', #'forestgreen',
+#   'oak' = 'gold',
+#   'pine' = 'tomato2')
+# 
+
+# my_sp_vals = c('spruce'= '#33a02c', # dark green
+#                'beech' = '#b2df8a', # lightgreen,
+#                'oak'   = '#e31a1c', # red
+#                'pine' = '#ff7f00')  # orange
+
+
+# my_sp_vals = c('spruce'= '#33a02c', # dark green
+#                'beech' =  '#ff7f00',  # orange'#1f78b4', # blue,
+#                'oak'   = '#e31a1c', # red
+#                'pine'  =  '#6a3d9a')  # dark violet 
+# 
+
+# from: https://colorbrewer2.org/#type=qualitative&scheme=Set1&n=9
+# my_sp_vals = c('spruce'= '#4daf4a', # green
+#                'beech' =  '#ff7f00',  # orange,
+#                'oak'   = '#e41a1c',   # red
+#                'pine'  =  '#377eb8')  # blue
+
+# https://coolors.co/606c38-283618-dda15e-bc6c25 # too dark!!
+# my_sp_vals = c('spruce'= '#283618', # dark green
+#                'beech' = '#606c38', # lightgreen,
+#                'oak'   = '#dda15e', # light brown
+#                'pine' = '#bc6c25')  # brown
+# 
+# 
+# my_sp_vals = c('spruce'= '#4D8B31', # dark green
+#                'beech' = '#FF8427', # lightgreen,
+#                'oak'   = '#FFC800', # light brown
+#                'pine' = '#1E212B')  # brown
+# 
+# 
+# 
+# my_sp_vals = c('spruce'= '#566E3D', # dark green
+#                'beech' = '#FA7921', # lightgreen,
+#                'oak'   = '#FFCF00', # light brown
+#                'pine' = '#1B4079')  # brown
+# 
+# 
+# my_sp_vals = c('spruce'= '#3E8914', # light green
+#                'beech' = '#FFCF00', # yellow,
+#                'oak'   =  '#100B00',  # black
+#                'pine' = '#FA7921')  #  orange
+# 
+# 
+# my_sp_vals = c('spruce'= '#6C9509', # light green
+#                'beech' = '#8BBF1C', # yellow,
+#                'oak'   =  '#F5850A',  # black
+#                'pine' = '#FCC207')  #  orange
+# 
+# 
+# 
+# my_sp_vals = c('spruce'= '#7CBB00', # light green
+#                'beech' = '#BCDC7B', # yellow,
+#                'oak'   =  '#F65314',  # black
+#                'pine' = '#FFBB00')  #  orange
+# 
+# 
+# # Teh best
+# my_sp_vals = c('spruce'= '#005F73', # dark blue
+#                'beech' = '#0A9396', # light blue,
+#                'oak'   =  '#EE9B00',  # orange
+#                'pine' = '#AE2012')  #  redish
+# 
+# 
+# # Teh best
+# my_sp_vals = c('spruce'= '#F7CB15', # yellow
+#                'beech' = '#E4572E', # orange,
+#                'oak'   =  '#241623',  # dark blue
+#                'pine' = '#3F88C5')  #  blue
+
+# The best:nature -------------------------------------------------
+# 801 
+my_sp_vals = c('spruce'= '#7CBB00', # light green
+               'beech' = '#FFBB00', # yellow,
+               'oak'   =  '#F65314',  # red
+               'pine' = '#3A606E')  #  bluish
+
+
 
 
 # plot Euclidean distance : -----------------------------------------------
@@ -607,13 +679,11 @@ p_euclid_lollipop <-
                     yend=euclid_dist)) +
   scale_color_manual(values = my_sp_vals ,
                      name = 'Dominant species') +
-  #scale_x_discrete(labels = 'trip_manag') %>% 
     facet_wrap(.~manag, 
                scale = 'free_x', 
                labeller = labeller(manag = manag.labs)) +
     xlab('Triplet number') +
   ylab('Euclidean distance') +
-  #geom_text(aes(label = trip_n), color = "white", size =3.5) +
     ggrepel::geom_text_repel(aes(label = trip_n, color = dom_sp),  size =3.5) +
   theme_update(axis.text.x= element_blank())  
                  
@@ -684,16 +754,22 @@ p_scatter_mean <-
   ggplot(aes(x = RA_mean,
              y = RS_mean,
              color = dom_sp)) +
+  geom_abline(intercept = 0, slope = c(0.5, 1.8), size = 0.5, lty = 'dashed', color = 'grey') +
+  annotate("path",
+           x = r1*cos(seq(0,2*pi,length.out=100)),
+           y = r1*sin(seq(0,2*pi,length.out=100)),
+           size = 0.5, lty = 'dashed', color = 'grey'
+  ) +
+  annotate("path",
+           x = r2*cos(seq(0,2*pi,length.out=100)),
+           y = r2*sin(seq(0,2*pi,length.out=100)),
+           size = 0.5, lty = 'dashed', color = 'grey'
+  ) +
+  geom_point(alpha = 0.9, size = 2.7) +
   scale_color_manual(values = my_sp_vals ,
                      name = 'Dominant species') +
-  geom_point() +
   xlim(0,2) +
   ylim(0,2) +
-  geom_abline(intercept = 0, # add diagnal line
-              slope = c(0.5,2),
-              col = "grey",
-              size = .5,
-              lty = 'dashed') +
   facet_grid(manag~dom_sp, scales = 'free',labeller = labeller(manag = manag.labs)) +
   theme_update(legend.position = 'bottom') +
   theme_update(aspect.ratio=1) # make plots perfect square
@@ -717,37 +793,11 @@ hull_data <-
                          level = c('spruce','beech', 'oak', 'pine'))) %>% 
     slice(chull(RA_mean, RS_mean)) 
 
-  
+
+
+
 #windows()
-# my_sp_vals = c('spruce' = 'darkgreen',
-#   'beech' = 'limegreen', #'forestgreen',
-#   'oak' = 'gold',
-#   'pine' = 'tomato2')
-# 
-
-my_sp_vals = c('spruce'= '#33a02c', # dark green
-               'beech' = '#b2df8a', # lightgreen,
-               'oak'   = '#e31a1c', # red
-               'pine' = '#ff7f00')  # orange
-
-
-# my_sp_vals = c('spruce'= '#33a02c', # dark green
-#                'beech' =  '#ff7f00',  # orange'#1f78b4', # blue,
-#                'oak'   = '#e31a1c', # red
-#                'pine'  =  '#6a3d9a')  # dark violet 
-# 
-
-# from: https://colorbrewer2.org/#type=qualitative&scheme=Set1&n=9
-my_sp_vals = c('spruce'= '#4daf4a', # green
-               'beech' =  '#ff7f00',  # orange,
-               'oak'   = '#e41a1c', # red
-               'pine'  =  '#377eb8')  # blue
-
-
-
-
-
-#p_scatter_manag_mean_poly <- 
+p_scatter_manag_mean_poly <- 
   out_reorg_pos %>% 
   left_join(trip_species) %>% 
   mutate(dom_sp = factor(dom_sp, # change order of dom_sp
@@ -757,7 +807,6 @@ my_sp_vals = c('spruce'= '#4daf4a', # green
              #shape = dom_sp,
              color = dom_sp
   )) +
-   # geom_text_repel(aes(label = trip_n)) +
   scale_color_manual(values = my_sp_vals ,
                      name = 'Dominant species') +
   geom_polygon(data = hull_data,
@@ -848,7 +897,7 @@ res_classes <-
                                           "RA-RS",
                                           "RA-RS-extreme")))
 
-#plot
+
 
 
 # Define the slopes of the lines that divide the area into x, y, xy
@@ -862,7 +911,7 @@ r2 <- 1.5
 
   
 p_res_classes <- res_classes %>%   
-  ggplot(aes(x = RA_mean, y = RS_mean, color = group)) + 
+  ggplot(aes(x = RA_mean, y = RS_mean, color = dom_sp)) + 
   geom_point(alpha = 0.7) +
   ggthemes::scale_color_colorblind() +
   theme_bw() + theme_update(aspect.ratio=1) +
@@ -919,21 +968,13 @@ p_res_sp <-
 
 windows()
 
-png(filename= paste(getwd(), 'outImg/class_triplets.png', sep = '/'))
+pdf(paste(getwd(), 'outImg/class_triplets2.pdf', sep = '/'))
 p_res_sp
 dev.off()
 
 
-
 # Evaluate the drivers: change by indicators ---------------------------------------------------------
 
-# dot plot between ref and management conditions for each species
-# What indicators drive the change? 
-# need to get the REF in the table! 
-#out_reorg_pos %>%   
-#  left_join(trip_species) %>%
-#  mutate(diff_
-  
 # how to show the drivers??? per indicator, per speies, per management?
 out_reorg_pos %>% 
   select(all_of(c('RA1', 'RA2', 'RA3', 'RS1', 'RS2', 'RS3'))) %>% 
@@ -964,147 +1005,78 @@ out_reorg_pos %>%
  
 
 
-# put species y: -------------------------------------------------------
-
-# how to show the drivers??? per indicator, per speies, per management?
-out_reorg_pos %>% 
-  select(all_of(c('RA1', 'RA2', 'RA3', 'RS1', 'RS2', 'RS3'))) %>% 
-  pivot_longer(c(RA1, RA2, RA3, RS1, RS2, RS3),
-               names_to = 'indicator',
-               values_to = 'vals') %>% 
-  left_join(trip_species) %>%
-  mutate(ind_manag = paste(indicator, manag)) %>% 
-  group_by(dom_sp, manag, indicator) %>% 
-  mutate(indicator2 = factor(indicator, 
-                             levels = c('RS3', 'RS2', 'RS1', 'RA3', 'RA2', 'RA1'))) %>% 
-  ggplot(aes(y = reorder(dom_sp, vals),#indicator2,
-             x = vals,
-             color = factor(dom_sp),
-             #shape = manag,
-             group = factor(dom_sp))) +
- stat_summary(size = 0.3) +
-  scale_color_manual(values = my_sp_vals ,
-                     name = 'Dominant species') +
-  scale_x_continuous(breaks = seq(0, 1.9, by = 1)) +
-  ylab('') +
-  xlab('Z-score') +
-facet_grid(manag~indicator,
-             #scale = 'free_x', 
-             labeller = labeller(manag = manag.labs)) +
-  theme(axis.text.x = element_text(size = 8),
-        legend.position = 'none',
-        panel.grid.major = element_line(color="grey90", linetype ='dotted'),#element_blank(),
-        panel.grid.minor = element_blank())
-
-
-
-
-
 #  Test why grouping does not work?? --------------------------------------
 
-out_reorg_pos %>% 
+p_drivers <- 
+  out_reorg_pos %>% 
   select(all_of(c('RA1', 'RA2', 'RA3', 'RS1', 'RS2', 'RS3'))) %>% 
   pivot_longer(c(RA1, RA2, RA3, RS1, RS2, RS3),
                names_to = 'indicator',
                values_to = 'vals') %>% 
   left_join(trip_species) %>%
- # mutate(ind_manag = paste(indicator, manag)) %>% 
+  mutate(reorg_type= case_when(grepl("RA", indicator) ~ "Reassembly",
+                               grepl("RS", indicator) ~ "Restructure")) %>% 
   group_by(dom_sp, manag, indicator) %>% 
   mutate(indicator2 = factor(indicator, 
                              levels = c('RS3', 'RS2', 'RS1', 'RA3', 'RA2', 'RA1'))) %>% 
   ggplot(aes(y = indicator2, #reorder(dom_sp, vals),#indicator2,
              x = vals,
-             color = dom_sp)) +#,
-             #shape = manag)) +
-#  geom_boxplot()
-#stat_summary(size = 0.3, position = 'dodge') +
+             color = dom_sp)) +
+  geom_vline(xintercept = 0, col = 'grey50', linetype = 'dashed') +
   stat_summary(geom = 'point',
                fun = 'mean', #, 
               position =  position_dodge(width = 0.6)
               ) +
   stat_summary(geom = 'errorbar', 
-               fun.data = mean_sdl, #mean_cl_normal,# mean_sdl, #, 
-               fun.args=list(mult = 3), 
+               fun.data = mean_cl_normal, # mean_se, #mean_cl_normal,# mean_sdl, #, 
+               #fun.args=list(mult = 3), 
                position =  position_dodge(width = 0.6)
                ) +
   scale_color_manual(values = my_sp_vals ,
                      name = 'Dominant species') +
-  scale_x_continuous(breaks = seq(0, 1.9, by = 1)) +
+  scale_x_continuous(breaks = seq(0, 2.9, by = 1)) +
   ylab('') +
   xlab('Z-score') +
-  facet_grid(.~manag) +
- # facet_grid(manag~indicator,
-#             #scale = 'free_x', 
-#             labeller = labeller(manag = manag.labs)) +
+  facet_grid(reorg_type~manag, 
+             scales="free_y", 
+             labeller = labeller(manag = manag.labs)) +
   theme(axis.text.x = element_text(size = 8),
-       # legend.position = 'none',
         panel.grid.major = element_line(color="grey90", linetype ='dotted'),#element_blank(),
         panel.grid.minor = element_blank())
 
 
+p_drivers
 
 
 
-# Dummy 2: ---------------------------------------------------
-library(ggforce)
+# Export classified resilience to the coordinates -------------------------
 
-set.seed(4242)
-dd <- data.frame(x = runif(20, min=0, max=2),
-                 y = runif(20, min=0, max=2))
+library(sf)
 
+sites <- st_read('C:/Users/ge45lep/Documents/2021_Franconia_mortality/03_plot_sampling/sites_identification/final/share/sites_final.shp')
 
-# There's presumably a way to do this within the above mutate function using case_when()
-ggplot(dd) +
-  
-  geom_circle(aes(x0 = 0, y0 = 0, r = 2),
-              inherit.aes = FALSE, fill = 'grey90',
-              lty = 'dotted', color = 'grey70', alpha = 0.5) +
-  geom_circle(aes(x0 = 0, y0 = 0, r = 0.5),
-              inherit.aes = FALSE, fill = 'grey70',
-              lty = 'dotted', color = 'grey50', alpha = 0.5) +
-  geom_abline(intercept = 0, slope = 0.5, size = 0.5, lty = 'dashed', color = 'grey20') +
-  geom_abline(intercept = 0, slope = 1.8, size = 0.5, lty = 'dashed', color = 'grey20') +
-  geom_point(aes(x = x, y = y), size=1)+
-  geom_abline(intercept = 0, slope=0.5, col='red') +
-  geom_abline(intercept = 0, slope=1.8, col='blue') +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  #scale_x_continuous(expand = c(0, 0), limits = c(0, 2)) +
-  #scale_y_continuous(expand = c(0, 0), limits = c(0, 2)) +
-  coord_cartesian(xlim = c(0,2.5),
-                  ylim = c(0,2.5)) +
-  theme_bw() +
-  theme_update(legend.position = 'bottom') +
-  theme_update(aspect.ratio=1) 
+# remove sites that were skipped: 45 & 65
+sites2 <- 
+  sites %>% 
+  filter(!Name %in% c('45-oak-D',
+                      '45-oak-L',
+                      '45-oak-C',
+                      '65-pine-D',
+                      '65-pine-L',
+                      '65-pine-C')) %>% 
+    separate(Name, c('trip_n', 'dom_sp', 'manag'), '-') %>%
+    mutate(manag = tolower(manag),
+           trip_n = as.character(as.numeric(trip_n))) %>% 
+    filter(manag != 'l') # %>%
 
+# add resilience category (df) into the sf
+sites_out <- sites2 %>% 
+  left_join(select(res_classes, c('trip_n', 'manag', 'group'))) #%>% 
+   # nrow()
 
-windows()
-library(ggforce)
-library(ggplot2)
-set.seed(4242)
-dd <- data.frame(x = runif(20, min=0, max=2),
-                 y = runif(20, min=0, max=2))
-
-ggplot(dd) +
-  geom_circle(aes(x0 = 0, y0 = 0, r = 2),
-              inherit.aes = FALSE, fill = 'grey90',
-              lty = 'dotted', color = 'grey70', alpha = 0.5) +
-  geom_circle(aes(x0 = 0, y0 = 0, r = 0.5),
-              inherit.aes = FALSE, fill = 'grey70',
-              lty = 'dotted', color = 'grey50', alpha = 0.5) +
-  geom_point(aes(x = x, y = y), size=1)+
-  geom_abline(intercept = 0, slope=0.5, col='red') +
-  geom_abline(intercept = 0, slope=1.8, col='blue') +
-  scale_x_continuous(expand = c(0, 0)) +
-  scale_y_continuous(expand = c(0, 0)) +
-  coord_cartesian(xlim = c(0,2.5),   # try to limit the xy axis in two ways
-                  ylim = c(0,2.5)) +
-  theme_bw() +
-  theme_update(legend.position = 'bottom') +
-  theme_update(aspect.ratio=1) 
-
+st_write(sites_out, 'C:/Users/ge45lep/Documents/2021_Franconia_mortality/outSpatial/resilience_class/sites_resilience.shp')
 
 # 
 # Export objects -----------------------------------------------------------
-#save(list=ls(pat="R"),file="dat_restr.Rdata") 
+
 save.image(file="outData/dat_restr.Rdata")
