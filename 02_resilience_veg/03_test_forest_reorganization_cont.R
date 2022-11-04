@@ -48,7 +48,7 @@ load(file = paste(getwd(), "outData/dataToPlot.Rdata", sep = '/'))
 load(file = paste(getwd(), "outData/eco_traits.Rdata", sep = '/'))
 
 # Identify data to use:
-head(df_full_corr)        # - full PLOT based data: df_full_corr, seedlings, advanced, mature 
+head(df_full_corr)        # - full PLOT based data: df_full_corr, seedlings, advanced, mature - PLOt & surroundings
 head(plot_IVI)            # - df importance value:from plot, env mature, env advanced, merged by density/ha
 head(trait_df)            # - trait values for all species: eco_traits
 head(df_mature_trees_env) # - trees in the surroundings: mature trees
@@ -93,7 +93,7 @@ df_master_species <-   plot_counts_df %>%
     mutate(species = 'Spruce') %>% 
     group_by(trip_n, manag, sub_n) %>% 
     complete(species = .env$v_species, fill = list(corr_count  = 0))
-    
+  
 
 
 # make full table, Join the master one with the recorded species one
@@ -109,6 +109,37 @@ plot_IVI_exp <-
 plot_IVI_exp %>% 
   filter(trip_n == 1 & sub_n == 1 & manag == "c") %>% 
   print(n = 40)
+
+
+# Get characteristics of the regeneration status of disturbed sites:
+df_full_corr %>% 
+  filter(!height_class %in% c("HK7","mature", "adv_ENV", "mat_ENV")) %>% 
+  filter(count > 0) %>% 
+  group_by(manag, trip_n) %>% 
+  summarize(mean_density = mean(corr_count, na.rm = T)) %>% 
+  left_join(trip_species) %>% 
+  ggplot(aes(x = factor(manag),
+             y = mean_density,
+             group = dom_sp))+ 
+  geom_point() +
+  geom_line(aes(group = trip_n), alpha = 0.5) +
+  facet_grid(.~dom_sp)
+
+
+# CHeck species importance value: how often are 'Other species" dominant?? ---------------------
+plot_IVI_exp %>% 
+  ggplot(aes(x = factor(species),
+             y = rIVI)) + 
+  stat_summary(aes(group = manag,
+                   color = manag))# + 
+  #geom_boxplot()
+
+
+# Get drivers of forest change: disturbance severity, gap size? to complete !! !!!
+
+# disturbance severity: the difference between the basal area of mature trees between teh REF and DIST
+
+
 
 
 
@@ -308,14 +339,43 @@ df_full_corr <-
 # - mature (> 10 cm dbh )
 # if the mean number of layers per DIST > REF -> indication of change
 
+# if there is no tree within 15 m, fill in value 16 m: 
+
+# get the 'total' table : combination of trip_n, sub_n, and height classes
+v_height = c('HK7', 
+             'mat_ENV',
+             'mature',
+             'adv_ENV')
+
+df_master_heights <-   
+  plot_counts_df %>% 
+  mutate(height_class = 'mat_ENV') %>% 
+  group_by(trip_n, manag, sub_n) %>% 
+  complete(height_class = .env$v_height, fill = list(distance  = 16))
+
+#table(df_full_corr$height_class)
+
+# adv_ENV     HK1     HK2     HK3     HK4     HK5     HK6     HK7 mat_ENV  mature 
+#    1130   14928   14928   14928   14928   14928   14928     677   1155   109
+
+# check how many records we have like this?
+df_full_corr %>% 
+  filter(height_class != 'mat_ENV') %>% 
+  nrow()
+
+# do i have no tree recorded already??
+
+table(df_full_corr$height_class)
+
 # Process: 
 # - get average nearest distance
-RS2_ref <- 
+# complete!!!
+#RS2_ref <- 
   df_full_corr %>%
   filter(count  != 0 ) %>% 
   filter(manag == 'l') %>%
   filter(vert_layer != 'regen') %>% 
-  dplyr::select(trip_n, manag, sub_n, distance, vert_layer) %>%
+  dplyr::select(trip_n, manag, sub_n, distance, vert_layer) #%>%
   group_by(trip_n, manag, sub_n) %>% # vert_layer 
   summarise(mean_distance = mean(distance, na.rm = T)) %>%
   ungroup(.) %>% 
