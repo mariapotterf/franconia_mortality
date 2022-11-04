@@ -73,7 +73,7 @@ reg_trees <- c(
   'Willow',    # Salix sp.
   'Pine',      # Pinus sylvestris
   'Ash',       # Fraxinus excelsior 
-  'OtherHardwood',
+  'OtherHardwood',  # list of othr species: in rhe Other_species.xlsx shared by Juri
   'OtherSoftwood'
 )
 
@@ -105,19 +105,43 @@ dat4  <- read_excel(paste(myPath, inFolderFieldVeg, "Data_Week_5-6.xlsx", sep = 
 dat5  <- read_excel(paste(myPath, inFolderFieldVeg, "Data_Week_7-8.xlsx", sep = '/'))
 
 
-#### Name output tables
-outDat            = paste(myPath, outTable, 'dat_full.csv'          , sep = '/')  # contains infor of plantation& damage
+
+# Read Other species data -------------------------------------------------------
+in_other_species      <- read_excel(paste(myPath, 
+                               inFolderFieldVeg, 
+                               "Other_species_MP.xlsx", sep = '/'), 
+                         sheet = "other_species")  # sheet name
+
+# df about hardwood vs softwood and names ---------------------------------------
+other_species_type <- read_excel(paste(myPath, 
+                                   inFolderFieldVeg, 
+                                   "Other_species_MP.xlsx", sep = '/'), 
+                             sheet = "merge")  # sheet name
 
 
-outRegen          = paste(myPath, outTable, 'df_regen.csv'          , sep = '/')  # contains infor of plantation& damage
-outRegenAdvanced  = paste(myPath, outTable, 'df_regen_advanced.csv' , sep = '/')
-outMaturePlot     = paste(myPath, outTable, 'df_mature_trees_plot.csv'   , sep = '/')
+
+# Add species indication to merge it with the full database
+out_other_species <- 
+  in_other_species %>% 
+  left_join(other_species_type, by = "species_name")  %>% 
+    rename(n_total_sum = n_total)  # rename the col is it is a sum across height classes
+
+
+
+#### Name output tables ---------------------------------------------------------
+outDat            = paste(myPath, outTable, 'dat_full.csv'              , sep = '/')  # contains infor of plantation& damage
+
+
+outRegen          = paste(myPath, outTable, 'df_regen.csv'              , sep = '/')  # contains infor of plantation& damage
+outRegenAdvanced  = paste(myPath, outTable, 'df_regen_advanced.csv'     , sep = '/')
+outMaturePlot     = paste(myPath, outTable, 'df_mature_trees_plot.csv'  , sep = '/')
 outMatureENV      = paste(myPath, outTable, 'df_mature_trees_env.csv'   , sep = '/')
-outAdvancedENV    = paste(myPath, outTable, 'df_advanced_env.csv'   , sep = '/')
+outAdvancedENV    = paste(myPath, outTable, 'df_advanced_env.csv'       , sep = '/')
 
-outGround                 = paste(myPath, outTable, 'df_ground.csv', sep = '/')
-outVideo                  = paste(myPath, outTable, 'df_video.csv' , sep = '/')
-outPhoto                  = paste(myPath, outTable, 'df_photo.csv' , sep = '/')
+outGround                 = paste(myPath, outTable, 'df_ground.csv'  , sep = '/')
+outdeadwood               = paste(myPath, outTable, 'df_deadwood.csv', sep = '/')  # get deadwood volume estimation
+outVideo                  = paste(myPath, outTable, 'df_video.csv'   , sep = '/')
+outPhoto                  = paste(myPath, outTable, 'df_photo.csv'   , sep = '/')
 outPhotoVideoNearestTree  = paste(myPath, outTable, 'df_photo_video_nearTree.csv' , sep = '/')
   
 
@@ -137,6 +161,7 @@ EN_heading <- read_excel(paste(myPath,
                                inFolderFieldVeg, 
                                 "col_names_ENG.xlsx", sep = '/'), 
                           sheet = "en_name")  # sheet name
+
 # check if teh colnames are equal??
 names(dat1) == names(dat2)
 names(dat1) == names(dat3)
@@ -162,6 +187,9 @@ EN_col_names <- gsub('\\.', '',   EN_col_names) # . means any character, so need
 # Replace the naming to have unique name for each colums 
 # and be able to filter throught them
 colnames(dat) <- EN_col_names
+
+unique(dat$General_remarks)  # remarks contains the info about tree species : O_hardwood or O_softwood; not all trees are explicit
+unique(dat$Remarks_on_regeneration) # only info about regeneration: # remarks contains the info about tree species : O_hardwood or O_softwood
 
 
 # Create unique ID per site:
@@ -410,13 +438,13 @@ dd <- df_mature_plot2 %>%
   left_join(df_ground2, by = c("trip_n", "dom_sp", "manag", "sub_n"))
 
 # check if teh higher dbh (sum if more mature trees are available on the 4m2) links with the higher ground over %
-plot(dd$dbh_sum, dd$prop)
+#plot(dd$dbh_sum, dd$prop)
 
 
-ggplot(dd, aes(x = dbh_sum, 
-               y = prop)) +
-  geom_point() + 
-  geom_smooth()
+#ggplot(dd, aes(x = dbh_sum, 
+#               y = prop)) +
+#  geom_point() + 
+ # geom_smooth()
 
 #### Save the Mature trees per plot:
 fwrite(df_mature_trees_plot, outMaturePlot)
@@ -469,6 +497,37 @@ df_regen <-
   separate(uniqueID, all_of(plot_info), '_') #%>%
 #filter(n_total !=0)  # keep 0s to have the all overview of the total species
 # mutate(origin = 'natural')
+
+
+
+# Fill in the 'Other species':
+# check if to use table from Juri?  'Other_species.xlsx' - check if the counts for other species are ok
+# and I can just merge the tables:
+
+# check how to fill in table:
+# example: beech: 25 - beech- c-3 has both categories OtherHardwood and OtherSoftwood
+
+# 25     beech  c     3     OtherHardwood HK3                1
+# 25     beech  c     3     OtherSoftwood HK1                1
+# can I just merge the categories? or are sometimes the n_total summed by the different species?
+# can be working if I would sum up the trees numbers over the heights categories 
+# if there is only 'n_total == 1 ' I can simply merge; if there is more, I can split it manually
+
+
+
+# How to: ----------------------------------------------------------------------
+# read xlsx table from Juri: individual species and counts; database of soft/hardwood
+
+
+df_regen_others <- df_regen %>% 
+  filter(#trip_n == 25& 
+        #   sub_n == 3  & #manag == 'c' #&  
+           species %in% c('OtherHardwood','OtherSoftwood') 
+         & n_total > 0 )#  %>%
+  
+# Merge with the 
+out_other_species
+
 
 
 
