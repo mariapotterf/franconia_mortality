@@ -124,8 +124,9 @@ other_species_type <- read_excel(paste(myPath,
 out_other_species <- 
   in_other_species %>% 
   left_join(other_species_type, by = "species_name")  %>% 
-    rename(n_total_sum = n_total)  # rename the col is it is a sum across height classes
-
+ #   rename(n_total_sum = n_total) %>%  # rename the col is it is a sum across height classes
+  mutate(trip_n = as.character(trip_n),
+         sub_n = as.character(sub_n)) #%>% 
 
 
 #### Name output tables ---------------------------------------------------------
@@ -430,12 +431,12 @@ df_mature_plot2 <- df_mature_trees_plot %>%
   summarize(dbh_sum = sum(DBH, na.rm = T))
 
 
-df_ground2 <- df_ground %>% 
-  filter(class == 'Mature_Trees' )
+#df_ground2 <- df_ground %>% 
+#  filter(class == 'Mature_Trees' )
 
 # merge data together
-dd <- df_mature_plot2 %>% 
-  left_join(df_ground2, by = c("trip_n", "dom_sp", "manag", "sub_n"))
+#dd <- df_mature_plot2 %>% 
+#  left_join(df_ground2, by = c("trip_n", "dom_sp", "manag", "sub_n"))
 
 # check if teh higher dbh (sum if more mature trees are available on the 4m2) links with the higher ground over %
 #plot(dd$dbh_sum, dd$prop)
@@ -500,7 +501,7 @@ df_regen <-
 
 
 
-# Fill in the 'Other species':
+### Fill in the 'Other species': --------------------------------------
 # check if to use table from Juri?  'Other_species.xlsx' - check if the counts for other species are ok
 # and I can just merge the tables:
 
@@ -517,16 +518,48 @@ df_regen <-
 
 # How to: ----------------------------------------------------------------------
 # read xlsx table from Juri: individual species and counts; database of soft/hardwood
-
-
-df_regen_others <- df_regen %>% 
-  filter(#trip_n == 25& 
-        #   sub_n == 3  & #manag == 'c' #&  
-           species %in% c('OtherHardwood','OtherSoftwood') 
-         & n_total > 0 )#  %>%
+# subset only the 'Other species' and replace them by individual names of species: make sure that counts are good!
+df_regen_sub_others <- 
+  df_regen %>% 
+  filter(species %in% c('OtherHardwood','OtherSoftwood') 
+         & n_total > 0 ) %>%
+  group_by(trip_n, manag, sub_n,  species) %>% 
+  summarise(n_total_sum = sum(n_total))
   
-# Merge with the 
-out_other_species
+  
+# Merge with the database of individual species --------------------------------
+df_regen_sub_others %>% 
+  mutate(trip_n = as.character(trip_n),
+         sub_n = as.character(sub_n)) %>% 
+  left_join(out_other_species) %>%
+  filter(is.na(species_name)) %>% 
+  print(n = 30) #%>% 
+  arrange(trip_n, manag, sub_n) %>% 
+  filter(trip_n == '1'& manag == 'l' & sub_n == '1')
+
+df_regen %>% 
+  filter(n_total > 0) %>% 
+ # filter(trip_n == '1'& manag == 'l' & sub_n == '1') %>% 
+  filter(trip_n == '24'& manag == 'd' & sub_n == '7') %>%
+  print(n = 80)
+
+# Some species are missing:   24-beech-d-7 : does not have indication of the individual species 
+# gradient exposure trip_n dom_sp manag sub_n species       height_class n_total
+# <dbl>    <dbl> <chr>  <chr>  <chr> <chr> <chr>         <chr>                   <dbl>
+#  4         10      100 24     beech  d     7     OtherHardwood HK1               10
+#  5         10      100 24     beech  d     7     OtherHardwood HK2                1
+
+
+out_other_species %>% 
+  filter(trip_n == '1'& manag == 'l' & sub_n == '1') %>% 
+  print(n = 80)
+
+# Check if there are any notes:
+dat %>% 
+  #filter(trip_n == '1'& manag == 'l' & sub_n == '1') %>%  # should be 2
+  filter(trip_n == '24'& manag == 'd' & sub_n == '7') %>% # should be 11 hardwood
+  select(c(Remarks_on_regeneration, General_remarks))
+
 
 
 
