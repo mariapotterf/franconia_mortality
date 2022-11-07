@@ -131,7 +131,7 @@ out_other_species <-
 
 #### Name output tables ---------------------------------------------------------
 outDat            = paste(myPath, outTable, 'dat_full.csv'              , sep = '/')  # contains infor of plantation& damage
-
+outDatNotes       = paste(myPath, outTable, 'dat_notes.csv'             , sep = '/')  # extract notes about regeneration
 
 outRegen          = paste(myPath, outTable, 'df_regen.csv'              , sep = '/')  # contains infor of plantation& damage
 outRegenAdvanced  = paste(myPath, outTable, 'df_regen_advanced.csv'     , sep = '/')
@@ -476,28 +476,81 @@ fwrite(df_mature_trees_plot, outMaturePlot)
 # if the count is not present, than it is 0
 
 # Subset counts for regeneration dataset
-# this number indicates all of teh regeneration: included planted individuals
+# this number indicates all of teh regeneration: included planted individuals; filters only the the columsn are numeric: select the numbers
+
 df_regen <-
   dat %>%
   dplyr::select(matches(paste(
-    c(plot_info, reg_trees, plot_geo, 'uniqueID'), collapse = '|'
+    c(plot_info, reg_trees, plot_geo, 'uniqueID'), collapse = '|'  #  , 'Remarks_on_regeneration', 'General_remarks'
   ))) %>%
-  dplyr::select(!matches("Number")) %>%
+    dplyr::select(!matches("Number")) %>%
   dplyr::select(-all_of(plot_info)) %>%
   dplyr::select_if(function(col)
     all(
-      col == .$uniqueID |
+        col == .$uniqueID |
         col == .$gradient |
         col == .$exposure |
         is.numeric(col)
     )) %>%  # select the numeric columns and the siteID (character)
-  pivot_longer(!c(uniqueID, gradient, exposure),
+#  str()
+  pivot_longer(!c(uniqueID, gradient, exposure),  # Remarks_on_regeneration, General_remarks
                names_to = 'manag',
                values_to = 'n_total') %>%
   separate(manag, c('species', 'height_class'), '_') %>%
   separate(uniqueID, all_of(plot_info), '_') #%>%
 #filter(n_total !=0)  # keep 0s to have the all overview of the total species
 # mutate(origin = 'natural')
+
+
+
+
+# Select the character general remarks on regeneration --------------------
+# need to selcted columsn as characters!!
+other_sp <- c("OtherHardwood", "OtherSoftwood")
+
+df_regen_notes <-
+  dat %>%
+  dplyr::select(matches(paste(
+    c(
+      plot_info,
+      other_sp,
+      'uniqueID',
+      'Remarks_on_regeneration',
+      'General_remarks'
+    ),
+    collapse = '|'  #  , 'Remarks_on_regeneration', 'General_remarks'
+  ))) %>%
+  dplyr::select(!matches("Number")) %>%
+  dplyr::select(-all_of(plot_info)) %>%
+  select(which(sapply(., class) == "numeric"),
+         # select several character columns, only 'sapply' works here: https://stackoverflow.com/questions/39592879/r-dpylr-select-if-with-multiple-conditions
+         Remarks_on_regeneration,
+         General_remarks,
+         uniqueID) %>%
+  pivot_longer(
+    !c(uniqueID, Remarks_on_regeneration, General_remarks),
+    # Remarks_on_regeneration, General_remarks
+    names_to = 'manag',
+    values_to = 'n_total'
+  )  %>%
+  separate(manag, c('species', 'height_class'), '_') %>%
+  separate(uniqueID, all_of(plot_info), '_') %>%
+  filter(n_total > 0) %>%
+  # in 'NA' will in with the sciecies type:
+  mutate(Remarks_on_regeneration = case_when(
+    is.na(Remarks_on_regeneration) ~ species,
+    !is.na(Remarks_on_regeneration) ~ Remarks_on_regeneration
+  ))
+
+
+unique(df_regen_notes$Remarks_on_regeneration)
+df_regen_notes
+
+
+# Export df regeneration --------------------------------------------------
+fwrite(df_regen_notes, outDatNotes)
+
+
 
 
 
@@ -560,6 +613,13 @@ dat %>%
   filter(trip_n == '24'& manag == 'd' & sub_n == '7') %>% # should be 11 hardwood
   select(c(Remarks_on_regeneration, General_remarks))
 
+
+
+# Export the table with notes and regenaration, check it manually 
+dat %>% 
+  #filter(trip_n == '1'& manag == 'l' & sub_n == '1') %>%  # should be 2
+  filter(trip_n == '24'& manag == 'd' & sub_n == '7') %>% # should be 11 hardwood
+  select(c(trip_n, manag, sub_n, Remarks_on_regeneration, General_remarks))
 
 
 
