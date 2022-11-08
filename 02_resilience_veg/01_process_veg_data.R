@@ -492,49 +492,50 @@ df_regen <-
 
 # Select the character general remarks on regeneration --------------------
 # need to selcted columsn as characters!!
+# extracted on Nov 8th, no need to run
 other_sp <- c("OtherHardwood", "OtherSoftwood")
 
-df_regen_notes <-
-  dat %>%
-  dplyr::select(matches(paste(
-    c(
-      plot_info,
-      other_sp,
-      'uniqueID',
-      'Remarks_on_regeneration',
-      'General_remarks'
-    ),
-    collapse = '|'  #  , 'Remarks_on_regeneration', 'General_remarks'
-  ))) %>%
-  dplyr::select(!matches("Number")) %>%
-  dplyr::select(-all_of(plot_info)) %>%
-  select(which(sapply(., class) == "numeric"),
-         # select several character columns, only 'sapply' works here: https://stackoverflow.com/questions/39592879/r-dpylr-select-if-with-multiple-conditions
-         Remarks_on_regeneration,
-         General_remarks,
-         uniqueID) %>%
-  pivot_longer(
-    !c(uniqueID, Remarks_on_regeneration, General_remarks),
-    # Remarks_on_regeneration, General_remarks
-    names_to = 'manag',
-    values_to = 'n_total'
-  )  %>%
-  separate(manag, c('species', 'height_class'), '_') %>%
-  separate(uniqueID, all_of(plot_info), '_') %>%
-  filter(n_total > 0) %>%
-  # in 'NA' will in with the sciecies type:
-  mutate(Remarks_on_regeneration = case_when(
-    is.na(Remarks_on_regeneration) ~ species,
-    !is.na(Remarks_on_regeneration) ~ Remarks_on_regeneration
-  ))
+# df_regen_notes <-
+#   dat %>%
+#   dplyr::select(matches(paste(
+#     c(
+#       plot_info,
+#       other_sp,
+#       'uniqueID',
+#       'Remarks_on_regeneration',
+#       'General_remarks'
+#     ),
+#     collapse = '|'  #  , 'Remarks_on_regeneration', 'General_remarks'
+#   ))) %>%
+#   dplyr::select(!matches("Number")) %>%
+#   dplyr::select(-all_of(plot_info)) %>%
+#   select(which(sapply(., class) == "numeric"),
+#          # select several character columns, only 'sapply' works here: https://stackoverflow.com/questions/39592879/r-dpylr-select-if-with-multiple-conditions
+#          Remarks_on_regeneration,
+#          General_remarks,
+#          uniqueID) %>%
+#   pivot_longer(
+#     !c(uniqueID, Remarks_on_regeneration, General_remarks),
+#     # Remarks_on_regeneration, General_remarks
+#     names_to = 'manag',
+#     values_to = 'n_total'
+#   )  %>%
+#   separate(manag, c('species', 'height_class'), '_') %>%
+#   separate(uniqueID, all_of(plot_info), '_') %>%
+#   filter(n_total > 0) %>%
+#   # in 'NA' will in with the sciecies type:
+#   mutate(Remarks_on_regeneration = case_when(
+#     is.na(Remarks_on_regeneration) ~ species,
+#     !is.na(Remarks_on_regeneration) ~ Remarks_on_regeneration
+#   ))
 
 
-unique(df_regen_notes$Remarks_on_regeneration)
-df_regen_notes
+#unique(df_regen_notes$Remarks_on_regeneration)
+#df_regen_notes
 
 
 # Export df regeneration --------------------------------------------------
-fwrite(df_regen_notes, outDatNotes)
+# fwrite(df_regen_notes, outDatNotes)
 
 
 
