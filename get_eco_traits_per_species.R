@@ -1,3 +1,6 @@
+
+
+source('myPaths.R')
 # Get tree species traits:  ----------------------------------------------------------
 
 eco_traits <- read_excel(paste(myPath,
@@ -24,9 +27,23 @@ trees_lat <- c(
   'Sorbus aucuparia',
   'Abies alba',
   'Acer pseudoplatanus',
+  'Acer platanoides',
+  'Acer campestre',
+  'Carpinus betulus',
   'Betula pendula',
   'Pinus sylvestris',
-  'Fraxinus excelsior'
+  'Fraxinus excelsior',
+  "Ilex aquifolium",
+  'Juglans regia',
+  'Larix decidua',
+  'Populus tremula',
+  'Prunus avium',
+  'Prunus padus',
+  'Pseudotsuga mensiesii',
+  'Quercus rubra',
+  'Sorbus aria',
+  'Sorbus torminalis',
+  'Tilia cordata'
 ) 
 
 quercus_spp <- c('Quercus petraea',  # Quercus will be averaged later
@@ -63,7 +80,7 @@ traits_Sx <-
   summarize(Shade_tolerance   = mean(Shade_tolerance),
             Drought_tolerance = mean(Drought_tolerance))
 
-# remianing species:
+# remaining species:
 traits_sp <- 
   eco_traits %>% 
   dplyr::select(c('Species','Shade_tolerance', 'Drought_tolerance')) %>% 
@@ -89,7 +106,8 @@ trait_df <- trait_df %>%
       Species == "Pinus sylvestris"      ~ "Pine",
       Species == "Betula pendula"        ~ "Birch",
       Species == "Salix"                 ~ "Willow",
-      Species == "Abies alba"            ~ "Fir"
+      Species == "Abies alba"            ~ "Fir",
+      TRUE ~ Species
     )
   ) %>% 
   rename(species = Species)
