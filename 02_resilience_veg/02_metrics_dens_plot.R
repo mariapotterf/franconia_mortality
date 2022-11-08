@@ -18,7 +18,7 @@
 # recalculate all to hectares
 
 # analyze several aspects of the composition and structure to see how does the site changes after the disturbances
-# remove the planted seedlings!
+# keep planted seedlings as well!
 
 
 # 2022/10/06 - get data on plot level, keep nearest metrics for horizontal & vertical structure
@@ -27,12 +27,12 @@
 #    - mature tree, 
 #    - advanced
 #    - regen
-# for vertical and horizontal structre: 
+# for vertical and horizontal structure: 
 #   - from nearest distance metrics : mature trees
-#   - advanced regen (missing height and DBH!) - skip DBH is missing 
+#   - advanced regen (missing height and DBH!) - complete DBH from the plot level regen
 #   - make sure to add +100 cm (distance to the center, if missing )
 # dbh for advanced regen in ENV:  
-#   - skip from IVi calculation
+#   - replace by the dbh from the advanced regen for IVi calculation
 # outcome: get the species importance value per plot! nearest trees add as 
 # try simply for site: can be easier (can have all 3 dimensions of species importance value)
 
@@ -47,6 +47,8 @@
 # density from distance measure: based on nearest individual:
 # get the distance to nearest object as radius, calculate how many trees I can have per hectar
 # if the tree is too close (in the plot), then cap the value on ha/4m2 = 2500 trees/ha
+# if there in no tree within 15 m: replace distance as 16 m to account for larger gap size
+# and for the distance density
 
 # get species Importance Value: density, basal area; can't get frequency on plot level;
 # ok, just keep the values on [0-100] range
@@ -112,18 +114,18 @@ df_sub_count <-
 # make slope correction across tree heights
 
 # for ENV: calculate distance dependent density per plot
-nrow(df_regen)             # have all columns, all species, height classes, gradient
-nrow(df_reg_full)          # 2406, contains infor if planted&damaged
-nrow(df_mature_trees_plot) # 4976
+#nrow(df_regen)             # have all columns, all species, height classes, gradient
+nrow(df_reg_full)           # 2406, contains replaced rows with specific tree species for the 'Other' species category for the regeneration on PLOT
+nrow(df_mature_trees_plot)  # 4976
 
 # Environment
 nrow(df_advanced_env)      # 2406
 nrow(df_mature_trees_env)  # 1155 
 
 
-df_regen %>% 
-  count(species, height_class) %>% 
-  print(n = 100)
+#df_regen %>% 
+#  count(species, height_class) %>% 
+#  print(n = 100)
 
 
 # Check for JurI: prevalence of teh fir? ----------------------
@@ -161,8 +163,8 @@ my_cols_plot = c('gradient',
 
 
 # regen PLOT
-head(df_regen)
-df_regen2 <- df_regen %>% 
+head(df_reg_full)
+df_reg_full2 <- df_reg_full %>% 
   rename(count = n_total) %>% 
   mutate(height = case_when(height_class == 'HK1' ~ 0.3,
                             height_class == 'HK2' ~ 0.5,
@@ -195,7 +197,7 @@ df_mature_trees_plot2 <-
 
 
 # merge all PLOT data into single df
-df_full_plot = rbind(df_regen2,
+df_full_plot = rbind(df_reg_full2,
                      df_advanced2,
                      df_mature_trees_plot2)
 
@@ -284,16 +286,20 @@ df_dbh_mean_advanced <-
 # get the numbers of trees per ha
 head(df_advanced_env)
 
+# complete distance to 16 m if the advanced regen is missing: 
+# no meaningfull here, as I am again missing specification for species
+
 # for advanced
-df_advanced_env_corr <- 
-  df_advanced_env %>% 
+df_advanced_env_corr <- df_advanced_env %>% 
+  right_join(plot_counts_df) %>% 
+  #mutate(distance = case_when(is.na(distance) ~ 16*100, # complete 
+   #                           !is.na(distance) ~ distance)) %>% 
   mutate(count     = 1, 
     length_corr    = distance/100 * cos(gradient * pi / 180),
     area_corr      = pi * length_corr^2, #r_side * length_corr,
     correct_factor = ha / area_corr,
     corr_count     = round(count * correct_factor, 0)
   ) %>%
- 
   mutate(corr_count = case_when(corr_count <= 2500 ~ corr_count,
                                 corr_count > 2500 ~ 2500)) %>% 
   #   summarize(min(corr_count), max(corr_count)) 
@@ -473,7 +479,8 @@ df_full_corr %>%
 
 # cca 110 plots with mature trees in plot
 # cca 670 plots with advanced regen in plot:
-# get teh list of teh trip_n, manag and sub_n to compare density of two groups:
+# get the list of the trip_n, manag and sub_n to compare density of two groups:
+# list of the plots that have mature trees recorded in plot and ENV
 df_mature_both <- df_full_corr %>% 
   group_by(trip_n, manag, sub_n) %>% 
   dplyr::filter(height_class  %in% c("mature", 'mat_ENV' )) %>% # filter specific classes
@@ -483,6 +490,7 @@ df_mature_both <- df_full_corr %>%
   mutate(tree_on_plot = 'mat_plot_env')
 
 
+# density for advanced
 df_advanced_both <- df_full_corr %>% 
   group_by(trip_n, manag, sub_n) %>% 
   dplyr::filter(height_class  %in% c("HK7", 'adv_ENV' )) %>% # filter specific classes
@@ -494,9 +502,17 @@ df_advanced_both <- df_full_corr %>%
 # try first only with mature trees: how different are densities if both metrics are implemented?
 df_full_corr %>% 
   full_join(df_mature_both, by = c("trip_n", "manag", "sub_n")) %>% 
-  filter(height_class %in% c('mature', 'mat_ENV')) %>% 
-  group_by(trip_n, manag, sub_n, tree_on_plot) %>% 
-  summarize(sum_corr_count  = sum(corr_count)) %>% 
+  filter(height_class %in% c('mature', 'mat_ENV')) %>%
+  mutate(tree_on_plot = case_when(is.na(tree_on_plot) ~ 'env',
+                                  !is.na(tree_on_plot) ~ "mat_plot_env")) %>% 
+  #filter(tree_on_plot == 'mat_plot_env')
+  group_by(trip_n, manag, sub_n)%>% # tree_on_plot 
+  dplyr::filter(tree_on_plot%in% c("mat_plot_env" )) %>% # filter specific classes
+  arrange(trip_n, manag, sub_n)
+  filter(all(c("mat_plot_env", 'env' ) %in% tree_on_plot)) #%>% 
+  
+  summarize(sum_corr_count  = sum(corr_count))  #%>%
+  filter(sum_corr_count > 2500)
   ggplot(aes(x = factor(tree_on_plot),
              y = sum_corr_count,
              color = manag)) + 
@@ -509,22 +525,6 @@ df_full_corr %>%
 df_both = df_mature_both %>% # 100 plots
   bind_rows(df_advanced_both) #263 plots
 
-
-df_full_corr %>% 
-  filter(trip_n == '16' & sub_n == '4' & species == 'Spruce' & manag == 'l')
-
-range(df_full_corr$corr_count)
-# [1]  -2660.444 140341.866
-
-df_full_corr %>% 
-  filter(corr_count <0)
-
-# trip_n manag sub_n species   DBH distance height_class count corr_count
-# <chr>  <chr> <chr> <chr>   <dbl>    <dbl> <chr>        <dbl>      <dbl>
-#1 16     l     4     Spruce     40       50 mature           1     -2660.
-
-df_full_corr %>% 
-  filter(corr_count >100000)
 
 # trip_n manag sub_n species   DBH distance height_class count corr_count
 # <chr>  <chr> <chr> <chr>   <dbl>    <dbl> <chr>        <dbl>      <dbl>
@@ -566,6 +566,8 @@ df_full_corr %>%
 # #filter(all(c("a", "b") %in% cat))
 # filter(any(cat=="a") & any(cat=="b"))
 # 
+
+
 
 
 # Get species rIVI Plot + ENV--------------------------------------------------------------
@@ -691,7 +693,7 @@ p_compare_density_rIVI <-
 # Save specific objects: ------------------------------------------------------------
 save(plot_IVI,
      df_full_corr,
-     df_regen,              # full plot regeneration
+     df_reg_full,              # full plot regeneration
      df_ground,             # ground cover
      df_advanced,          # advanced regeneration PLOT, corrected distances
      df_advanced_env,       # advanced regeneration in ENV
