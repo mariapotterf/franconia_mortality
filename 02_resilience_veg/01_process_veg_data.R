@@ -106,27 +106,13 @@ dat5  <- read_excel(paste(myPath, inFolderFieldVeg, "Data_Week_7-8.xlsx", sep = 
 
 
 
-# Read Other species data -------------------------------------------------------
-in_other_species      <- read_excel(paste(myPath, 
-                               inFolderFieldVeg, 
-                               "Other_species_MP.xlsx", sep = '/'), 
-                         sheet = "other_species")  # sheet name
-
-# df about hardwood vs softwood and names ---------------------------------------
-other_species_type <- read_excel(paste(myPath, 
-                                   inFolderFieldVeg, 
-                                   "Other_species_MP.xlsx", sep = '/'), 
-                             sheet = "merge")  # sheet name
-
-
-
-# Add species indication to merge it with the full database
-out_other_species <- 
-  in_other_species %>% 
-  left_join(other_species_type, by = "species_name")  %>% 
- #   rename(n_total_sum = n_total) %>%  # rename the col is it is a sum across height classes
-  mutate(trip_n = as.character(trip_n),
-         sub_n = as.character(sub_n)) #%>% 
+# Read Other species data - regeneration  ----------------------------------------
+# created manually from the Notes material: need to read the data and 
+# replace the regeneration counts for 'OtherDeciduous' and 'OtherConiferous' in 
+# in the df_regen counts
+df_other_regen      <- read.csv(paste(myPath, 
+                                      outTable,"dat_notes_mod.csv", sep = '/'),
+                               sep = ';', stringsAsFactors = FALSE)  
 
 
 #### Name output tables ---------------------------------------------------------
@@ -164,10 +150,10 @@ EN_heading <- read_excel(paste(myPath,
                           sheet = "en_name")  # sheet name
 
 # check if teh colnames are equal??
-names(dat1) == names(dat2)
-names(dat1) == names(dat3)
-names(dat1) == names(dat4)
-names(dat1) == names(dat5)
+#names(dat1) == names(dat2)
+#names(dat1) == names(dat3)
+#names(dat1) == names(dat4)
+#names(dat1) == names(dat5)
 
 # If the names are the same, we can bind them together
 dat <- rbind(dat1, dat2, dat3, dat4, dat5)
@@ -552,8 +538,6 @@ fwrite(df_regen_notes, outDatNotes)
 
 
 
-
-
 ### Fill in the 'Other species': --------------------------------------
 # check if to use table from Juri?  'Other_species.xlsx' - check if the counts for other species are ok
 # and I can just merge the tables:
@@ -695,7 +679,14 @@ df_reg_full <-
       TRUE ~ species
     )) # %>% 
 
-  
+
+# check from notes: 
+# note: Snh Dougl alle hier gepflanzt : 24	beech	c	12
+
+df_reg_full %>% 
+  filter(trip_n == 24 & manag == 'c' & sub_n == 12)
+
+
 
 # Export df regeneration --------------------------------------------------
 fwrite(df_reg_full, outRegen)
