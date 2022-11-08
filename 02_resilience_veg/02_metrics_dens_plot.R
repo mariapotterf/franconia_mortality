@@ -599,7 +599,7 @@ df_full_corr_mrg <-df_full_corr_mature %>%
 # # relative density: 
 # # the number of individuals per area as a percent of the number of individuals of all species.
 df_rel_density <-
-  df_full_corr %>%
+  df_full_corr_mrg %>%
   group_by(trip_n, manag, sub_n, species) %>%
   summarize(sp_count = sum(corr_count, na.rm = T)) %>%
   ungroup(.) %>%
@@ -612,7 +612,7 @@ df_rel_density <-
 # # Relative basal area.  
 # # the total basal area of Species A as a percent of the total basal area of all species.  
 df_rel_BA_plot <- 
-  df_full_corr %>%
+  df_full_corr_mrg %>%
   mutate(r = DBH/2,
          BA = pi*r^2)  %>%
   group_by(trip_n, manag, sub_n, species) %>%
@@ -717,16 +717,17 @@ p_compare_density_rIVI <-
 # Save specific objects: ------------------------------------------------------------
 save(plot_IVI,
      df_full_corr,
-     df_reg_full,              # full plot regeneration
+     df_full_corr_mrg,      # filtered Mature trees by the nearest distance 
+     df_reg_full,           # full plot regeneration
      df_ground,             # ground cover
-     df_advanced,          # advanced regeneration PLOT, corrected distances
+     df_advanced,           # advanced regeneration PLOT, corrected distances
      df_advanced_env,       # advanced regeneration in ENV
      df_mature_trees_env,   # mature trees ENV
      df_mature_trees_plot,  # mature trees PLOT
      plot_counts_df,        # master table having all triplets and subsets structure
      df_dbh_mean_advanced,  # df - DBH of advanced regeneration on plot
      p_dbh_dist,            # plot of DBH of advanced regeneration
-     p_compare_density_rIVI, # plot: compare density dist. between 2 types of rIVI vals
+     #p_compare_density_rIVI, # plot: compare density dist. between 2 types of rIVI vals
      p_mature_hist,         # histogram of MATURe trees in ENV
      p_advanced_hist,       # histogram of ADV trees in ENV
      file="outData/dataToPlot.Rdata")
