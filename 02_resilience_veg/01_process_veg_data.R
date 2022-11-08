@@ -934,10 +934,10 @@ fwrite(df_photo_video_nearest, outPhotoVideoNearestTree)
 
 # Save selected dfs in R object: ------------------------------------------------------------
 save(dat,                   # all raw data together  
-     df_reg_full,           # full regeneration, witht specified 'Other species' #included planted and damaged trees
-    # df_regen,              # full plot regeneration
+     df_reg_full,           # full regeneration, with specified 'Other species' #included planted and damaged trees
+    # df_regen,             # full plot regeneration
      df_ground,             # ground cover
-     df_advanced,          # advanced regeneration PLOT, corrected distances
+     df_advanced,           # advanced regeneration PLOT, corrected distances
      df_advanced_env,       # advanced regeneration in ENV
      df_mature_trees_env,   # mature trees ENV
      df_mature_trees_plot,  # mature trees PLOT
