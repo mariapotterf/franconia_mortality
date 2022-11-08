@@ -94,6 +94,7 @@ library(data.table)
 library(tidyr)
 library(ggplot2)
 library(stringr)  # use regex expressions
+library(tidyverse) # contains readr to read the csv data as tibble
 
 
 
@@ -110,9 +111,8 @@ dat5  <- read_excel(paste(myPath, inFolderFieldVeg, "Data_Week_7-8.xlsx", sep = 
 # created manually from the Notes material: need to read the data and 
 # replace the regeneration counts for 'OtherDeciduous' and 'OtherConiferous' in 
 # in the df_regen counts
-df_other_regen      <- read.csv(paste(myPath, 
-                                      outTable,"dat_notes_mod.csv", sep = '/'),
-                               sep = ';', stringsAsFactors = FALSE)  
+df_other_regen   = readr::read_csv2(paste(myPath, 
+                                      outTable,"dat_notes_mod.csv", sep = '/'))  
 
 
 #### Name output tables ---------------------------------------------------------
@@ -554,60 +554,6 @@ other_sp <- c("OtherHardwood", "OtherSoftwood")
 
 
 
-# How to: ----------------------------------------------------------------------
-# read xlsx table from Juri: individual species and counts; database of soft/hardwood
-# subset only the 'Other species' and replace them by individual names of species: make sure that counts are good!
-df_regen_sub_others <- 
-  df_regen %>% 
-  filter(species %in% c('OtherHardwood','OtherSoftwood') 
-         & n_total > 0 ) %>%
-  group_by(trip_n, manag, sub_n,  species) %>% 
-  summarise(n_total_sum = sum(n_total))
-  
-  
-# Merge with the database of individual species --------------------------------
-df_regen_sub_others %>% 
-  mutate(trip_n = as.character(trip_n),
-         sub_n = as.character(sub_n)) %>% 
-  left_join(out_other_species) %>%
-  filter(is.na(species_name)) %>% 
-  print(n = 30) #%>% 
-  arrange(trip_n, manag, sub_n) %>% 
-  filter(trip_n == '1'& manag == 'l' & sub_n == '1')
-
-df_regen %>% 
-  filter(n_total > 0) %>% 
- # filter(trip_n == '1'& manag == 'l' & sub_n == '1') %>% 
-  filter(trip_n == '24'& manag == 'd' & sub_n == '7') %>%
-  print(n = 80)
-
-# Some species are missing:   24-beech-d-7 : does not have indication of the individual species 
-# gradient exposure trip_n dom_sp manag sub_n species       height_class n_total
-# <dbl>    <dbl> <chr>  <chr>  <chr> <chr> <chr>         <chr>                   <dbl>
-#  4         10      100 24     beech  d     7     OtherHardwood HK1               10
-#  5         10      100 24     beech  d     7     OtherHardwood HK2                1
-
-
-out_other_species %>% 
-  filter(trip_n == '1'& manag == 'l' & sub_n == '1') %>% 
-  print(n = 80)
-
-# Check if there are any notes:
-dat %>% 
-  #filter(trip_n == '1'& manag == 'l' & sub_n == '1') %>%  # should be 2
-  filter(trip_n == '24'& manag == 'd' & sub_n == '7') %>% # should be 11 hardwood
-  select(c(Remarks_on_regeneration, General_remarks))
-
-
-
-# Export the table with notes and regenaration, check it manually 
-dat %>% 
-  #filter(trip_n == '1'& manag == 'l' & sub_n == '1') %>%  # should be 2
-  filter(trip_n == '24'& manag == 'd' & sub_n == '7') %>% # should be 11 hardwood
-  select(c(trip_n, manag, sub_n, Remarks_on_regeneration, General_remarks))
-
-
-
 
 ## Counts for planted data   -----------------------------------------------------
 # counts of planted data is the part of total counts:
@@ -621,9 +567,9 @@ df_regen_planted <-
   dplyr::select_if(function(col)
     all(
       col == .$uniqueID |
-        col == .$gradient |
-        col == .$exposure |
-        is.numeric(col)
+      col == .$gradient |
+      col == .$exposure |
+      is.numeric(col)
     )) %>% # select the numeric columns and the siteID (character)
   pivot_longer(!c(uniqueID, gradient, exposure),
                names_to = 'manag',
@@ -634,8 +580,13 @@ df_regen_planted <-
   separate(uniqueID, all_of(plot_info), '_') %>%
   filter(complete.cases(.))
 
+dim(df_regen_planted)  # 56x9
 
+# check if my regeneration notes covers also the planted species??? and the damaged ones?
+# check this one: 32     beech  c     9     OtherSoftwood HK1                  1  - one planted
 
+df_regen %>% 
+  filter(trip_n == 32 & manag == 'c' & sub_n == 9 & n_total > 0)# %>% 
 
 ## Get the damage data & position:
 # can I see if teh damage was on planted or on naturally regenerated one?
@@ -647,7 +598,7 @@ df_regen_damaged <-
     dplyr::select_if(function(col) all(
       col == .$uniqueID | 
       col == .$gradient | 
-      col ==.$exposure | 
+      col == .$exposure | 
       is.numeric(col))) %>% # select the numeric columns and the siteID (character)
     pivot_longer(!c(uniqueID, gradient, exposure), 
                  names_to = 'dam_manag', 
@@ -663,29 +614,67 @@ df_regen_damaged <-
     filter(n_damage !=0)
   
   
+dim(df_regen_damaged) # 842  10
 
+# modify 'other species format' ----------------------------------------------
+head(df_other_regen)
+# Modify the table to merge it wit the other regeneration columsn
+
+# get first the geo parameters per plot:
+df_geo <- df_regen %>% 
+  select(-c(height_class, species, n_total)) %>% 
+  distinct() %>% 
+  mutate(trip_n = as.character(trip_n),
+         sub_n = as.character(sub_n))
+
+
+# modify the other data table, add teh geo parameters;
+# exclude the 'damaged' and planted category, as I do not need it at this step
+df_other_regen2 <- 
+  df_other_regen %>% 
+  select(-c(species, General_remarks)) %>% 
+  rename(species = Remarks_on_regeneration ) %>% 
+    mutate(trip_n = as.character(trip_n),
+           sub_n = as.character(sub_n)) %>% 
+  right_join(df_geo) %>% # order the columns accordingly to regen
+    select(all_of(colnames(df_regen)))
+    
+  
 
 # Merge the regeneration data to know if damage was on planted/naturally regenerated trees?
 # !!! test merge data planted & total: to see if the 'planted' counts is part of regeneration?
-df_reg_full <- 
-  df_regen %>% 
-  left_join(df_regen_planted)  %>% 
-  left_join(df_regen_damaged)  %>% 
-  filter(n_total !=0) %>%  # exclude 0 if no regeneration was collected
-  mutate(n_planted = replace_na(n_planted, 0)) %>% # convert all NaN to zeros
+# df_reg_full <- 
+#   df_regen %>% 
+#   left_join(df_regen_planted)  %>% 
+#   left_join(df_regen_damaged)  %>% 
+#   filter(n_total !=0) %>%  # exclude 0 if no regeneration was collected
+#   mutate(n_planted = replace_na(n_planted, 0)) %>% # convert all NaN to zeros
+#   mutate(
+#     species = case_when(
+#       species == "OtherSoftwood" ~ "O_Soft",
+#       species == "OtherHardwood" ~ "O_Hard",
+#       TRUE ~ species
+#     )) # %>% 
+
+
+# 2022/11/08 - no need to currently explude the planted species, or having the damaged tree excluded(included)
+# simply exclude all of teh data from the 'regeneration' - of species == Other, and add rows from teh manual selection
+df_reg_full <-
+  df_regen %>%
+    filter(!species %in% c('OtherSoftwood', 'OtherHardwood')) %>% 
+    bind_rows(df_other_regen2) %>%  # replace by the individual species: now split by the latin names!
+ # left_join(df_regen_planted)  %>%
+  #left_join(df_regen_damaged)  %>%
+  filter(n_total != 0) %>%  # exclude 0 if no regeneration was collected
+  #mutate(n_planted = replace_na(n_planted, 0)) %>% # convert all NaN to zeros
   mutate(
     species = case_when(
       species == "OtherSoftwood" ~ "O_Soft",
       species == "OtherHardwood" ~ "O_Hard",
       TRUE ~ species
-    )) # %>% 
-
-
-# check from notes: 
-# note: Snh Dougl alle hier gepflanzt : 24	beech	c	12
-
-df_reg_full %>% 
-  filter(trip_n == 24 & manag == 'c' & sub_n == 12)
+    )
+  )  # now we have 27 species!!
+ 
 
 
 
@@ -945,8 +934,8 @@ fwrite(df_photo_video_nearest, outPhotoVideoNearestTree)
 
 # Save selected dfs in R object: ------------------------------------------------------------
 save(dat,                   # all raw data together  
-     df_reg_full,           # full regeneration, included planted and damaged trees
-     df_regen,              # full plot regeneration
+     df_reg_full,           # full regeneration, witht specified 'Other species' #included planted and damaged trees
+    # df_regen,              # full plot regeneration
      df_ground,             # ground cover
      df_advanced,          # advanced regeneration PLOT, corrected distances
      df_advanced_env,       # advanced regeneration in ENV
