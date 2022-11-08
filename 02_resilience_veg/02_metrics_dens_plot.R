@@ -569,6 +569,30 @@ df_both = df_mature_both %>% # 100 plots
 
 
 
+# For density calculation ------------------------------------------------------
+
+# mature trees: select only the ones, that are the closest (eg. on plot), disregarding the species
+# Process: in two steps: filter oly mature trees, select the nearest ones
+# merge back into original tables
+
+# filter mature trees and select the closest ones
+df_full_corr_mature <- df_full_corr %>% 
+  filter(height_class %in% c('mature', 'mat_ENV')) %>% 
+  group_by(trip_n, manag, sub_n) %>% 
+  #slice(which.min(distance)) %>% 
+  filter(distance == min(distance)) %>%
+  filter(1:n() == 1)
+
+# it is 1155 rows
+
+# remove mature trees
+df_full_corr_noMature <- df_full_corr %>% 
+  filter(!height_class %in% c('mature', 'mat_ENV'))# %
+
+# merge the filtered mature back to the table:
+df_full_corr_mrg <-df_full_corr_mature %>% 
+  bind_rows(df_full_corr_noMature)
+
 
 # Get species rIVI Plot + ENV--------------------------------------------------------------
 # # no frequency: not possible on plot level
