@@ -913,38 +913,38 @@ p_res_classes
 
 
 
-# Show species by sectors:
-library(ggforce)
-
-windows()
-p_res_sp <- 
-  res_classes %>%   
-  left_join(trip_species) %>% 
-  ggplot(aes(x = RA_mean, y = RS_mean, color = dom_sp)) + 
-      geom_circle(aes(x0 = 0, y0 = 0, r = 2),
-                inherit.aes = FALSE, fill = 'grey90',
-                lty = 'dotted', color = 'grey70', alpha = 0.5) +
-    geom_circle(aes(x0 = 0, y0 = 0, r = 0.5),
-                inherit.aes = FALSE, fill = 'grey70',
-                lty = 'dotted', color = 'grey50', alpha = 0.5) +
-     geom_abline(intercept = 0, slope = 0.5, size = 0.5, lty = 'dashed', color = 'grey20') +
-    geom_abline(intercept = 0, slope = 1.8, size = 0.5, lty = 'dashed', color = 'grey20') +
-    geom_point(alpha = 0.7, size = 2.7) +
-  scale_color_manual(values = my_sp_vals ,
-                     name = 'Dominant species') +
-  theme_bw() + 
-    theme_update(aspect.ratio=1) +
-  coord_cartesian(xlim = c(0,2.5),
-                  ylim = c(0,2.5)) +
-  facet_grid(.~manag, labeller = labeller(manag = manag.labs)) +
-  xlab('Reassembly') +
-  ylab('Restructure')
-
-windows()
-
-pdf(paste(getwd(), 'outImg/class_triplets2.pdf', sep = '/'))
-p_res_sp
-dev.off()
+# # Show species by sectors:
+# library(ggforce)
+# 
+# windows()
+# p_res_sp <- 
+#   res_classes %>%   
+#   left_join(trip_species) %>% 
+#   ggplot(aes(x = RA_mean, y = RS_mean, color = dom_sp)) + 
+#       geom_circle(aes(x0 = 0, y0 = 0, r = 2),
+#                 inherit.aes = FALSE, fill = 'grey90',
+#                 lty = 'dotted', color = 'grey70', alpha = 0.5) +
+#     geom_circle(aes(x0 = 0, y0 = 0, r = 0.5),
+#                 inherit.aes = FALSE, fill = 'grey70',
+#                 lty = 'dotted', color = 'grey50', alpha = 0.5) +
+#      geom_abline(intercept = 0, slope = 0.5, size = 0.5, lty = 'dashed', color = 'grey20') +
+#     geom_abline(intercept = 0, slope = 1.8, size = 0.5, lty = 'dashed', color = 'grey20') +
+#     geom_point(alpha = 0.7, size = 2.7) +
+#   scale_color_manual(values = my_sp_vals ,
+#                      name = 'Dominant species') +
+#   theme_bw() + 
+#     theme_update(aspect.ratio=1) +
+#   coord_cartesian(xlim = c(0,2.5),
+#                   ylim = c(0,2.5)) +
+#   facet_grid(.~manag, labeller = labeller(manag = manag.labs)) +
+#   xlab('Reassembly') +
+#   ylab('Restructure')
+# 
+# windows()
+# 
+# pdf(paste(getwd(), 'outImg/class_triplets2.pdf', sep = '/'))
+# p_res_sp
+# dev.off()
 
 
 # Evaluate the drivers: change by indicators ---------------------------------------------------------
