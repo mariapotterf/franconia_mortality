@@ -666,60 +666,60 @@ windows()
 
 
 # Reorganization plot: conifer/deciduous    -------------------------------------
-out_reorg_pos <- out_reorg_pos %>% 
-  left_join(trip_species) %>% 
-  mutate(conif_decid = case_when(dom_sp %in% c('beech', 'oak') ~ 'deciduous',
-                             dom_sp %in% c('spruce', 'pine') ~ 'coniferous'))  #%>% 
-  
-
-
-# add hull polygons
-hull_data_conif_dec <- 
-  out_reorg_pos %>%
-  select(trip_n, manag, RS_mean, RA_mean,conif_decid) %>% 
-  group_by(conif_decid, manag) %>%
-  slice(chull(RA_mean, RS_mean)) 
-
-# plot conif/decid with polygons
-p_conif_dec_poly <- 
-  out_reorg_pos %>% 
-  ggplot(aes(x = RA_mean,
-             y = RS_mean,
-             color = conif_decid)) +
-  geom_point() +
-  geom_polygon(data = hull_data_conif_dec,
-               aes(fill = conif_decid,
-                   color = conif_decid),
-               alpha = 0.3,
-               show.legend = TRUE) +
-  scale_color_manual(values = c('deciduous' = 'darkgreen',
-                                'coniferous' = 'limegreen'),
-                     name = 'Dominant Tree') +
-    scale_fill_manual(name = 'Dominant Tree',
-                      values = c('deciduous' = 'darkgreen',
-                                  'coniferous' = 'limegreen')) +
-     facet_grid(.~manag, labeller = labeller(manag = manag.labs) ) +
-  guides(colour = guide_legend(title.position = "top")) #+
-  
-  
-# point plot decid/coniferous ------------------------------------------- 
-p_conif_dec_pts <- 
-  out_reorg_pos %>% 
-  ggplot(aes(x = RA_mean,
-             y = RS_mean,
-             color = conif_decid)) +
-  geom_point() +
-  scale_color_manual(values = c('deciduous' = 'darkgreen',
-                                'coniferous' = 'limegreen'),
-                     name = 'Dominant Tree') +
-  facet_grid(.~manag, labeller = labeller(manag = manag.labs) ) +
-  guides(colour = guide_legend(title.position = "top")) #+
-
-
-
-
-
-
+# out_reorg_pos <- out_reorg_pos %>% 
+#   left_join(trip_species) %>% 
+#   mutate(conif_decid = case_when(dom_sp %in% c('beech', 'oak') ~ 'deciduous',
+#                              dom_sp %in% c('spruce', 'pine') ~ 'coniferous'))  #%>% 
+#   
+# 
+# 
+# # add hull polygons
+# hull_data_conif_dec <- 
+#   out_reorg_pos %>%
+#   select(trip_n, manag, RS_mean, RA_mean,conif_decid) %>% 
+#   group_by(conif_decid, manag) %>%
+#   slice(chull(RA_mean, RS_mean)) 
+# 
+# # plot conif/decid with polygons
+# p_conif_dec_poly <- 
+#   out_reorg_pos %>% 
+#   ggplot(aes(x = RA_mean,
+#              y = RS_mean,
+#              color = conif_decid)) +
+#   geom_point() +
+#   geom_polygon(data = hull_data_conif_dec,
+#                aes(fill = conif_decid,
+#                    color = conif_decid),
+#                alpha = 0.3,
+#                show.legend = TRUE) +
+#   scale_color_manual(values = c('deciduous' = 'darkgreen',
+#                                 'coniferous' = 'limegreen'),
+#                      name = 'Dominant Tree') +
+#     scale_fill_manual(name = 'Dominant Tree',
+#                       values = c('deciduous' = 'darkgreen',
+#                                   'coniferous' = 'limegreen')) +
+#      facet_grid(.~manag, labeller = labeller(manag = manag.labs) ) +
+#   guides(colour = guide_legend(title.position = "top")) #+
+#   
+#   
+# # point plot decid/coniferous ------------------------------------------- 
+# p_conif_dec_pts <- 
+#   out_reorg_pos %>% 
+#   ggplot(aes(x = RA_mean,
+#              y = RS_mean,
+#              color = conif_decid)) +
+#   geom_point() +
+#   scale_color_manual(values = c('deciduous' = 'darkgreen',
+#                                 'coniferous' = 'limegreen'),
+#                      name = 'Dominant Tree') +
+#   facet_grid(.~manag, labeller = labeller(manag = manag.labs) ) +
+#   guides(colour = guide_legend(title.position = "top")) #+
+# 
+# 
+# 
+# 
+# 
+# 
 
 # Reorganization: plot averages: ---------------------------------
 p_scatter_mean <- 
@@ -771,68 +771,68 @@ hull_data <-
 
 
 #windows()
-p_scatter_manag_mean_poly <- 
-  out_reorg_pos %>% 
-  left_join(trip_species) %>% 
-  mutate(dom_sp = factor(dom_sp, # change order of dom_sp
-                         level = c('spruce','beech', 'oak', 'pine'))) %>% 
-  ggplot(aes(x = RA_mean,
-             y = RS_mean,
-             #shape = dom_sp,
-             color = dom_sp
-  )) +
-  scale_color_manual(values = my_sp_vals ,
-                     name = 'Dominant species') +
-  geom_polygon(data = hull_data,
-                 aes(fill = dom_sp,
-                     color = dom_sp),
-                 alpha = 0.3,
-                 show.legend = TRUE) +
-  scale_fill_manual(values = my_sp_vals,
-                     name = 'Dominant species') +
-    geom_point() +
-  xlim(0,2.5) +
-  ylim(0,2.5) +
-  geom_abline(intercept = 0, # add diagonal line
-              slope = c(0.5,2),
-              col = "grey",
-              size = .5,
-              lty = 'dashed') +
-    facet_grid(.~manag,
-               labeller = labeller(manag = manag.labs)) +
-  xlab('Reassembly [mean]\n [Z-score]') + 
-  ylab('Restructure [mean]\n [Z-score]') +
-  theme_update(legend.position = 'bottom') +
-  theme_update(aspect.ratio=1) # make plots perfect square
-
-
-#windows()
-p_scatter_manag_mean_pts <- 
-  out_reorg_pos %>% 
-  left_join(trip_species) %>% 
-  mutate(dom_sp = factor(dom_sp, # change order of dom_sp
-                         level = c('spruce','beech', 'oak', 'pine'))) %>% 
-  ggplot(aes(x = RA_mean,
-             y = RS_mean,
-             #shape = dom_sp,
-             color = dom_sp
-  )) +
-  geom_point() +
-  scale_color_manual(values = my_sp_vals ,
-                     name = 'Dominant species') +
-  xlim(0,2.5) +
-  ylim(0,2.5) +
-  geom_abline(intercept = 0, # add diagonal line
-              slope = c(0.5,2),
-              col = "grey",
-              size = .5,
-              lty = 'dashed') +
-  facet_grid(.~manag, 
-             labeller = labeller(manag = manag.labs)) +
-  xlab('Reassembly [mean]\n [Z-score]') + 
-  ylab('Restructure [mean]\n [Z-score]') +
-  theme_update(legend.position = 'bottom') +
-  theme_update(aspect.ratio=1) # make plots perfect square
+# p_scatter_manag_mean_poly <- 
+#   out_reorg_pos %>% 
+#   left_join(trip_species) %>% 
+#   mutate(dom_sp = factor(dom_sp, # change order of dom_sp
+#                          level = c('spruce','beech', 'oak', 'pine'))) %>% 
+#   ggplot(aes(x = RA_mean,
+#              y = RS_mean,
+#              #shape = dom_sp,
+#              color = dom_sp
+#   )) +
+#   scale_color_manual(values = my_sp_vals ,
+#                      name = 'Dominant species') +
+#   geom_polygon(data = hull_data,
+#                  aes(fill = dom_sp,
+#                      color = dom_sp),
+#                  alpha = 0.3,
+#                  show.legend = TRUE) +
+#   scale_fill_manual(values = my_sp_vals,
+#                      name = 'Dominant species') +
+#     geom_point() +
+#   xlim(0,2.5) +
+#   ylim(0,2.5) +
+#   geom_abline(intercept = 0, # add diagonal line
+#               slope = c(0.5,2),
+#               col = "grey",
+#               size = .5,
+#               lty = 'dashed') +
+#     facet_grid(.~manag,
+#                labeller = labeller(manag = manag.labs)) +
+#   xlab('Reassembly [mean]\n [Z-score]') + 
+#   ylab('Restructure [mean]\n [Z-score]') +
+#   theme_update(legend.position = 'bottom') +
+#   theme_update(aspect.ratio=1) # make plots perfect square
+# 
+# 
+# #windows()
+# p_scatter_manag_mean_pts <- 
+#   out_reorg_pos %>% 
+#   left_join(trip_species) %>% 
+#   mutate(dom_sp = factor(dom_sp, # change order of dom_sp
+#                          level = c('spruce','beech', 'oak', 'pine'))) %>% 
+#   ggplot(aes(x = RA_mean,
+#              y = RS_mean,
+#              #shape = dom_sp,
+#              color = dom_sp
+#   )) +
+#   geom_point() +
+#   scale_color_manual(values = my_sp_vals ,
+#                      name = 'Dominant species') +
+#   xlim(0,2.5) +
+#   ylim(0,2.5) +
+#   geom_abline(intercept = 0, # add diagonal line
+#               slope = c(0.5,2),
+#               col = "grey",
+#               size = .5,
+#               lty = 'dashed') +
+#   facet_grid(.~manag, 
+#              labeller = labeller(manag = manag.labs)) +
+#   xlab('Reassembly [mean]\n [Z-score]') + 
+#   ylab('Restructure [mean]\n [Z-score]') +
+#   theme_update(legend.position = 'bottom') +
+#   theme_update(aspect.ratio=1) # make plots perfect square
 
 
 
