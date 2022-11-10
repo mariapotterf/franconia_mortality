@@ -343,7 +343,7 @@ df_full_corr_mrg <-
 # if there is no tree within 15 m, fill in value 16 m: 
 
 # get the 'total' table : combination of trip_n, sub_n, and height classes
-v_height = c('advanced', 
+v_height = c(#'advanced', 
              'mature')
 
 df_master_heights <-   
@@ -362,7 +362,7 @@ RS2_ref <-
   filter(manag == 'l') %>%
   filter(vert_layer != 'regen') %>% 
     dplyr::select(trip_n, manag, sub_n, distance, vert_layer) %>%
-     right_join(df_master_heights) %>%
+     right_join(filter(df_master_heights, manag == 'l')) %>%
   mutate(distance = case_when(is.na(distance) ~ 16*100, # complete distances of 16 m if the tree is not present in ENV
                              !is.na(distance) ~ distance)) %>%
     group_by(trip_n, manag, sub_n, vert_layer) %>% 
@@ -382,6 +382,12 @@ df_RS2 <-
   filter(manag != 'l') %>%
   filter(vert_layer != 'regen') %>% 
   dplyr::select(trip_n, manag, sub_n, distance, vert_layer) %>%
+  right_join(filter(df_master_heights, manag != 'l')) %>%
+  mutate(distance = case_when(is.na(distance) ~ 16*100, # complete distances of 16 m if the tree is not present in ENV
+                              !is.na(distance) ~ distance)) %>%
+  group_by(trip_n, manag, sub_n) %>% 
+  slice(which.min(distance)) %>% # filter to have only the shortesdt distance (if several trees were recorded eg on plot)
+  ungroup(.) %>% 
   group_by(trip_n, manag, sub_n) %>% #, vert_layer
   summarise(mean_distance = mean(distance, na.rm = T)) %>%
   ungroup(.) %>% 
@@ -394,11 +400,11 @@ df_RS2 <-
 # plot the values as density plot
 p_RS2 <- df_RS2 %>% 
   ggplot(aes(RS2, fill = manag)) +
-  xlim(-3,3) +
+  #xlim(-3,3) +
   dens_plot_details()+
   ggtitle('Horizontal str.')
 
-
+p_RS2
 
 # [do not run] Compare only horizontal distance to: ----------------------
 # - 1 mature trees:
@@ -407,27 +413,31 @@ p_RS2 <- df_RS2 %>%
 # - all trees (PLOt + ENV), 
 # - only ENV 
 # - only the nearest PLOT or ENV?
-# p_avg_distance_nearest <- df_full_corr_mrg %>% 
-#   filter(count  != 0 ) %>% 
-#   filter(vert_layer != 'regen') %>% 
-#   dplyr::select(trip_n, manag, sub_n, distance, height_class) %>%
-#   mutate(distan_class = case_when(height_class %in% c("mature","mat_ENV") ~ 'mature',
-#                                 height_class %in% c("adv_ENV", "HK7")   ~ 'advanced')) %>% 
-#   group_by(trip_n, manag, sub_n, distan_class) %>% # , height_class
-#   slice(which.min(distance)) %>% # find teh closest mature tree: in plot or in ENV
-#   full_join(plot_counts_df) %>% # add the 0 distances:! how to account if tree is missing??
-#   ggplot(aes(x = factor(manag),
-#              y = distance/100,
-#              color = distan_class)) +
-#   stat_summary() + 
-#   scale_color_manual(name = "Height class", 
-#                      breaks=c("mature", "advanced"),
-#                      labels=c("mature", "advanced"),
-#                      values = c("darkgreen","red")) +
-#   ylab('Avg Distance [m]') +
-#   ggtitle('Nearest Tree\nMature/advanced reg [m]') +
-#   ylim(0,6) +
-#   theme(legend.position = 'bottom')
+#p_avg_distance_nearest <- 
+  df_full_corr_mrg %>%
+  filter(count  != 0 ) %>%
+  filter(vert_layer != 'regen') %>%
+  dplyr::select(trip_n, manag, sub_n, distance, height_class) %>%
+  mutate(distan_class = case_when(height_class %in% c("mature","mat_ENV") ~ 'mature',
+                                height_class %in% c("adv_ENV", "HK7")   ~ 'advanced')) %>%
+  group_by(trip_n, manag, sub_n, distan_class) %>% # , height_class
+
+  full_join(plot_counts_df) %>% # add the 0 distances:! how to account if tree is missing??
+  mutate(distance = case_when(is.na(distance) ~ 16*100, # complete distances of 16 m if the tree is not present in ENV
+                              !is.na(distance) ~ distance)) #%>%
+  slice(which.min(distance)) %>% # find teh closest mature tree: in plot or in ENV
+  ggplot(aes(x = factor(manag),
+             y = distance/100,
+             color = distan_class)) +
+  stat_summary() +
+  scale_color_manual(name = "Height class",
+                     breaks=c("mature", "advanced"),
+                     labels=c("mature", "advanced"),
+                     values = c("darkgreen","red")) +
+  ylab('Avg Distance [m]') +
+  ggtitle('Nearest Tree\nMature/advanced reg [m]') +
+  ylim(0,6) +
+  theme(legend.position = 'bottom')
 # 
 # 
 # # aveg distance all Mature:
