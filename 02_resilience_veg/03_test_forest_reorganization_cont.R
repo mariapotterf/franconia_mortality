@@ -48,10 +48,10 @@ load(file = paste(getwd(), "outData/dataToPlot.Rdata", sep = '/'))
 load(file = paste(getwd(), "outData/eco_traits.Rdata", sep = '/'))
 
 # Identify data to use:
-head(df_full_corr)        # - full PLOT based data: df_full_corr, seedlings, advanced, mature - PLOt & surroundings
+head(df_full_corr_mrg)    # - full PLOT based data: df_full_corr, seedlings, advanced, mature - PLOt & surroundings, mature trees filtered 
 head(plot_IVI)            # - df importance value:from plot, env mature, env advanced, merged by density/ha
 head(trait_df)            # - trait values for all species: eco_traits
-head(df_mature_trees_env) # - trees in the surroundings: mature trees
+head(df_mature_trees_env) # - trees in the surroundings: mature trees - set distance to 16 m if no tree present
 head(df_advanced_env)     # - trees in the surroundings: advanced
 
 
