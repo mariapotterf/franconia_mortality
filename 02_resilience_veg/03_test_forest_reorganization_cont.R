@@ -79,7 +79,7 @@ master_tripl <- distinct(select(plot_counts_df_sum, trip_n))
 
 
 # Prepare teh data: get the all available tree species in each site; fill in with 0 is teh species is not present
-v_species <- unique(df_full_corr$species)
+v_species <- unique(df_full_corr_mrg$species)
 
 # RA: Reassembly: ------------------------------------------------------------------
 #
@@ -112,7 +112,7 @@ plot_IVI_exp %>%
 
 
 # Get characteristics of the regeneration status of disturbed sites:
-df_full_corr %>% 
+df_full_corr_mrg %>% 
   filter(!height_class %in% c("HK7","mature", "adv_ENV", "mat_ENV")) %>% 
   filter(count > 0) %>% 
   group_by(manag, trip_n) %>% 
@@ -127,11 +127,11 @@ df_full_corr %>%
 
 
 # CHeck species importance value: how often are 'Other species" dominant?? ---------------------
-plot_IVI_exp %>% 
-  ggplot(aes(x = factor(species),
-             y = rIVI)) + 
-  stat_summary(aes(group = manag,
-                   color = manag))# + 
+#plot_IVI_exp %>% 
+#  ggplot(aes(x = factor(species),
+#             y = rIVI)) + 
+#  stat_summary(aes(group = manag,
+ #                  color = manag))# + 
   #geom_boxplot()
 
 
@@ -327,56 +327,48 @@ p_RS1 <- df_RS1 %>%
 
 # RS2: Horizontal structure -----------------------------------------------
 # define the overall layers: same as for vertical structure
-df_full_corr <- 
-  df_full_corr %>%
+# need to add disance of 16 m if the mature tree is not present
+df_full_corr_mrg <- 
+  df_full_corr_mrg %>%
   mutate(vert_layer = case_when(height_class %in% c("HK1", "HK2", "HK3", "HK4", "HK5","HK6") ~ 'regen',
                                 height_class %in% c("HK7","adv_ENV" ) ~ 'advanced',
                                 height_class %in% c("mature","mat_ENV" ) ~ 'mature')) 
 
 # 3 layers: 
 # - regeneration (<= less then 2 m height)
-# - internediate (> 2 m height & <= 10 cm DBH)
+# - intermediate (> 2 m height & <= 10 cm DBH)
 # - mature (> 10 cm dbh )
 # if the mean number of layers per DIST > REF -> indication of change
 
 # if there is no tree within 15 m, fill in value 16 m: 
 
 # get the 'total' table : combination of trip_n, sub_n, and height classes
-v_height = c('HK7', 
-             'mat_ENV',
-             'mature',
-             'adv_ENV')
+v_height = c('advanced', 
+             'mature')
 
 df_master_heights <-   
   plot_counts_df %>% 
-  mutate(height_class = 'mat_ENV') %>% 
+  mutate(vert_layer = 'mature') %>% 
   group_by(trip_n, manag, sub_n) %>% 
-  complete(height_class = .env$v_height, fill = list(distance  = 16))
+  complete(vert_layer = .env$v_height)
 
-#table(df_full_corr$height_class)
-
-# adv_ENV     HK1     HK2     HK3     HK4     HK5     HK6     HK7 mat_ENV  mature 
-#    1130   14928   14928   14928   14928   14928   14928     677   1155   109
-
-# check how many records we have like this?
-df_full_corr %>% 
-  filter(height_class != 'mat_ENV') %>% 
-  nrow()
-
-# do i have no tree recorded already??
-
-table(df_full_corr$height_class)
 
 # Process: 
 # - get average nearest distance
-# complete!!!
-#RS2_ref <- 
-  df_full_corr %>%
+# if mature tree is missing: complete by the distance of 16m*100
+RS2_ref <- 
+  df_full_corr_mrg %>%
   filter(count  != 0 ) %>% 
   filter(manag == 'l') %>%
   filter(vert_layer != 'regen') %>% 
-  dplyr::select(trip_n, manag, sub_n, distance, vert_layer) #%>%
-  group_by(trip_n, manag, sub_n) %>% # vert_layer 
+    dplyr::select(trip_n, manag, sub_n, distance, vert_layer) %>%
+     right_join(df_master_heights) %>%
+  mutate(distance = case_when(is.na(distance) ~ 16*100, # complete distances of 16 m if the tree is not present in ENV
+                             !is.na(distance) ~ distance)) %>%
+    group_by(trip_n, manag, sub_n, vert_layer) %>% 
+    slice(which.min(distance)) %>% # filter to have only the shortesdt distance (if several trees were recorded eg on plot)
+  ungroup(.) %>% 
+    group_by(trip_n, manag, sub_n) %>% # vert_layer 
   summarise(mean_distance = mean(distance, na.rm = T)) %>%
   ungroup(.) %>% 
   group_by(trip_n) %>% #, vert_layer
@@ -385,7 +377,7 @@ table(df_full_corr$height_class)
 
 # for DIST
 df_RS2 <- 
-  df_full_corr %>% 
+  df_full_corr_mrg %>% 
   filter(count  != 0 ) %>% 
   filter(manag != 'l') %>%
   filter(vert_layer != 'regen') %>% 
@@ -408,102 +400,102 @@ p_RS2 <- df_RS2 %>%
 
 
 
-# Compare only horizontal distance to: ----------------------
+# [do not run] Compare only horizontal distance to: ----------------------
 # - 1 mature trees:
 # - to advanced regen:
 # Make unique plots for: 
 # - all trees (PLOt + ENV), 
 # - only ENV 
 # - only the nearest PLOT or ENV?
-p_avg_distance_nearest <- df_full_corr %>% 
-  filter(count  != 0 ) %>% 
-  #filter(manag != 'l') %>%
-  filter(vert_layer != 'regen') %>% 
-  dplyr::select(trip_n, manag, sub_n, distance, height_class) %>%
-  mutate(distan_class = case_when(height_class %in% c("mature","mat_ENV") ~ 'mature',
-                                height_class %in% c("adv_ENV", "HK7")   ~ 'advanced')) %>% 
-  group_by(trip_n, manag, sub_n, distan_class) %>% # , height_class
-  slice(which.min(distance)) %>% # find teh closest mature tree: in plot or in ENV
-  full_join(plot_counts_df) %>% # add the 0 distances:! how to account if tree is missing??
-  ggplot(aes(x = factor(manag),
-             y = distance/100,
-             color = distan_class)) +
-  stat_summary() + 
-  scale_color_manual(name = "Height class", 
-                     breaks=c("mature", "advanced"),
-                     labels=c("mature", "advanced"),
-                     values = c("darkgreen","red")) +
-  ylab('Avg Distance [m]') +
-  ggtitle('Nearest Tree\nMature/advanced reg [m]') +
-  ylim(0,6) +
-  theme(legend.position = 'bottom')
+# p_avg_distance_nearest <- df_full_corr_mrg %>% 
+#   filter(count  != 0 ) %>% 
+#   filter(vert_layer != 'regen') %>% 
+#   dplyr::select(trip_n, manag, sub_n, distance, height_class) %>%
+#   mutate(distan_class = case_when(height_class %in% c("mature","mat_ENV") ~ 'mature',
+#                                 height_class %in% c("adv_ENV", "HK7")   ~ 'advanced')) %>% 
+#   group_by(trip_n, manag, sub_n, distan_class) %>% # , height_class
+#   slice(which.min(distance)) %>% # find teh closest mature tree: in plot or in ENV
+#   full_join(plot_counts_df) %>% # add the 0 distances:! how to account if tree is missing??
+#   ggplot(aes(x = factor(manag),
+#              y = distance/100,
+#              color = distan_class)) +
+#   stat_summary() + 
+#   scale_color_manual(name = "Height class", 
+#                      breaks=c("mature", "advanced"),
+#                      labels=c("mature", "advanced"),
+#                      values = c("darkgreen","red")) +
+#   ylab('Avg Distance [m]') +
+#   ggtitle('Nearest Tree\nMature/advanced reg [m]') +
+#   ylim(0,6) +
+#   theme(legend.position = 'bottom')
+# 
+# 
+# # aveg distance all Mature:
+# p_avg_distance_mature <- 
+#   df_full_corr_mrg %>% 
+#   filter(count  != 0 ) %>% 
+#   filter(vert_layer != 'regen') %>% 
+#   dplyr::select(trip_n, manag, sub_n, distance, height_class) %>%
+#     filter(height_class %in% c("mature","mat_ENV")) %>% 
+#   full_join(plot_counts_df) %>% # add the 0 distances:! how to account if tree is missing??
+#   ggplot(aes(x = factor(manag),
+#              y = distance/100,
+#              color = height_class)) +
+#   stat_summary(fun = mean) + 
+#     scale_color_manual(name = "Location", 
+#                        breaks=c("mat_ENV", "mature"),
+#                        labels=c("ENV", "Plot"),
+#                        values = c("red","black")) +
+#   ylab('Avg Distance [m]') +
+#    ylim(0,6)+
+#   ggtitle('Mature\ntree') +
+#   theme(legend.position = 'bottom') 
+# 
+# 
+# 
+# 
+# # avg distance all advanced:
+# p_avg_distance_adv <- 
+#   df_full_corr_mrg %>% 
+#     filter(count  != 0 ) %>% 
+#     filter(vert_layer != 'regen') %>% 
+#     dplyr::select(trip_n, manag, sub_n, distance, height_class) %>%
+#     filter(height_class %in% c("HK7","adv_ENV")) %>%
+#     full_join(plot_counts_df) %>% # add the missing trees:! how to account if tree is missing??
+#     ggplot(aes(x = factor(manag),
+#                y = distance/100,
+#                color = height_class)) +
+#     stat_summary(fun = mean) + 
+#     scale_color_manual(name = "Location", 
+#                        breaks=c("adv_ENV", "HK7"),
+#                        labels=c("ENV", "Plot"),
+#                        values = c("red","black")) +
+#   ylab('Avg Distance [m]') +
+#   ylim(0,6) +
+#   ggtitle('Advanced reg\ntree') +
+#   theme(legend.position = 'bottom') 
+# 
+#   
+# 
+# p_distances <- ggarrange(p_avg_distance_nearest, 
+#                          p_avg_distance_adv,
+#                          p_avg_distance_mature,
+#                          nrow = 2, ncol = 2,
+#                          hjust=-0.8)
+# 
+# (p_distances)
 
-
-# aveg distance all Mature:
-p_avg_distance_mature <- 
-  df_full_corr %>% 
-  filter(count  != 0 ) %>% 
-  filter(vert_layer != 'regen') %>% 
-  dplyr::select(trip_n, manag, sub_n, distance, height_class) %>%
-    filter(height_class %in% c("mature","mat_ENV")) %>% 
-  full_join(plot_counts_df) %>% # add the 0 distances:! how to account if tree is missing??
-  ggplot(aes(x = factor(manag),
-             y = distance/100,
-             color = height_class)) +
-  stat_summary(fun = mean) + 
-    scale_color_manual(name = "Location", 
-                       breaks=c("mat_ENV", "mature"),
-                       labels=c("ENV", "Plot"),
-                       values = c("red","black")) +
-  ylab('Avg Distance [m]') +
-   ylim(0,6)+
-  ggtitle('Mature\ntree') +
-  theme(legend.position = 'bottom') 
-
-
-
-
-# avg distance all advanced:
-p_avg_distance_adv <- 
-  df_full_corr %>% 
-    filter(count  != 0 ) %>% 
-    filter(vert_layer != 'regen') %>% 
-    dplyr::select(trip_n, manag, sub_n, distance, height_class) %>%
-    filter(height_class %in% c("HK7","adv_ENV")) %>%
-    full_join(plot_counts_df) %>% # add the missing trees:! how to account if tree is missing??
-    ggplot(aes(x = factor(manag),
-               y = distance/100,
-               color = height_class)) +
-    stat_summary(fun = mean) + 
-    scale_color_manual(name = "Location", 
-                       breaks=c("adv_ENV", "HK7"),
-                       labels=c("ENV", "Plot"),
-                       values = c("red","black")) +
-  ylab('Avg Distance [m]') +
-  ylim(0,6) +
-  ggtitle('Advanced reg\ntree') +
-  theme(legend.position = 'bottom') 
-
-  
-
-p_distances <- ggarrange(p_avg_distance_nearest, 
-                         p_avg_distance_adv,
-                         p_avg_distance_mature,
-                         nrow = 2, ncol = 2,
-                         hjust=-0.8)
-
-(p_distances)
 # RS3: Vertical structure -------------------------------------------------
 # 3 layers: 
 # - regeneration (<= less then 2 m height)
-# - internediate (> 2 m height & <= 10 cm DBH)
+# - intermediate (> 2 m height & <= 10 cm DBH)
 # - mature (> 10 cm dbh )
 # if the mean number of layers per DIST > REF -> indication of change
 
 # Process: 
 # - define vertical layers, count them
 RS3_ref <- 
-  df_full_corr %>%
+  df_full_corr_mrg %>%
   filter(count  != 0 ) %>% 
   filter(manag == 'l') %>%
   dplyr::select(trip_n, manag, sub_n, vert_layer) %>%
@@ -520,7 +512,7 @@ RS3_ref <-
 
 # for DIST
 df_RS3 <- 
-  df_full_corr %>% 
+  df_full_corr_mrg %>% 
   filter(count  != 0 ) %>% 
   filter(manag != 'l') %>%
   dplyr::select(trip_n, manag, sub_n, vert_layer) %>%
@@ -544,7 +536,7 @@ df_RS3[as.matrix(df_RS3) == Inf]  <- 0
 
 # Plot distribution of vertical classes: by management and tree species
 # !!!??? showhow often which layer is missing? by species, manag, height class? 
-# df_full_corr %>% 
+# df_full_corr_mrg %>% 
 #   filter(count  != 0 ) %>% 
 #   dplyr::select(trip_n, manag, sub_n, vert_layer) %>%
 #   distinct(.) %>%
@@ -1134,7 +1126,9 @@ sites_out <- sites2 %>%
   left_join(select(res_classes, c('trip_n', 'manag', 'group'))) #%>% 
    # nrow()
 
-st_write(sites_out, 'C:/Users/ge45lep/Documents/2021_Franconia_mortality/outSpatial/resilience_class/sites_resilience.shp')
+st_write(sites_out, 
+         'C:/Users/ge45lep/Documents/2021_Franconia_mortality/outSpatial/resilience_class/sites_resilience.shp',
+         append=FALSE)
 
 # 
 # Export objects -----------------------------------------------------------
