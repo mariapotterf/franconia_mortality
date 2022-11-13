@@ -58,18 +58,38 @@ df_full_corr_mrg %>%
   filter(height_class %in% c('mature', 'mat_ENV')) %>% 
   right_join(plot_counts_df) %>% 
   mutate(DBH = case_when(is.na(DBH) ~ 0, # complete 
-                             !is.na(DBH) ~ DBH),
+                         !is.na(DBH) ~ DBH),
          corr_count  = case_when(is.na(corr_count ) ~ 0, # complete 
-                         !is.na(corr_count ) ~ corr_count)) %>% 
-  mutate(r = DBH/2, 
+                         !is.na(corr_count ) ~ corr_count)) %>%
+  #filter(trip_n == 25) %>% 
+  mutate(r = DBH/100/2, # r in meters
          BA = pi*r^2, #) %>% #,
          BA_ha = BA*corr_count )  %>% # set on hectar value, is comparable now
+  # filter(DBH == 0)
   group_by(trip_n, manag) %>% 
-  summarize(avg_BA = mean(BA_ha, na.rm = T)) %>%
+    mutate(avg_BA = mean(BA_ha, na.rm = T)) %>%
+  #View()
+  filter(trip_n == 66) %>% 
+  View()
+    #summarize(avg_BA = mean(BA_ha, na.rm = T)) %>%
  mutate(ref_BA = avg_BA[which(c(manag == 'l'))[1]]) %>% 
 #filter(trip_n == 1 ) %>% 
   #arrange(BA_ha   ) %>% 
  # print(n = 30)
-  mutate(severity_BA = 100 - avg_BA / ref_BA*100) %>% # % of removed/died mature trees
+  mutate(severity_BA = 100 - (avg_BA / ref_BA*100)) %>% # % of removed/died mature trees
   filter(severity_BA < 0)
   #mutate(rel_BA = replace_na(rel_BA, 0)) #%>%  # replace NA by 0 if BA is missing
+
+
+# weird values:
+# 66-d ~ 127%
+# 25-d ~ 130%
+
+
+# Investigate ---------------------------------
+df_full_corr_mrg %>% 
+  filter(height_class %in% c('mature', 'mat_ENV')) %>% 
+  filter(trip_n == 25) %>% 
+  group_by(manag) %>% 
+  mutate(avg_BA = mean(BA_ha, na.rm = T)) %>%
+  View()
