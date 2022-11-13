@@ -479,6 +479,47 @@ p_RS2_mature
 
 
 
+# get a plot of teh average distances -------------------------------------------
+p_dist_16 <- df_full_corr_mrg %>%
+  filter(count  != 0 ) %>% 
+  filter(vert_layer != 'regen') %>% 
+  dplyr::select(trip_n, manag, sub_n, distance, vert_layer) %>%
+  right_join(df_master_heights_both) %>%
+  mutate(distance = case_when(is.na(distance) ~ 16*100, # complete distances of 16 m if the tree is not present in ENV
+                              !is.na(distance) ~ distance)) %>%
+  group_by(trip_n, manag, sub_n, vert_layer) %>% 
+  slice(which.min(distance)) %>% # filter to have only the shortesdt distance (if several trees were recorded eg on plot)
+  ggplot(aes(y = distance/100,
+             x = vert_layer,
+             color = manag)) +
+  stat_summary() +
+  coord_cartesian(ylim = c(0, 8)) +
+  ggtitle('Added trees [at 16 m dist]')
+
+
+# get a plot of teh average distances -------------------------------------------
+p_dist_0 <- df_full_corr_mrg %>%
+  filter(count  != 0 ) %>% 
+  filter(vert_layer != 'regen') %>% 
+  dplyr::select(trip_n, manag, sub_n, distance, vert_layer) %>%
+  group_by(trip_n, manag, sub_n, vert_layer) %>% 
+  slice(which.min(distance)) %>% # filter to have only the shortesdt distance (if several trees were recorded eg on plot)
+  ggplot(aes(y = distance/100,
+             x = vert_layer,
+             color = manag)) +
+  stat_summary() +
+  ggtitle('Missing trees') +
+  coord_cartesian(ylim = c(0, 8))
+
+
+p_distances <- ggarrange(p_dist_0, 
+          p_dist_16,
+          nrow = 1, ncol = 2,
+          hjust=-0.8)
+
+
+
+
 
 # [do not run] Compare only horizontal distance to: ----------------------
 # - 1 mature trees:
@@ -649,12 +690,12 @@ p_RS3 <- df_RS3 %>%
 # Plot densities together  ------------------------------------------------
 
 p_6vars <- ggarrange(
-  p_RA1 + ylim(0,1.5),
-  p_RA2 + ylim(0,1.5) ,
-  p_RA3 + ylim(0,1.5) ,
-  p_RS1 + ylim(0,1.5) ,
-  p_RS2_both + ylim(0,1.5) ,
-  p_RS3 + ylim(0,1.5) ,
+  p_RA1 + ylim(0,2),
+  p_RA2 + ylim(0,2) ,
+  p_RA3 + ylim(0,2) ,
+  p_RS1 + ylim(0,2) ,
+  p_RS2_mature + ylim(0,2) ,
+  p_RS3 + ylim(0,2) ,
   nrow = 2,
   ncol = 3,
   common.legend = TRUE,
@@ -671,7 +712,7 @@ out_reorg <-
   full_join(dplyr::select(df_RA2, c(trip_n, manag, RA2, ref_avg_rich    ))) %>%
   full_join(dplyr::select(df_RA3, c(trip_n, manag, RA3, ref_mean_shade ))) %>% 
   full_join(dplyr::select(df_RS1, c(trip_n, manag, RS1, ref_mean_dens ))) %>% #,
-  full_join(dplyr::select(df_RS2_both, c(trip_n, manag, RS2, ref_mean_distance ))) %>%
+  full_join(dplyr::select(df_RS2_mature, c(trip_n, manag, RS2, ref_mean_distance ))) %>%
   full_join(dplyr::select(df_RS3, c(trip_n, manag, RS3, ref_mean_vLayer )))#%>% 
   
  # mutate() # combine indicators together
@@ -733,7 +774,7 @@ p_euclid_lollipop <-
              y = euclid_dist,
              color = dom_sp,
              group = manag)) +
-  geom_point(size = 5) +
+  geom_point(size = 3) +
   geom_segment( aes(x=reorder(trip_manag, -euclid_dist) , 
                     xend=reorder(trip_manag, -euclid_dist) , 
                     y=0, 
@@ -760,13 +801,17 @@ p_scatter_mean <-
   ggplot(aes(x = RA_mean,
              y = RS_mean,
              color = dom_sp)) +
-  geom_abline(intercept = 0, slope = c(0.5, 1.8), size = 0.5, lty = 'dashed', color = 'grey') +
+  geom_abline(intercept = 0, 
+              slope = c(0.5, 1.8), 
+              size = 0.5, lty = 'dashed', color = 'grey') +
   geom_point(alpha = 0.9, size = 1.4) +
   scale_color_manual(values = my_sp_vals ,
                      name = 'Dominant species') +
-  xlim(0,2) +
-  ylim(0,2) +
-  facet_grid(manag~dom_sp, scales = 'free',labeller = labeller(manag = manag.labs)) +
+  xlim(0,6) +
+  ylim(0,6) +
+  facet_grid(manag~dom_sp, 
+             #scales = 'free',
+             labeller = labeller(manag = manag.labs)) +
   theme_update(legend.position = 'bottom') +
   theme_update(aspect.ratio=1) # make plots perfect square
 
@@ -893,7 +938,7 @@ p_res_classes
 # Evaluate the drivers: change by indicators ---------------------------------------------------------
 
 # how to show the drivers??? per indicator, per species, per management?
-out_reorg_pos %>% 
+p_segment <- out_reorg_pos %>% 
   dplyr::select(all_of(c('RA1', 'RA2', 'RA3', 'RS1', 'RS2', 'RS3'))) %>% 
   pivot_longer(c(RA1, RA2, RA3, RS1, RS2, RS3),
                names_to = 'indicator',
