@@ -61,12 +61,12 @@ head(plot_counts_df)      # - total count of the plots per triplets & categories
 
 # Get dataframes of the species --------------------------------------------------
 trip_species <- plot_counts_df %>% 
-  select(trip_n, dom_sp) %>% 
+  dplyr::select(trip_n, dom_sp) %>% 
   distinct(.)
 
 
 plot_counts_df <- plot_counts_df %>% 
-  select(!c(dom_sp))
+  dplyr::select(!c(dom_sp))
 
 
 # Master set for all triplets:
@@ -75,7 +75,7 @@ plot_counts_df_sum <- plot_counts_df %>%
   tally()
 
 # get list of triplets
-master_tripl <- distinct(select(plot_counts_df_sum, trip_n))
+master_tripl <- distinct(dplyr::select(plot_counts_df_sum, trip_n))
 
 
 # Prepare teh data: get the all available tree species in each site; fill in with 0 is teh species is not present
@@ -171,7 +171,7 @@ RA1_dom_ref <- plot_IVI_exp %>%
   ungroup(.) %>% 
   group_by(trip_n) %>% 
   filter(ref_rIVI_mean == max(ref_rIVI_mean)) %>%
-  select(!c(manag))
+  dplyr::select(!c(manag))
 
 
 # Get SD: select the dominant species per trip_n from the REF ('l'); and have the value for each plot!!
@@ -185,9 +185,9 @@ RA1_dom_SD <-
   group_by(trip_n, manag, species) %>% 
     mutate(ref_iIVI_sd = sd(rIVI, na.rm = T)) %>% 
   ungroup(.) %>% 
-  select(!c(manag)) %>%  
+  dplyr::select(!c(manag)) %>%  
   rename(ref_rIVI = rIVI) %>% 
-  select(c(trip_n, species, ref_rIVI_mean, ref_iIVI_sd)) %>% 
+  dplyr::select(c(trip_n, species, ref_rIVI_mean, ref_iIVI_sd)) %>% 
   distinct()
 
 
@@ -343,7 +343,7 @@ df_full_corr_mrg <-
 # if there is no tree within 15 m, fill in value 16 m: 
 
 # get the 'total' table : combination of trip_n, sub_n, and height classes
-v_height = c(#'advanced', 
+v_height = c('advanced', 
              'mature')
 
 df_master_heights <-   
@@ -413,7 +413,7 @@ p_RS2
 # - all trees (PLOt + ENV), 
 # - only ENV 
 # - only the nearest PLOT or ENV?
-#p_avg_distance_nearest <- 
+p_avg_distance_nearest <- 
   df_full_corr_mrg %>%
   filter(count  != 0 ) %>%
   filter(vert_layer != 'regen') %>%
@@ -424,7 +424,7 @@ p_RS2
 
   full_join(plot_counts_df) %>% # add the 0 distances:! how to account if tree is missing??
   mutate(distance = case_when(is.na(distance) ~ 16*100, # complete distances of 16 m if the tree is not present in ENV
-                              !is.na(distance) ~ distance)) #%>%
+                              !is.na(distance) ~ distance)) %>%
   slice(which.min(distance)) %>% # find teh closest mature tree: in plot or in ENV
   ggplot(aes(x = factor(manag),
              y = distance/100,
@@ -593,12 +593,12 @@ p_6vars <- ggarrange(
 # add reference values
 
 out_reorg <- 
-  select(df_RA1,           c(trip_n, manag, RA1, ref_rIVI_mean )) %>% 
-  full_join(select(df_RA2, c(trip_n, manag, RA2, ref_avg_rich    ))) %>%
-  full_join(select(df_RA3, c(trip_n, manag, RA3, ref_mean_shade ))) %>% 
-  full_join(select(df_RS1, c(trip_n, manag, RS1, ref_mean_dens ))) %>% #,
-  full_join(select(df_RS2, c(trip_n, manag, RS2, ref_mean_distance ))) %>%
-  full_join(select(df_RS3, c(trip_n, manag, RS3, ref_mean_vLayer )))#%>% 
+  dplyr::select(df_RA1,           c(trip_n, manag, RA1, ref_rIVI_mean )) %>% 
+  full_join(dplyr::select(df_RA2, c(trip_n, manag, RA2, ref_avg_rich    ))) %>%
+  full_join(dplyr::select(df_RA3, c(trip_n, manag, RA3, ref_mean_shade ))) %>% 
+  full_join(dplyr::select(df_RS1, c(trip_n, manag, RS1, ref_mean_dens ))) %>% #,
+  full_join(dplyr::select(df_RS2, c(trip_n, manag, RS2, ref_mean_distance ))) %>%
+  full_join(dplyr::select(df_RS3, c(trip_n, manag, RS3, ref_mean_vLayer )))#%>% 
   
  # mutate() # combine indicators together
 #
@@ -625,6 +625,9 @@ out_reorg_pos <- out_reorg_pos %>%
   mutate(euclid_dist = euclidean(RA_mean, RS_mean)) #%>%
   # classify the poinst by sector: make as squares, as simpler way
   #mutate(sector =  )
+
+
+# fwrite(long.df, paste("C:/Users/ge45lep/Documents/2021_Franconia_mortality/outTables", outName, sep = '/'))
 
 
 
@@ -686,7 +689,7 @@ windows()
 # # add hull polygons
 # hull_data_conif_dec <- 
 #   out_reorg_pos %>%
-#   select(trip_n, manag, RS_mean, RA_mean,conif_decid) %>% 
+#   dplyr::select(trip_n, manag, RS_mean, RA_mean,conif_decid) %>% 
 #   group_by(conif_decid, manag) %>%
 #   slice(chull(RA_mean, RS_mean)) 
 # 
@@ -739,21 +742,21 @@ p_scatter_mean <-
              y = RS_mean,
              color = dom_sp)) +
   geom_abline(intercept = 0, slope = c(0.5, 1.8), size = 0.5, lty = 'dashed', color = 'grey') +
-  annotate("path",
-           x = r1*cos(seq(0,2*pi,length.out=100)),
-           y = r1*sin(seq(0,2*pi,length.out=100)),
-           size = 0.5, lty = 'dashed', color = 'grey'
-  ) +
-  annotate("path",
-           x = r2*cos(seq(0,2*pi,length.out=100)),
-           y = r2*sin(seq(0,2*pi,length.out=100)),
-           size = 0.5, lty = 'dashed', color = 'grey'
-  ) +
-  geom_point(alpha = 0.9, size = 2.7) +
+ # annotate("path",
+#           x = r1*cos(seq(0,2*pi,length.out=100)),
+#           y = r1*sin(seq(0,2*pi,length.out=100)),
+#           size = 0.5, lty = 'dashed', color = 'grey'
+#  ) +
+  # annotate("path",
+  #          x = r2*cos(seq(0,2*pi,length.out=100)),
+  #          y = r2*sin(seq(0,2*pi,length.out=100)),
+  #          size = 0.5, lty = 'dashed', color = 'grey'
+  # ) +
+  geom_point(alpha = 0.9, size = 1.4) +
   scale_color_manual(values = my_sp_vals ,
                      name = 'Dominant species') +
-  xlim(0,2) +
-  ylim(0,2) +
+  xlim(0,6) +
+  ylim(0,6) +
   facet_grid(manag~dom_sp, scales = 'free',labeller = labeller(manag = manag.labs)) +
   theme_update(legend.position = 'bottom') +
   theme_update(aspect.ratio=1) # make plots perfect square
@@ -768,14 +771,14 @@ p_scatter_mean
 # Add labels to points, and dominant species
   
 # add hull polygons
-hull_data <- 
-    out_reorg_pos %>%
-    select(trip_n, manag, RS_mean, RA_mean) %>% 
-    left_join(trip_species) %>%
-    group_by(dom_sp, manag) %>%
-  mutate(dom_sp = factor(dom_sp, # change order of dom_sp
-                         level = c('spruce','beech', 'oak', 'pine'))) %>% 
-    slice(chull(RA_mean, RS_mean)) 
+# hull_data <- 
+#     out_reorg_pos %>%
+#     dplyr::select(trip_n, manag, RS_mean, RA_mean) %>% 
+#     left_join(trip_species) %>%
+#     group_by(dom_sp, manag) %>%
+#   mutate(dom_sp = factor(dom_sp, # change order of dom_sp
+#                          level = c('spruce','beech', 'oak', 'pine'))) %>% 
+#     slice(chull(RA_mean, RS_mean)) 
 
 
 
@@ -961,7 +964,7 @@ p_res_classes
 
 # how to show the drivers??? per indicator, per speies, per management?
 out_reorg_pos %>% 
-  select(all_of(c('RA1', 'RA2', 'RA3', 'RS1', 'RS2', 'RS3'))) %>% 
+  dplyr::select(all_of(c('RA1', 'RA2', 'RA3', 'RS1', 'RS2', 'RS3'))) %>% 
   pivot_longer(c(RA1, RA2, RA3, RS1, RS2, RS3),
                names_to = 'indicator',
                values_to = 'vals') %>% 
@@ -993,7 +996,7 @@ out_reorg_pos %>%
 
 p_drivers <- 
   out_reorg_pos %>% 
-  select(all_of(c('RA1', 'RA2', 'RA3', 'RS1', 'RS2', 'RS3'))) %>% 
+  dplyr::select(all_of(c('RA1', 'RA2', 'RA3', 'RS1', 'RS2', 'RS3'))) %>% 
   pivot_longer(c(RA1, RA2, RA3, RS1, RS2, RS3),
                names_to = 'indicator',
                values_to = 'vals') %>% 
@@ -1055,7 +1058,7 @@ sites2 <-
 
 # add resilience category (df) into the sf
 sites_out <- sites2 %>% 
-  left_join(select(res_classes, c('trip_n', 'manag', 'group'))) #%>% 
+  left_join(dplyr::select(res_classes, c('trip_n', 'manag', 'group'))) #%>% 
    # nrow()
 
 st_write(sites_out, 
