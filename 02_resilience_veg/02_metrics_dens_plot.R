@@ -594,23 +594,60 @@ df_both = df_mature_both %>% # 100 plots
 # Process: in two steps: filter oly mature trees, select the nearest ones
 # merge back into original tables
 
+
+# cap max density values based on avg distances: --------------------------------
+
+
 # filter mature trees and select the closest ones
 df_full_corr_mature <- df_full_corr %>% 
   filter(height_class %in% c('mature', 'mat_ENV')) %>% 
   group_by(trip_n, manag, sub_n) %>% 
   filter(distance == min(distance)) %>%
   filter(1:n() == 1) %>% 
-  mutate(corr_count = case_when(corr_count > 800 ~ 800,
-                                corr_count <= 800 ~ corr_count ))
+  mutate(corr_count2 = case_when(height_class == 'mature' ~ 1000,
+                                 (corr_count >= 800 & manag == 'c') ~ 400, # distance 4.97 m
+                                (corr_count >= 800 & manag == 'd') ~ 650, # distance 3.90 m
+                                (corr_count >= 800 & manag == 'l') ~ 800, # distance 2.47 m
+                                corr_count < 800 ~ corr_count )) %>% 
+  dplyr::select(-c(corr_count)) %>% 
+  rename(corr_count = corr_count2)
+
+
+
+# check if correct replacement
+df_full_corr_mature %>% 
+  group_by(trip_n, manag) %>%  
+  summarize(max2 = max(corr_count))
+
+# check if replacement was correct: 
+# df_full_corr_mrg 
+df_full_corr_mature %>% 
+  filter(height_class %in% c('mature', 'mat_ENV')) %>% 
+  filter(trip_n == 25) %>% 
+  View()
+
+
 
 
 # remove mature trees -------------------------------------------------------------
 df_full_corr_noMature <- df_full_corr %>% 
   filter(!height_class %in% c('mature', 'mat_ENV'))# %
 
-# merge the filtered mature back to the table:
+# merge the filtered mature and n mature back to the table: ----------------------------------
 df_full_corr_mrg <-df_full_corr_mature %>% 
   bind_rows(df_full_corr_noMature)
+
+
+
+# get average distances 
+df_full_corr_mrg  %>% 
+  filter(height_class %in% c('mature', 'mat_ENV')) %>% 
+  group_by(manag) %>% #, height_class
+  summarise(mean_dist = mean(distance/100, na.rm = T),
+            mean_dens_circ = ha/(pi*mean_dist^2),
+            mean_dens_square = ha/mean_dist^2)
+
+
 
 # Add missing trees to BA and density -------------------------------------
 
@@ -694,7 +731,7 @@ my_densCicr   <- round(ha/(my_dist^2*pi), 0)
 my_densSquare <- round(ha/(my_dist^2),0)
 my_dist*2
 
-windows()
+#windows()
 par(mfrow = c(1, 2))
 plot(x = my_dist, y = my_densCicr)
 plot(x = my_dist, y = my_densSquare, col = 'red')
