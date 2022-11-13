@@ -213,6 +213,28 @@ p_RA1 <- df_RA1 %>%
 
 # 
 
+# RA 1 predictors ---------------------------------------------------------
+
+#p_RA1_pred <-
+plot_IVI_exp %>%
+  dplyr::select(trip_n, manag, sub_n, species, rIVI) %>%
+  group_by(trip_n, manag, species) %>%
+  summarize(ref_rIVI_mean = mean(rIVI, na.rm = T)) %>% 
+  ungroup(.) %>% 
+  group_by(trip_n) %>% 
+  filter(ref_rIVI_mean == max(ref_rIVI_mean)) %>% 
+  ungroup(.) %>% 
+  left_join(trip_species)# %>% 
+  ggplot(aes(y = ref_rIVI_mean,
+             x = manag,
+             color = dom_sp
+             )) +
+  #geom_boxplot() +
+  geom_point() #+
+  #geom_line(aes(group = paired))
+
+
+
 
 
 
@@ -258,6 +280,19 @@ p_RA2 <-df_RA2 %>%
 
 
 
+
+
+# RA2 Plot richness predictors --------------------------------------------
+
+plot_IVI_exp %>%
+  filter(sp_count  != 0 ) %>% 
+  group_by(trip_n, manag, sub_n) %>% 
+  summarise(richness = n()) %>% 
+  left_join(trip_species) %>% 
+  ggplot(aes(x = manag,
+             y = richness,
+             color = dom_sp)) +
+  geom_jitter()
 
 
 # RA3: competition --------------------------------------------------------
