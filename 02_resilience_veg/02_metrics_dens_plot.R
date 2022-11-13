@@ -87,8 +87,10 @@ library(ggplot2)
 library(stringr)  # use regex expressions
 library(ggpubr)
 
+# vars --------------------------------------------------------------------------
 
-
+ha <- 10000            # hectar
+min_distance <- 50     # cm, minimal distance if the tree is located on the plot 
 
 # Get supplementary table ------------------------------------------------------- 
 # the number of sub_n per each triplet and category
@@ -203,7 +205,7 @@ df_full_plot = rbind(df_reg_full2,
 
 
 # Slope correct the number of trees per ha: ------------------------------------------
-ha     <- 10000
+#ha     <- 10000
 r_side <- 2 # 2m as the lenght of the square
 
 # PLOT: Estimate densities per tree species and per height class; slop corrected
@@ -221,7 +223,7 @@ df_full_plot_corr <-
   #  print(n = 100)
   # summarize(min(corr_count), max(corr_count))
   mutate(distance = 50) %>% 
-  select(trip_n, manag, sub_n, species, 
+  dplyr::select(trip_n, manag, sub_n, species, 
          DBH, distance, height_class, count, corr_count) # correctly order the columns
 
 df_full_plot_corr %>% 
@@ -275,7 +277,7 @@ df_full_plot_corr %>%
 ## ENV advanced: Get estimated dbh for the individual species and regimes -----------------
 df_dbh_mean_advanced <- 
   df_full_plot %>% 
-  select(c('trip_n', 'manag', 'species', 'DBH', 'height_class')) %>% 
+  dplyr::select(c('trip_n', 'manag', 'species', 'DBH', 'height_class')) %>% 
   filter(height_class %in% c("HK7")) %>% 
   group_by(manag, species) %>%
   summarize(DBH = mean(DBH)) 
@@ -305,7 +307,7 @@ df_advanced_env_corr <- df_advanced_env %>%
   #   summarize(min(corr_count), max(corr_count)) 
   mutate(height_class = 'adv_ENV') %>% 
   right_join(df_dbh_mean_advanced, by = c('manag', 'species')) %>%
-  select(trip_n, manag, sub_n, species, 
+  dplyr::select(trip_n, manag, sub_n, species, 
          DBH, distance, height_class, count, corr_count) # correctly order the columns
 
 
@@ -324,20 +326,38 @@ df_mature_env_corr <-
                                  corr_count > 2500 ~ 2500)) %>% 
  # summarize(min(corr_count), max(corr_count)) 
   mutate(height_class = 'mat_ENV') %>% 
-  select(trip_n, manag, sub_n, species, 
+  dplyr::select(trip_n, manag, sub_n, species, 
          DBH, distance, height_class, count, corr_count) # correctly order the columns
 
 
 range(df_mature_env_corr$corr_count)
 
 # make distribution plots to share with RS and WR ------------------
-# to merge data: select the onces that are closer to site
-p_mature_hist <- df_mature_env_corr %>% 
+# to merge data: dplyr::select the onces that are closer to site
+#p_mature_hist <- 
+  df_mature_env_corr %>% 
   ggplot(aes(corr_count,
              fill = species)) +
-  geom_histogram() +
-  ggtitle('Mature tree-Surroundings\n[capped]')
+  geom_histogram() #+
+  #ggtitle('Mature tree-Surroundings\n[capped]')
 
+
+# check the DBH with density?
+df_mature_env_corr %>% 
+  ggplot(aes(x=corr_count,
+             y = DBH)) +
+  geom_point()
+             
+
+df_mature_env_corr %>% 
+  filter(DBH>100) 
+
+#  trip_n manag sub_n species   DBH distance height_class count corr_count
+# <chr>  <chr> <chr> <chr>   <dbl>    <dbl> <chr>        <dbl>      <dbl>
+# 1 27     l     4     Oak       103      440 mat_ENV          1        166
+# 2 27     l     7     Oak       114      230 mat_ENV          1        620
+# 3 23     l     14    Beech     145      150 mat_ENV          1       1416
+  
 
 p_advanced_hist <- df_advanced_env_corr %>% 
   ggplot(aes(corr_count,
@@ -369,9 +389,6 @@ df_full_corr = rbind(df_full_plot_corr,
                      df_mature_env_corr)
 
 
-
-head(df_full_corr)
-nrow(df_full_corr)
 
 
 # test data 
@@ -499,7 +516,8 @@ df_advanced_both <- df_full_corr %>%
   distinct(trip_n, manag, sub_n) %>% 
   mutate(tree_on_plot = 'adv_plot_env')
 
-# try first only with mature trees: how different are densities if both metrics are implemented?
+# try first only with mature trees: 
+# how different are densities if both metrics are implemented?
 df_full_corr %>% 
   full_join(df_mature_both, by = c("trip_n", "manag", "sub_n")) %>% 
   filter(height_class %in% c('mature', 'mat_ENV')) %>%
@@ -508,10 +526,10 @@ df_full_corr %>%
   #filter(tree_on_plot == 'mat_plot_env')
   group_by(trip_n, manag, sub_n)%>% # tree_on_plot 
   dplyr::filter(tree_on_plot%in% c("mat_plot_env" )) %>% # filter specific classes
-  arrange(trip_n, manag, sub_n)
-  filter(all(c("mat_plot_env", 'env' ) %in% tree_on_plot)) #%>% 
+  #arrange(trip_n, manag, sub_n)
+  filter(all(c("mat_plot_env", 'env' ) %in% tree_on_plot)) %>% 
   
-  summarize(sum_corr_count  = sum(corr_count))  #%>%
+  summarize(sum_corr_count  = sum(corr_count))  %>%
   filter(sum_corr_count > 2500)
   ggplot(aes(x = factor(tree_on_plot),
              y = sum_corr_count,
@@ -579,11 +597,9 @@ df_both = df_mature_both %>% # 100 plots
 df_full_corr_mature <- df_full_corr %>% 
   filter(height_class %in% c('mature', 'mat_ENV')) %>% 
   group_by(trip_n, manag, sub_n) %>% 
-  #slice(which.min(distance)) %>% 
   filter(distance == min(distance)) %>%
   filter(1:n() == 1)
 
-# it is 1155 rows
 
 # remove mature trees
 df_full_corr_noMature <- df_full_corr %>% 
@@ -614,9 +630,10 @@ df_rel_density <-
 df_rel_BA_plot <- 
   df_full_corr_mrg %>%
   mutate(r = DBH/2,
-         BA = pi*r^2)  %>%
+         BA = pi*r^2,
+         BA_ha = BA*corr_count/10000)  %>%
   group_by(trip_n, manag, sub_n, species) %>%
-  summarize(sp_BA = sum(BA, na.rm = T)) %>%
+  summarize(sp_BA = sum(BA_ha, na.rm = T)) %>%
   ungroup(.) %>%
   group_by(trip_n, sub_n, manag) %>%
   mutate(all_BA = sum(sp_BA, na.rm = T),
@@ -624,6 +641,67 @@ df_rel_BA_plot <-
   mutate(rel_BA = replace_na(rel_BA, 0)) #%>%  # replace NA by 0 if BA is missing
   #  filter(trip_n == 1 & manag == 'c' & sub_n == 1)
 
+
+
+# check the extreme value? BA > 2000?
+df_rel_BA_plot %>% 
+  filter(all_BA> 2000)
+
+# triplet 23_l_14 beech has very gigh bsal area values:
+# 23     l     14    Beech 
+
+df_full_corr_mrg %>% 
+ filter(trip_n == 23 & manag == 'l')
+
+
+# if the trees is found on the plot, the density is very height: 2500!!
+# how to handle this?
+
+# plot the values first: --------------------------------------------------------
+df_full_corr_mrg  %>% 
+  filter(height_class %in% c('mature', 'mat_ENV')) %>% 
+  ggplot(aes(x = height_class,
+             y = corr_count)) +
+  geom_boxplot()
+
+nrow(filter(df_full_corr_mrg, height_class == 'mature')) # 100
+nrow(filter(df_full_corr_mrg, height_class == 'mat_ENV')) # 1150
+
+# if there is tree per plot ~ max density is 2500 trees/ha ~ minimal distance is 2 m:
+# check nearest avg distance for environment: 
+df_full_corr_mrg  %>% 
+  filter(height_class %in% c('mature', 'mat_ENV')) %>% 
+  group_by(manag) %>% #, height_class
+  summarise(mean_dist = mean(distance/100, na.rm = T),
+            mean_dens = 10000/(pi*mean_dist^2))
+# !!!!
+
+# how many trees to have?
+my_dist <- seq(2,15, 0.1)
+my_densCicr   <- ha/(my_dist^2*pi)
+my_densSquare <- ha/(my_dist^2)
+my_dist*2
+
+windows()
+par(mfrow = c(1, 2))
+plot(x = my_dist, y = my_densCicr)
+plot(x = my_dist, y = my_densSquare, col = 'red')
+
+#manag mean_dist mean_dens
+#<chr>     <dbl>     <dbl>
+#  1 c     4.97      129.
+#  2 d     3.90      210.
+#  3 l     2.47      522.
+
+# check how the density indcrease with distance?
+
+
+
+# check basal area between manag
+df_rel_BA_plot %>% 
+  ggplot(aes(y = all_BA,
+             x = manag)) +
+  geom_boxplot()
 
 
 # SITE: Calculate IVI: species importance value -----------------------------------------------
@@ -647,45 +725,45 @@ plot_IVI <- df_rel_density %>%
 # try with value of 5cm: average values of the advanced regen DBH;
 # compare the rIVI (dhb supplemented) and rIVI_5
 # # the total basal area of Species A as a percent of the total basal area of all species.  
-df_rel_BA_plot_6 <- 
-  df_full_corr %>%
-  mutate(DBH = case_when(height_class == 'adv_ENV' ~ 6,
-                         height_class != 'adv_ENV' ~ DBH)) %>% 
-  #filter(height_class == 'adv_ENV') %>% 
-  mutate(r = DBH/2,
-         BA = pi*r^2)  %>%
-  group_by(trip_n, manag, sub_n, species) %>%
-  summarize(sp_BA = sum(BA, na.rm = T)) %>%
-  ungroup(.) %>%
-  group_by(trip_n, sub_n, manag) %>%
-  mutate(all_BA = sum(sp_BA, na.rm = T),
-         rel_BA = sp_BA/all_BA*100) %>%
-  mutate(rel_BA = replace_na(rel_BA, 0)) #%>%  # replace NA by 0 if BA is missing
-#  filter(trip_n == 1 & manag == 'c' & sub_n == 1)
+# df_rel_BA_plot_6 <- 
+#   df_full_corr %>%
+#   mutate(DBH = case_when(height_class == 'adv_ENV' ~ 6,
+#                          height_class != 'adv_ENV' ~ DBH)) %>% 
+#   #filter(height_class == 'adv_ENV') %>% 
+#   mutate(r = DBH/2,
+#          BA = pi*r^2)  %>%
+#   group_by(trip_n, manag, sub_n, species) %>%
+#   summarize(sp_BA = sum(BA, na.rm = T)) %>%
+#   ungroup(.) %>%
+#   group_by(trip_n, sub_n, manag) %>%
+#   mutate(all_BA = sum(sp_BA, na.rm = T),
+#          rel_BA = sp_BA/all_BA*100) %>%
+#   mutate(rel_BA = replace_na(rel_BA, 0)) #%>%  # replace NA by 0 if BA is missing
+# #  filter(trip_n == 1 & manag == 'c' & sub_n == 1)
 
 
 
 # SITE: Calculate IVI: species importance value -----------------------------------------------
 # merge the rel frequeny, density and basal area ------------------------------------------
-plot_IVI_6 <-
-  df_rel_density %>% 
-  full_join(df_rel_BA_plot_6) %>% 
-  replace_na(., list(all_BA = 0, rel_BA   = 0)) %>% 
-  mutate(rIVI = ( rel_density +rel_BA)/2)  # relative IVI
+# plot_IVI_6 <-
+#   df_rel_density %>% 
+#   full_join(df_rel_BA_plot_6) %>% 
+#   replace_na(., list(all_BA = 0, rel_BA   = 0)) %>% 
+#   mutate(rIVI = ( rel_density +rel_BA)/2)  # relative IVI
 
 
 # Compare the IVI values between the suplemented DBH, and DBH = 6 for advanced regen?
-nrow(plot_IVI_6)
-nrow(plot_IVI)
-
-# Compare the two metrics:
-select(plot_IVI, c(trip_n, manag, sub_n, species, rIVI))  %>% #sp_BA, rel_BA, 
-  full_join(select(plot_IVI_6, c(trip_n, manag, sub_n, species, rIVI)), 
-            by = c('trip_n', 'manag', 'sub_n', 'species')) %>% # sp_BA, rel_BA,
-  rename(rIVI_DBH = rIVI.x,
-         rIVI_DBH6 = rIVI.y) %>% 
-  mutate(diff = rIVI_DBH-rIVI_DBH6) %>%
-  #filter(diff< -10) 
+# nrow(plot_IVI_6)
+# nrow(plot_IVI)
+# 
+# # Compare the two metrics:
+# dplyr::select(plot_IVI, c(trip_n, manag, sub_n, species, rIVI))  %>% #sp_BA, rel_BA, 
+#   full_join(dplyr::select(plot_IVI_6, c(trip_n, manag, sub_n, species, rIVI)), 
+#             by = c('trip_n', 'manag', 'sub_n', 'species')) %>% # sp_BA, rel_BA,
+#   rename(rIVI_DBH = rIVI.x,
+#          rIVI_DBH6 = rIVI.y) %>% 
+#   mutate(diff = rIVI_DBH-rIVI_DBH6) %>%
+#   #filter(diff< -10) 
 
   ggplot(aes(rIVI_DBH)) + 
  geom_density()
@@ -693,8 +771,8 @@ select(plot_IVI, c(trip_n, manag, sub_n, species, rIVI))  %>% #sp_BA, rel_BA,
 
 windows()
 p_compare_density_rIVI <-
-  select(plot_IVI, c(trip_n, manag, sub_n, species, rIVI))  %>% #sp_BA, rel_BA, 
-  full_join(select(plot_IVI_6, c(trip_n, manag, sub_n, species, rIVI)), 
+  dplyr::select(plot_IVI, c(trip_n, manag, sub_n, species, rIVI))  %>% #sp_BA, rel_BA, 
+  full_join(dplyr::select(plot_IVI_6, c(trip_n, manag, sub_n, species, rIVI)), 
             by = c('trip_n', 'manag', 'sub_n', 'species')) %>% # sp_BA, rel_BA,
   rename(rIVI_DBH = rIVI.x,
          rIVI_DBH6 = rIVI.y) %>% 
