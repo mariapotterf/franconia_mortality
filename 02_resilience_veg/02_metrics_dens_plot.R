@@ -120,7 +120,7 @@ df_sub_count <-
 nrow(df_reg_full)           # 2406, contains replaced rows with specific tree species for the 'Other' species category for the regeneration on PLOT
 nrow(df_mature_trees_plot)  # 4976
 
-# Environment
+# Environment = plot suroundings
 nrow(df_advanced_env)      # 2406
 nrow(df_mature_trees_env)  # 1155 
 
@@ -314,6 +314,7 @@ df_advanced_env_corr <- df_advanced_env %>%
 range(df_advanced_env_corr$corr_count)
   
 ## ENV: mature: -------------------------------------------------------------------
+#### !!!! replaced 2500 trees/ha to 800 trees, based on averagre 2.5 m between trees!!
 df_mature_env_corr <- 
   df_mature_trees_env %>% 
   mutate(count          = 1, 
@@ -322,8 +323,8 @@ df_mature_env_corr <-
          correct_factor = ha / area_corr,
          corr_count     = round(count * correct_factor)
   ) %>% 
-  mutate(corr_count = case_when(corr_count <= 2500 ~ corr_count,
-                                 corr_count > 2500 ~ 2500)) %>% 
+  mutate(corr_count = case_when(corr_count <= 800 ~ corr_count,
+                                 corr_count > 800 ~ 800)) %>% # replaced from 2500!!! 
  # summarize(min(corr_count), max(corr_count)) 
   mutate(height_class = 'mat_ENV') %>% 
   dplyr::select(trip_n, manag, sub_n, species, 
@@ -333,13 +334,13 @@ df_mature_env_corr <-
 range(df_mature_env_corr$corr_count)
 
 # make distribution plots to share with RS and WR ------------------
-# to merge data: dplyr::select the onces that are closer to site
-#p_mature_hist <- 
+# to merge data: dplyr::select the ones that are closer to site
+p_mature_hist <- 
   df_mature_env_corr %>% 
   ggplot(aes(corr_count,
              fill = species)) +
-  geom_histogram() #+
-  #ggtitle('Mature tree-Surroundings\n[capped]')
+  geom_histogram() +
+  ggtitle('Mature tree-Surroundings\n[capped]')
 
 
 # check the DBH with density?
@@ -525,12 +526,12 @@ df_full_corr %>%
                                   !is.na(tree_on_plot) ~ "mat_plot_env")) %>% 
   #filter(tree_on_plot == 'mat_plot_env')
   group_by(trip_n, manag, sub_n)%>% # tree_on_plot 
-  dplyr::filter(tree_on_plot%in% c("mat_plot_env" )) %>% # filter specific classes
+  dplyr::filter(tree_on_plot%in% c("mat_plot_env" )) #%>% # filter specific classes
   #arrange(trip_n, manag, sub_n)
-  filter(all(c("mat_plot_env", 'env' ) %in% tree_on_plot)) %>% 
+  #filter(all(c("mat_plot_env", 'env' ) %in% tree_on_plot)) %>% 
   
   summarize(sum_corr_count  = sum(corr_count))  %>%
-  filter(sum_corr_count > 2500)
+#  filter(sum_corr_count > 2500)
   ggplot(aes(x = factor(tree_on_plot),
              y = sum_corr_count,
              color = manag)) + 
@@ -598,10 +599,12 @@ df_full_corr_mature <- df_full_corr %>%
   filter(height_class %in% c('mature', 'mat_ENV')) %>% 
   group_by(trip_n, manag, sub_n) %>% 
   filter(distance == min(distance)) %>%
-  filter(1:n() == 1)
+  filter(1:n() == 1) %>% 
+  mutate(corr_count = case_when(corr_count > 800 ~ 800,
+                                corr_count <= 800 ~ corr_count ))
 
 
-# remove mature trees
+# remove mature trees -------------------------------------------------------------
 df_full_corr_noMature <- df_full_corr %>% 
   filter(!height_class %in% c('mature', 'mat_ENV'))# %
 
@@ -609,6 +612,15 @@ df_full_corr_noMature <- df_full_corr %>%
 df_full_corr_mrg <-df_full_corr_mature %>% 
   bind_rows(df_full_corr_noMature)
 
+# Add missing trees to BA and density -------------------------------------
+
+#df_full_corr_mrg <- 
+  df_full_corr_mrg %>% 
+  group_by(trip_n, manag) %>% 
+  distinct(height_class) %>% 
+  arrange(trip_n, manag)
+
+table(df_full_corr_mrg$height_class)  
 
 # Get species rIVI Plot + ENV--------------------------------------------------------------
 # # no frequency: not possible on plot level
@@ -631,7 +643,7 @@ df_rel_BA_plot <-
   df_full_corr_mrg %>%
   mutate(r = DBH/2,
          BA = pi*r^2,
-         BA_ha = BA*corr_count/10000)  %>%
+         BA_ha = BA*corr_count/ha)  %>%
   group_by(trip_n, manag, sub_n, species) %>%
   summarize(sp_BA = sum(BA_ha, na.rm = T)) %>%
   ungroup(.) %>%
@@ -674,12 +686,12 @@ df_full_corr_mrg  %>%
   group_by(manag) %>% #, height_class
   summarise(mean_dist = mean(distance/100, na.rm = T),
             mean_dens = 10000/(pi*mean_dist^2))
-# !!!!
+# --------------------------------------------------------
 
 # how many trees to have?
-my_dist <- seq(2,15, 0.1)
-my_densCicr   <- ha/(my_dist^2*pi)
-my_densSquare <- ha/(my_dist^2)
+my_dist <- seq(1,15, 0.1)
+my_densCicr   <- round(ha/(my_dist^2*pi), 0)
+my_densSquare <- round(ha/(my_dist^2),0)
 my_dist*2
 
 windows()
@@ -764,26 +776,26 @@ plot_IVI <- df_rel_density %>%
 #          rIVI_DBH6 = rIVI.y) %>% 
 #   mutate(diff = rIVI_DBH-rIVI_DBH6) %>%
 #   #filter(diff< -10) 
-
-  ggplot(aes(rIVI_DBH)) + 
- geom_density()
-  
-
-windows()
-p_compare_density_rIVI <-
-  dplyr::select(plot_IVI, c(trip_n, manag, sub_n, species, rIVI))  %>% #sp_BA, rel_BA, 
-  full_join(dplyr::select(plot_IVI_6, c(trip_n, manag, sub_n, species, rIVI)), 
-            by = c('trip_n', 'manag', 'sub_n', 'species')) %>% # sp_BA, rel_BA,
-  rename(rIVI_DBH = rIVI.x,
-         rIVI_DBH6 = rIVI.y) %>% 
-  mutate(diff = rIVI_DBH-rIVI_DBH6) %>%
-  pivot_longer(!c(trip_n, manag, sub_n, species, diff),
-               names_to = 'type', values_to = 'vals')  %>% 
-  ggplot(aes(vals,
-             color = type)) + 
-  geom_density(alpha = 0.5) + 
-  facet_grid(.~type)
-
+#
+#  ggplot(aes(rIVI_DBH)) + 
+# # geom_density()
+#   
+# 
+# windows()
+# p_compare_density_rIVI <-
+#   dplyr::select(plot_IVI, c(trip_n, manag, sub_n, species, rIVI))  %>% #sp_BA, rel_BA, 
+#   full_join(dplyr::select(plot_IVI_6, c(trip_n, manag, sub_n, species, rIVI)), 
+#             by = c('trip_n', 'manag', 'sub_n', 'species')) %>% # sp_BA, rel_BA,
+#   rename(rIVI_DBH = rIVI.x,
+#          rIVI_DBH6 = rIVI.y) %>% 
+#   mutate(diff = rIVI_DBH-rIVI_DBH6) %>%
+#   pivot_longer(!c(trip_n, manag, sub_n, species, diff),
+#                names_to = 'type', values_to = 'vals')  %>% 
+#   ggplot(aes(vals,
+#              color = type)) + 
+#   geom_density(alpha = 0.5) + 
+#   facet_grid(.~type)
+# 
 
 
 
