@@ -88,7 +88,8 @@ for (i in vars){
   
   # List files: from 2000 onwards:
   file_ls <- list.files(paste(myPath, "rawData/DeutschWetter", i, sep = "/"),
-                        pattern = "^20.*\\.gz$",
+                        #pattern = "^20.*\\.gz$",
+                        pattern = "^19.*\\.gz$",
                         recursive=TRUE)
   
   # read in rasters 
@@ -97,7 +98,7 @@ for (i in vars){
     #file = '11_Nov'
     ras_path = paste(myPath, 'rawData/DeutschWetter',  i, file , sep = "/")
     
-    print(file)
+    #print(file)
     # unzip file
     R.utils::gunzip(ras_path, remove = FALSE, overwrite = T)
     
