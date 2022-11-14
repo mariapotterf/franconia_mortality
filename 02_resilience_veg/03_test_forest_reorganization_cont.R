@@ -425,8 +425,6 @@ df_full_corr_mrg <-
 v_height_both = c('advanced', 
                   'mature')
 
-v_height_mature = c(#'advanced', 
-                  'mature')
 
 # make master dataframe having both height categories: 
 df_master_heights_both <-   
@@ -436,21 +434,13 @@ df_master_heights_both <-
   complete(vert_layer = .env$v_height_both)
 
 
-df_master_heights_mature <-   
-  plot_counts_df %>% 
-  mutate(vert_layer = 'mature') %>% 
-  group_by(trip_n, manag, sub_n) %>% 
-  complete(vert_layer = .env$v_height_mature)
-
-
-
 
 # Process: 
 # - get average nearest distance
 # if mature tree is missing: complete by the distance of 16m*100
 
 # complete by 0 both: advanced and Mature:
-RS2_ref_both <- 
+RS2_ref <- 
   df_full_corr_mrg %>%
   filter(count  != 0 ) %>% 
   filter(manag == 'l') %>%
@@ -470,7 +460,7 @@ RS2_ref_both <-
             ref_sd_distance     = sd(mean_distance, na.rm = TRUE)) #%>%
 
 # for DIST
-df_RS2_both <- 
+df_RS2 <- 
   df_full_corr_mrg %>% 
   filter(count  != 0 ) %>% 
   filter(manag != 'l') %>%
@@ -492,68 +482,13 @@ df_RS2_both <-
 
 
 # plot the values as density plot
-p_RS2_both <- df_RS2_both %>% 
+p_RS2 <- df_RS2 %>% 
   ggplot(aes(RS2, fill = manag)) +
   #xlim(-3,3) +
   dens_plot_details()+
   ggtitle('Horizontal str. [adv+mature]')
 
-p_RS2_both
-
-
-
-
-# complete by 0 only mature trees:
-
-RS2_ref_mature <- 
-  df_full_corr_mrg %>%
-  filter(count  != 0 ) %>% 
-  filter(manag == 'l') %>%
-  filter(vert_layer != 'regen') %>% 
-  dplyr::select(trip_n, manag, sub_n, distance, vert_layer) %>%
-  right_join(filter(df_master_heights_mature, manag == 'l')) %>%
-  mutate(distance = case_when(is.na(distance) ~ 16*100, # complete distances of 16 m if the tree is not present in ENV
-                              !is.na(distance) ~ distance)) %>%
-  group_by(trip_n, manag, sub_n, vert_layer) %>% 
-  slice(which.min(distance)) %>% # filter to have only the shortesdt distance (if several trees were recorded eg on plot)
-  ungroup(.) %>% 
-  group_by(trip_n, manag, sub_n) %>% # vert_layer 
-  summarise(mean_distance = mean(distance, na.rm = T)) %>%
-  ungroup(.) %>% 
-  group_by(trip_n) %>% #, vert_layer
-  summarize(ref_mean_distance   = mean(mean_distance, na.rm = TRUE),
-            ref_sd_distance     = sd(mean_distance, na.rm = TRUE)) #%>%
-
-# for DIST
-df_RS2_mature <- 
-  df_full_corr_mrg %>% 
-  filter(count  != 0 ) %>% 
-  filter(manag != 'l') %>%
-  filter(vert_layer != 'regen') %>% 
-  dplyr::select(trip_n, manag, sub_n, distance, vert_layer) %>%
-  right_join(filter(df_master_heights_mature, manag != 'l')) %>%
-  mutate(distance = case_when(is.na(distance) ~ 16*100, # complete distances of 16 m if the tree is not present in ENV
-                              !is.na(distance) ~ distance)) %>%
-  group_by(trip_n, manag, sub_n) %>% 
-  slice(which.min(distance)) %>% # filter to have only the shortesdt distance (if several trees were recorded eg on plot)
-  ungroup(.) %>% 
-  group_by(trip_n, manag, sub_n) %>% #, vert_layer
-  summarise(mean_distance = mean(distance, na.rm = T)) %>%
-  ungroup(.) %>% 
-  group_by(trip_n, manag) %>% 
-  summarize(dist_mean_distance   = mean(mean_distance, na.rm = TRUE)) %>% 
-  left_join(RS2_ref_mature, by  = "trip_n") %>% 
-  mutate(RS2 = (dist_mean_distance  - ref_mean_distance )/ref_sd_distance)
-
-
-# plot the values as density plot
-p_RS2_mature <- df_RS2_mature %>% 
-  ggplot(aes(RS2, fill = manag)) +
-  #xlim(-3,3) +
-  dens_plot_details()+
-  ggtitle('Horizontal str. [mature]')
-
-p_RS2_mature
+p_RS2
 
 
 
@@ -744,7 +679,7 @@ p_6vars <- ggarrange(
   p_RA2 + ylim(0,2) ,
   p_RA3 + ylim(0,2) ,
   p_RS1 + ylim(0,2) ,
-  p_RS2_mature + ylim(0,2) ,
+  p_RS2_both + ylim(0,2) ,
   p_RS3 + ylim(0,2) ,
   nrow = 2,
   ncol = 3,
@@ -762,7 +697,7 @@ out_reorg <-
   full_join(dplyr::select(df_RA2, c(trip_n, manag, RA2, ref_avg_rich    ))) %>%
   full_join(dplyr::select(df_RA3, c(trip_n, manag, RA3, ref_mean_shade ))) %>% 
   full_join(dplyr::select(df_RS1, c(trip_n, manag, RS1, ref_mean_dens ))) %>% #,
-  full_join(dplyr::select(df_RS2_mature, c(trip_n, manag, RS2, ref_mean_distance ))) %>%
+  full_join(dplyr::select(df_RS2_both, c(trip_n, manag, RS2, ref_mean_distance ))) %>%
   full_join(dplyr::select(df_RS3, c(trip_n, manag, RS3, ref_mean_vLayer )))#%>% 
   
  # mutate() # combine indicators together
