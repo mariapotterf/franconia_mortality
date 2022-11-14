@@ -52,13 +52,32 @@ df_spei   <- fread(paste(myPath, outTable, 'xy_spei.csv', sep = '/'))
 
 
 
+# Get patch size data:
+
+dat_size  <- read_excel(paste(myPath, '03_plot_sampling/sites_identification/final/share', 
+                              "sites_unique_ID.xlsx", 
+                              sep = '/'))
+
+# keep only useful columns
+df_patch <- 
+  dat_size %>% 
+  select(Name, Area_m2) %>% 
+  separate(Name, c('trip_n', 'dom_sp', 'manag'), '-') %>% 
+  mutate(manag = tolower(manag),
+         trip_n = as.character(as.numeric(trip_n))) %>% 
+  filter(manag != 'l') %>% 
+  filter(!trip_n %in% c(45, 65)) %>% 
+  dplyr::select(!dom_sp)
+     #    trip_n = as.numeric(trip_n)) 
+
+
 
 # Process: -----------------------------------------------------------------------
 # split Name in three columsn, get means per year and site (to have only 40 vals)
 # calculate anomalies (1986-2015 vs 2018-2020)
 # get only summer temperatures? vegetation period?
 
-# now he climate values are only from 2000 to 2020!!! need to complete the years from 1986!
+# !!! now he climate values are only from 2000 to 2020!!! need to complete the years from 1986!
 
 
 # Get anomalies:  
@@ -66,7 +85,8 @@ df_spei   <- fread(paste(myPath, outTable, 'xy_spei.csv', sep = '/'))
 reference_period <- 1986:2015
 drought_period   <- 2018:2020
 
-#df_prec_out <- 
+# Precipitation
+df_prec_out <- 
   df_prec %>% 
   filter(month %in% 4:10 & year %in% 1986:2020) %>% 
   separate(Name, c('trip_n', 'dom_sp', 'manag'), '-') %>% 
@@ -75,49 +95,78 @@ drought_period   <- 2018:2020
     group_by(trip_n, year) %>% 
   summarize(avg_prec = mean(vals)) %>% 
    # filter(year %in% drought_period)
-    mutate(mean_ref   = mean(avg_prec[year %in% reference_period], na.rm = T),
-           mean_18_20 = mean(avg_prec[year %in% drought_period], na.rm = T),
+    mutate(prec_ref   = mean(avg_prec[year %in% reference_period], na.rm = T),
+           prec_18_20 = mean(avg_prec[year %in% drought_period], na.rm = T),
            #anomaly    = disturbance_ha / mean(disturbance_ha[year %in% reference_period], na.rm = TRUE) - 1,
-           anomaly_18_20  = mean_18_20 / mean_ref - 1) #%>% 
+           anomaly_prec_18_20  = prec_18_20 / prec_ref - 1) %>% 
+  dplyr::select(c(prec_ref, prec_18_20, anomaly_prec_18_20)) %>% 
+  distinct() 
 
 
 df_temp_out <- 
   df_temp %>% 
-  filter(month %in% 4:10) %>% # get only vegetation season
+  filter(month %in% 4:10 & year %in% 1986:2020) %>% # get only vegetation season
   separate(Name, c('trip_n', 'dom_sp', 'manag'), '-') %>% 
   group_by(trip_n, year) %>% 
   summarize(avg_temp = mean(vals)) %>% 
-  mutate(mean_ref   = mean(avg_temp[year %in% reference_period], na.rm = T),
-         mean_18_20 = mean(avg_temp[year %in% drought_period], na.rm = T),
-         anomaly_18_20  = mean_18_20 / mean_ref - 1) #%>% 
+  mutate(temp_ref   = mean(avg_temp[year %in% reference_period], na.rm = T),
+         temp_18_20 = mean(avg_temp[year %in% drought_period], na.rm = T),
+         anomaly_temp_18_20  = temp_18_20 / temp_ref - 1) %>% 
+  dplyr::select(c(temp_ref, temp_18_20, anomaly_temp_18_20)) %>% 
+  distinct() 
 
 
 
+# Merge clim data with Euclidean distances -------------------------------------
+df_euc <- out_reorg_pos %>% 
+  dplyr::select(c(trip_n, manag, euclid_dist))
+
+
+df <- 
+  df_euc %>% 
+    as.data.frame() %>% 
+  left_join(df_prec_out) %>% 
+  left_join(df_temp_out) %>% 
+  left_join(df_patch, by = c("trip_n", "manag")) %>% 
+  mutate(manag = as.factor(manag))  
+
+
+# scatter: euclid vs size:
+p_dist_patch <- df %>% 
+  ggplot(aes(x = Area_m2/10000 ,
+             y = euclid_dist,
+             color = manag)) +
+  geom_point() +
+  facet_grid(.~manag)
 
 
 
-# Calculate anomalies: first remove the grids that have less than 1 ha/year of mortality at average:
-# is this valid for my hexa data as well? !
-# calculate anomalies for the year 2018-2020 as
-# calculate anomalies from year 2019-2020
-#out.df2 <-
-  out.df %>%
-  group_by(gridindex) %>%
-  filter(sum(disturbance_ha) > 35) %>% # Exclude areas with less than 1 ha/yr of disturbances on average
-  filter(sum(disturbance_ha[year %in% reference_period]) > 30) %>% # Exclude areas with less than 1 ha/yr of disturbances on average
-  mutate(mean_ref    = mean(disturbance_ha[year %in% reference_period], na.rm = T),
-         sum_18_20   = sum( disturbance_ha[year %in% drought_period], na.rm = T)/3,
-         sum_19_20   = sum( disturbance_ha[year %in% c(2019,2020)], na.rm = T)/2,
-         anomaly     = disturbance_ha / mean(disturbance_ha[year %in% reference_period], na.rm = TRUE) - 1,
-         anomaly_18_20  = sum_18_20 / mean_ref - 1,
-         anomaly_19_20  = sum_19_20 / mean_ref - 1) %>% 
-  ungroup()
+# test GAMM:
+library(mgcv)
+theme_set(theme_bw())
+library(tidymv)
+
+model <- gam(
+  euclid_dist ~
+    manag +
+    s(anomaly_temp_18_20),
+  data = df
+)
+
+summary(model) 
+
+#https://cran.r-project.org/web/packages/tidymv/vignettes/predict-gam.html
 
 
+model_p <- predict_gam(model)
+
+model_p
 
 
-
-
+p_anom_temp <- model_p %>% 
+  ggplot(aes(y = fit  ,
+           x = anomaly_temp_18_20)) +
+  geom_smooth_ci(manag)
 
 
 # Disturbance intensity ---------------------------------------------------------
@@ -166,3 +215,11 @@ df_full_corr_mrg %>%
   group_by(manag) %>% 
   mutate(avg_BA = mean(BA_ha, na.rm = T)) %>%
   View()
+
+ 
+ 
+ 
+save(p_dist_patch, # scatter plot
+      p_anom_temp, # test model: temperature
+      file="outData/auxData.Rdata")
+ 
