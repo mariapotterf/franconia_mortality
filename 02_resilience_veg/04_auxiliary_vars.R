@@ -27,6 +27,7 @@ theme_update(legend.position = 'bottom')
 
 # Input data -------------------------------------------------------------------
 source('my_vars_and_functions.R')
+source('myPaths.R')
 
 getwd()
 load(file = paste(getwd(), "outData/dataToPlot.Rdata", sep = '/'))
@@ -44,8 +45,80 @@ head(out_reorg_pos)       # - Euclidean distances for each site
 # Master plots:
 head(plot_counts_df)      # - total count of the plots per triplets & categories: to standardize the densities...
 
+# Get climatic variables:
+df_prec   <- fread(paste(myPath, outTable, 'xy_precip_2000.csv', sep = '/'))
+df_temp   <- fread(paste(myPath, outTable, 'xy_temp_2000.csv', sep = '/'))
+df_spei   <- fread(paste(myPath, outTable, 'xy_spei.csv', sep = '/'))
 
-# Process: 
+
+
+
+# Process: -----------------------------------------------------------------------
+# split Name in three columsn, get means per year and site (to have only 40 vals)
+# calculate anomalies (1986-2015 vs 2018-2020)
+# get only summer temperatures? vegetation period?
+
+# now he climate values are only from 2000 to 2020!!! need to complete the years from 1986!
+
+
+# Get anomalies:  
+# get vector of years as reference
+reference_period <- 1986:2015
+drought_period   <- 2018:2020
+
+#df_prec_out <- 
+  df_prec %>% 
+  filter(month %in% 4:10 & year %in% 1986:2020) %>% 
+  separate(Name, c('trip_n', 'dom_sp', 'manag'), '-') %>% 
+  group_by(trip_n, year) %>% 
+    ungroup(.) %>% 
+    group_by(trip_n, year) %>% 
+  summarize(avg_prec = mean(vals)) %>% 
+   # filter(year %in% drought_period)
+    mutate(mean_ref   = mean(avg_prec[year %in% reference_period], na.rm = T),
+           mean_18_20 = mean(avg_prec[year %in% drought_period], na.rm = T),
+           #anomaly    = disturbance_ha / mean(disturbance_ha[year %in% reference_period], na.rm = TRUE) - 1,
+           anomaly_18_20  = mean_18_20 / mean_ref - 1) #%>% 
+
+
+df_temp_out <- 
+  df_temp %>% 
+  filter(month %in% 4:10) %>% # get only vegetation season
+  separate(Name, c('trip_n', 'dom_sp', 'manag'), '-') %>% 
+  group_by(trip_n, year) %>% 
+  summarize(avg_temp = mean(vals)) %>% 
+  mutate(mean_ref   = mean(avg_temp[year %in% reference_period], na.rm = T),
+         mean_18_20 = mean(avg_temp[year %in% drought_period], na.rm = T),
+         anomaly_18_20  = mean_18_20 / mean_ref - 1) #%>% 
+
+
+
+
+
+
+# Calculate anomalies: first remove the grids that have less than 1 ha/year of mortality at average:
+# is this valid for my hexa data as well? !
+# calculate anomalies for the year 2018-2020 as
+# calculate anomalies from year 2019-2020
+#out.df2 <-
+  out.df %>%
+  group_by(gridindex) %>%
+  filter(sum(disturbance_ha) > 35) %>% # Exclude areas with less than 1 ha/yr of disturbances on average
+  filter(sum(disturbance_ha[year %in% reference_period]) > 30) %>% # Exclude areas with less than 1 ha/yr of disturbances on average
+  mutate(mean_ref    = mean(disturbance_ha[year %in% reference_period], na.rm = T),
+         sum_18_20   = sum( disturbance_ha[year %in% drought_period], na.rm = T)/3,
+         sum_19_20   = sum( disturbance_ha[year %in% c(2019,2020)], na.rm = T)/2,
+         anomaly     = disturbance_ha / mean(disturbance_ha[year %in% reference_period], na.rm = TRUE) - 1,
+         anomaly_18_20  = sum_18_20 / mean_ref - 1,
+         anomaly_19_20  = sum_19_20 / mean_ref - 1) %>% 
+  ungroup()
+
+
+
+
+
+
+
 
 # Disturbance intensity ---------------------------------------------------------
 # Get the BA of removed mature trees:
