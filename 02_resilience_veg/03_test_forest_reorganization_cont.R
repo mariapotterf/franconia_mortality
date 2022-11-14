@@ -289,16 +289,24 @@ p_RA2 <-df_RA2 %>%
 
 # RA2 Plot richness predictors --------------------------------------------
 
-plot_IVI_exp %>%
+p_RA2_pred <- plot_IVI_exp %>%
   filter(sp_count  != 0 ) %>% 
   group_by(trip_n, manag, sub_n) %>% 
   summarise(richness = n()) %>% 
-  left_join(trip_species) %>% 
-  ggplot(aes(x = manag,
-             y = richness,
-             color = dom_sp)) +
-  geom_jitter()
+  group_by(trip_n, manag) %>%
+  summarize(mean_richness = mean(richness, na.rm = T)) %>% 
+  as.data.frame() %>%
+  left_join(trip_species, by = "trip_n") %>% 
+  ggplot(aes(x = manag, #factor(manag),
+             y = mean_richness,
+             color = trip_n)) + # , 
+  geom_point() + 
+  geom_line(aes(group = trip_n), alpha = 0.5) +
+  facet_wrap(.~dom_sp) +
+  theme(legend.position = 'none')
+ 
 
+  
 
 # RA3: competition --------------------------------------------------------
 # community weighted means of shade tolerance DIST <-> REF
