@@ -202,7 +202,7 @@ df_RA1 <-
   drop_na(.) %>% # remove NA values, to keep only species that are REF value (dominant under REF conditions)
   mutate(RA1 = (ref_rIVI_mean - avg_iIVI_dist) / ref_iIVI_sd)
 
-### Plot the values as density plot --------------------------------------------
+### p_RA1: density Plot the values as density plot --------------------------------------------
 
 p_RA1 <- df_RA1 %>% 
   ggplot(aes(RA1, fill = manag)) + 
@@ -213,7 +213,7 @@ p_RA1 <- df_RA1 %>%
 
 # 
 
-# RA 1 predictors ---------------------------------------------------------
+# plot RA1 raw ---------------------------------------------------------
 
 p_RA1_pred <-
   plot_IVI_exp %>%
@@ -230,8 +230,7 @@ p_RA1_pred <-
              color = dom_sp)) + # , 
   geom_point() + 
   geom_line(aes(group = trip_n), alpha = 0.5) +
-  facet_wrap(.~dom_sp)
-
+  facet_grid(.~dom_sp)
  
 
 
@@ -276,7 +275,7 @@ df_RA2 <-
                          TRUE ~ RA2)) #%>% 
 
 
-## Plot the values as density plot --------------------------------------------
+## p_RA2: density: Plot the values as density plot --------------------------------------------
 p_RA2 <-df_RA2 %>% 
   ggplot(aes(RA2, fill = manag)) +
   xlim(-3,3) +
@@ -287,7 +286,7 @@ p_RA2 <-df_RA2 %>%
 
 
 
-# RA2 Plot richness predictors --------------------------------------------
+# RA2 Plot richness raw --------------------------------------------
 
 p_RA2_pred <- plot_IVI_exp %>%
   filter(sp_count  != 0 ) %>% 
@@ -302,7 +301,7 @@ p_RA2_pred <- plot_IVI_exp %>%
              color = trip_n)) + # , 
   geom_point() + 
   geom_line(aes(group = trip_n), alpha = 0.5) +
-  facet_wrap(.~dom_sp) +
+  facet_grid(.~dom_sp) +
   theme(legend.position = 'none')
  
 
@@ -334,7 +333,7 @@ df_RA3 <-
 
 
 
-### Plot the values as density plot --------------------------------------------
+### p_RA3 density Plot the values as density plot --------------------------------------------
 p_RA3 <- df_RA3 %>% 
   ggplot(aes(RA3, fill = manag)) +
   xlim(-1.5,1.5) +
@@ -343,7 +342,7 @@ p_RA3 <- df_RA3 %>%
 
 
 
-### p_RA3_pred  ----------------------------------------------------------------------------
+### p_RA3_raw  ----------------------------------------------------------------------------
 p_RA3_pred <- plot_IVI_exp %>% 
   left_join(trait_df, by = c('species')) %>% #, by = character()
   ungroup(.) %>% 
@@ -357,7 +356,7 @@ p_RA3_pred <- plot_IVI_exp %>%
              color = trip_n)) + # , 
   geom_point() + 
   geom_line(aes(group = trip_n), alpha = 0.5) +
-  facet_wrap(.~dom_sp) +
+  facet_grid(.~dom_sp) +
   theme(legend.position = 'none')
 
 
@@ -388,7 +387,7 @@ p_RS1 <- df_RS1 %>%
   ggtitle('Stem density')
 
 
-### Plot pred ------------------------------------------------------------------
+### p_RS1 raw  ------------------------------------------------------------------
 p_RS1_pred <- plot_IVI_exp %>% 
   group_by(trip_n,manag) %>% 
   summarize(mean_dens   = mean(all_count, na.rm = TRUE)) %>%
@@ -399,7 +398,7 @@ p_RS1_pred <- plot_IVI_exp %>%
              color = trip_n)) + # , 
   geom_point() + 
   geom_line(aes(group = trip_n), alpha = 0.5) +
-  facet_wrap(.~dom_sp) +
+  facet_grid(.~dom_sp) +
   theme(legend.position = 'none')
 
 
@@ -574,7 +573,7 @@ p_dist_16 <- df_full_corr_mrg %>%
              color = manag)) +
   stat_summary() +
   coord_cartesian(ylim = c(0, 8)) +
-  ggtitle('Added trees [at 16 m dist]')
+  ggtitle('Added missing trees [set to 16 m]')
 
 
 # get a plot of teh average distances -------------------------------------------
@@ -631,7 +630,7 @@ p_avg_distance_nearest <-
                      values = c("darkgreen","red")) +
   ylab('Avg Distance [m]') +
   ggtitle('Nearest Tree\nMature/advanced reg [m]') +
-  ylim(0,6) +
+  coord_cartesian(ylim = c(0, 8)) +
   theme(legend.position = 'bottom')
 # 
 # 
@@ -702,7 +701,7 @@ df_RS3[as.matrix(df_RS3) == Inf]  <- 0
 #              y = mean_vLayer)) +
 #   geom_col(identity = )
   
-### Plot RS3 ---------------------------------------------------------------
+### Plot RS3: raw ---------------------------------------------------------------
 p_RS3_pred <- 
   df_full_corr_mrg %>%
   filter(count  != 0 ) %>% 
@@ -720,7 +719,7 @@ p_RS3_pred <-
              color = trip_n)) + # , 
   geom_point() + 
   geom_line(aes(group = trip_n), alpha = 0.5) +
-  facet_wrap(.~dom_sp) +
+  facet_grid(.~dom_sp) +
   theme(legend.position = 'none')
   
 
@@ -837,7 +836,7 @@ p_euclid_lollipop <-
                labeller = labeller(manag = manag.labs)) +
     xlab('Triplet number') +
   ylab('Euclidean distance') +
-    ggrepel::geom_text_repel(aes(label = trip_n, color = dom_sp),  size =3.5) +
+   # ggrepel::geom_text_repel(aes(label = trip_n, color = dom_sp),  size =3.5) +
   theme(axis.text.x= element_blank())  
                  
 windows()
