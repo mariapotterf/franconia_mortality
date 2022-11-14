@@ -89,7 +89,7 @@ for (i in vars){
   # List files: from 2000 onwards:
   file_ls <- list.files(paste(myPath, "rawData/DeutschWetter", i, sep = "/"),
                         #pattern = "^20.*\\.gz$",
-                        pattern = "^19.*\\.gz$",
+                        #pattern = "^19.*\\.gz$",
                         recursive=TRUE)
   
   # read in rasters 
