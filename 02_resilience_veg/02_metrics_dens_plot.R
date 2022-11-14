@@ -314,7 +314,7 @@ df_advanced_env_corr <- df_advanced_env %>%
 range(df_advanced_env_corr$corr_count)
   
 ## ENV: mature: -------------------------------------------------------------------
-#### !!!! replaced 2500 trees/ha to 800 trees, based on averagre 2.5 m between trees!!
+#### keep cap vales on 2500 trees/ha - suggested by R+W on 11/14/2022
 df_mature_env_corr <- 
   df_mature_trees_env %>% 
   mutate(count          = 1, 
@@ -323,8 +323,8 @@ df_mature_env_corr <-
          correct_factor = ha / area_corr,
          corr_count     = round(count * correct_factor)
   ) %>% 
-  mutate(corr_count = case_when(corr_count <= 800 ~ corr_count,
-                                 corr_count > 800 ~ 800)) %>% # replaced from 2500!!! 
+  mutate(corr_count = case_when(corr_count <= 2500 ~ corr_count,
+                                 corr_count > 2500 ~ 2500)) %>% # replaced from 2500!!! 
  # summarize(min(corr_count), max(corr_count)) 
   mutate(height_class = 'mat_ENV') %>% 
   dplyr::select(trip_n, manag, sub_n, species, 
@@ -604,11 +604,13 @@ df_full_corr_mature <- df_full_corr %>%
   group_by(trip_n, manag, sub_n) %>% 
   filter(distance == min(distance)) %>%
   filter(1:n() == 1) %>% 
-  mutate(corr_count2 = case_when(height_class == 'mature' ~ 1000,
-                                 (corr_count >= 800 & manag == 'c') ~ 400, # distance 4.97 m
-                                (corr_count >= 800 & manag == 'd') ~ 650, # distance 3.90 m
-                                (corr_count >= 800 & manag == 'l') ~ 800, # distance 2.47 m
-                                corr_count < 800 ~ corr_count )) %>% 
+  mutate(corr_count2 = case_when(corr_count >= 2500 ~ 2500, # distance 4.97 m
+                                 corr_count < 2500 ~ corr_count )) %>% 
+  # mutate(corr_count2 = case_when(height_class == 'mature' ~ 1000,
+  #                                (corr_count >= 800 & manag == 'c') ~ 400, # distance 4.97 m
+  #                               (corr_count >= 800 & manag == 'd') ~ 650, # distance 3.90 m
+  #                               (corr_count >= 800 & manag == 'l') ~ 800, # distance 2.47 m
+  #                               corr_count < 800 ~ corr_count )) %>% 
   dplyr::select(-c(corr_count)) %>% 
   rename(corr_count = corr_count2)
 
