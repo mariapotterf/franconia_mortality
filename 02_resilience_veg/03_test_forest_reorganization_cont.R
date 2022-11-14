@@ -334,7 +334,7 @@ df_RA3 <-
 
 
 
-### Plot the values as density plot --------------------------------------
+### Plot the values as density plot --------------------------------------------
 p_RA3 <- df_RA3 %>% 
   ggplot(aes(RA3, fill = manag)) +
   xlim(-1.5,1.5) +
@@ -342,6 +342,23 @@ p_RA3 <- df_RA3 %>%
   ggtitle('Shade tolerance')
 
 
+
+### p_RA3_pred  ----------------------------------------------------------------------------
+p_RA3_pred <- plot_IVI_exp %>% 
+  left_join(trait_df, by = c('species')) %>% #, by = character()
+  ungroup(.) %>% 
+  group_by(trip_n, manag) %>% 
+  summarize(mean_shade   = weighted.mean(Shade_tolerance,   
+                                             rIVI, na.rm = TRUE)) %>%
+  as.data.frame() %>%
+  left_join(trip_species, by = "trip_n") %>% 
+  ggplot(aes(x = manag, #factor(manag),
+             y = mean_shade,
+             color = trip_n)) + # , 
+  geom_point() + 
+  geom_line(aes(group = trip_n), alpha = 0.5) +
+  facet_wrap(.~dom_sp) +
+  theme(legend.position = 'none')
 
 
 
@@ -369,6 +386,21 @@ p_RS1 <- df_RS1 %>%
   xlim(-15,15) +
   dens_plot_details()+
   ggtitle('Stem density')
+
+
+### Plot pred ------------------------------------------------------------------
+p_RS1_pred <- plot_IVI_exp %>% 
+  group_by(trip_n,manag) %>% 
+  summarize(mean_dens   = mean(all_count, na.rm = TRUE)) %>%
+  as.data.frame() %>%
+  left_join(trip_species, by = "trip_n") %>% 
+  ggplot(aes(x = manag, 
+             y = mean_dens,
+             color = trip_n)) + # , 
+  geom_point() + 
+  geom_line(aes(group = trip_n), alpha = 0.5) +
+  facet_wrap(.~dom_sp) +
+  theme(legend.position = 'none')
 
 
 
@@ -603,60 +635,7 @@ p_avg_distance_nearest <-
   theme(legend.position = 'bottom')
 # 
 # 
-# # aveg distance all Mature:
-# p_avg_distance_mature <- 
-#   df_full_corr_mrg %>% 
-#   filter(count  != 0 ) %>% 
-#   filter(vert_layer != 'regen') %>% 
-#   dplyr::select(trip_n, manag, sub_n, distance, height_class) %>%
-#     filter(height_class %in% c("mature","mat_ENV")) %>% 
-#   full_join(plot_counts_df) %>% # add the 0 distances:! how to account if tree is missing??
-#   ggplot(aes(x = factor(manag),
-#              y = distance/100,
-#              color = height_class)) +
-#   stat_summary(fun = mean) + 
-#     scale_color_manual(name = "Location", 
-#                        breaks=c("mat_ENV", "mature"),
-#                        labels=c("ENV", "Plot"),
-#                        values = c("red","black")) +
-#   ylab('Avg Distance [m]') +
-#    ylim(0,6)+
-#   ggtitle('Mature\ntree') +
-#   theme(legend.position = 'bottom') 
-# 
-# 
-# 
-# 
-# # avg distance all advanced:
-# p_avg_distance_adv <- 
-#   df_full_corr_mrg %>% 
-#     filter(count  != 0 ) %>% 
-#     filter(vert_layer != 'regen') %>% 
-#     dplyr::select(trip_n, manag, sub_n, distance, height_class) %>%
-#     filter(height_class %in% c("HK7","adv_ENV")) %>%
-#     full_join(plot_counts_df) %>% # add the missing trees:! how to account if tree is missing??
-#     ggplot(aes(x = factor(manag),
-#                y = distance/100,
-#                color = height_class)) +
-#     stat_summary(fun = mean) + 
-#     scale_color_manual(name = "Location", 
-#                        breaks=c("adv_ENV", "HK7"),
-#                        labels=c("ENV", "Plot"),
-#                        values = c("red","black")) +
-#   ylab('Avg Distance [m]') +
-#   ylim(0,6) +
-#   ggtitle('Advanced reg\ntree') +
-#   theme(legend.position = 'bottom') 
-# 
-#   
-# 
-# p_distances <- ggarrange(p_avg_distance_nearest, 
-#                          p_avg_distance_adv,
-#                          p_avg_distance_mature,
-#                          nrow = 2, ncol = 2,
-#                          hjust=-0.8)
-# 
-# (p_distances)
+
 
 # RS3: Vertical structure -------------------------------------------------
 # 3 layers: 
@@ -723,6 +702,30 @@ df_RS3[as.matrix(df_RS3) == Inf]  <- 0
 #              y = mean_vLayer)) +
 #   geom_col(identity = )
   
+### Plot RS3 ---------------------------------------------------------------
+p_RS3_pred <- 
+  df_full_corr_mrg %>%
+  filter(count  != 0 ) %>% 
+  dplyr::select(trip_n, manag, sub_n, vert_layer) %>%
+  distinct(.) %>%
+  group_by(trip_n, manag, sub_n) %>% 
+  summarise(vertical_n = n()) %>%
+  ungroup(.) %>% 
+  group_by(trip_n, manag) %>% 
+  summarize(mean_vLayer   = mean(vertical_n, na.rm = TRUE)) %>%
+  as.data.frame() %>%
+  left_join(trip_species, by = "trip_n") %>% 
+  ggplot(aes(x = manag, #factor(manag),
+             y = mean_vLayer,
+             color = trip_n)) + # , 
+  geom_point() + 
+  geom_line(aes(group = trip_n), alpha = 0.5) +
+  facet_wrap(.~dom_sp) +
+  theme(legend.position = 'none')
+  
+
+
+
 
 # plot the values as density plot
 p_RS3 <- df_RS3 %>% 
