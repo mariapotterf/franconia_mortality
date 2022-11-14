@@ -215,23 +215,28 @@ p_RA1 <- df_RA1 %>%
 
 # RA 1 predictors ---------------------------------------------------------
 
-#p_RA1_pred <-
-plot_IVI_exp %>%
+p_RA1_pred <-
+  plot_IVI_exp %>%
   dplyr::select(trip_n, manag, sub_n, species, rIVI) %>%
   group_by(trip_n, manag, species) %>%
   summarize(ref_rIVI_mean = mean(rIVI, na.rm = T)) %>% 
   ungroup(.) %>% 
-  group_by(trip_n) %>% 
-  filter(ref_rIVI_mean == max(ref_rIVI_mean)) %>% 
-  ungroup(.) %>% 
-  left_join(trip_species)# %>% 
-  ggplot(aes(y = ref_rIVI_mean,
-             x = manag,
-             color = dom_sp
-             )) +
-  #geom_boxplot() +
-  geom_point() #+
-  #geom_line(aes(group = paired))
+  group_by(trip_n, manag) %>% 
+  filter(ref_rIVI_mean == max(ref_rIVI_mean)) %>%
+  as.data.frame() %>%
+  left_join(trip_species, by = "trip_n") %>% 
+  ggplot(aes(x = manag, #factor(manag),
+             y = ref_rIVI_mean,
+             color = dom_sp)) + # , 
+  geom_point() + 
+  geom_line(aes(group = trip_n), alpha = 0.5) +
+  facet_wrap(.~dom_sp)
+
+ 
+
+
+
+
 
 
 
