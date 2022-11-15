@@ -137,9 +137,6 @@ df_full_corr_mrg %>%
 
 # Get drivers of forest change: disturbance severity, gap size? to complete !! !!!
 
-# disturbance severity: the difference between the basal area of mature trees between teh REF and DIST
-
-
 
 
 
@@ -412,6 +409,21 @@ df_full_corr_mrg <-
   mutate(vert_layer = case_when(height_class %in% c("HK1", "HK2", "HK3", "HK4", "HK5","HK6") ~ 'regen',
                                 height_class %in% c("HK7","adv_ENV" ) ~ 'advanced',
                                 height_class %in% c("mature","mat_ENV" ) ~ 'mature')) 
+
+
+
+# Get stem density by vertical classes:
+p_density_vert <- 
+  df_full_corr_mrg %>%  
+    group_by(trip_n, manag, vert_layer) %>% 
+   # summarize(mean_dens = mean(corr_count)) %>% 
+    ggplot(aes(x = manag,
+               y = corr_count, #mean_dens,
+               fill = manag)) +
+    geom_boxplot(outlier.size =0.5) +
+    facet_wrap(.~vert_layer, scales = 'free')
+
+
 
 # 3 layers: 
 # - regeneration (<= less then 2 m height)
