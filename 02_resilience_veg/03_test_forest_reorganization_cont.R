@@ -1,7 +1,7 @@
 # Quantify forest reorganization;
 
 # read data
-# each triplet categorize in one of teh characteristics:
+# each triplet categorize in one of the characteristics:
 # as proposed by Rupert
 # for inpt data: use the plot + nearest distance tree data to get the dbh, BA, stem density, etc...
 
@@ -38,6 +38,10 @@ dens_plot_details <- function() {
                         labels=c("Managed", "Unmanaged")
   ))
 }
+
+
+
+
 
 
 # Input data -------------------------------------------------------------------
@@ -135,13 +139,6 @@ df_full_corr_mrg %>%
   #geom_boxplot()
 
 
-# Get drivers of forest change: disturbance severity, gap size? to complete !! !!!
-
-
-
-
-
-
 
 # Get new propensity of forest reorganization: 
 # need to get species importance values per plot, not per site!!
@@ -212,7 +209,7 @@ p_RA1 <- df_RA1 %>%
 
 # plot RA1 raw ---------------------------------------------------------
 
-p_RA1_pred <-
+#p_RA1_pred <-
   plot_IVI_exp %>%
   dplyr::select(trip_n, manag, sub_n, species, rIVI) %>%
   group_by(trip_n, manag, species) %>%
@@ -230,6 +227,35 @@ p_RA1_pred <-
   facet_grid(.~dom_sp)
  
 
+#p_RA1_pred <-
+plot_IVI_exp %>%
+  dplyr::select(trip_n, manag, sub_n, species, rIVI) %>%
+  group_by(trip_n, manag, species) %>%
+  summarize(ref_rIVI_mean = mean(rIVI, na.rm = T)) %>% 
+  ungroup(.) %>% 
+  group_by(trip_n, manag) %>% 
+  filter(ref_rIVI_mean == max(ref_rIVI_mean)) %>%
+  as.data.frame() %>%
+  left_join(trip_species, by = "trip_n") %>% 
+  ggplot(aes(x = manag, #factor(manag),
+             y = ref_rIVI_mean,
+             color = dom_sp)) + # , 
+  geom_point() + 
+  geom_line(aes(group = trip_n), alpha = 0.5) +
+  facet_grid(.~dom_sp)
+
+
+
+
+details_boxpl <- function() {
+  list(
+    geom_boxplot(alpha = 0.5),
+    geom_vline(xintercept = 0, colour="red", linetype = "dashed"),
+    scale_fill_discrete(name = "Management", 
+                        breaks=c("c", "d", 'l'),
+                        labels=c("Managed", "Unmanaged", "Reference")
+    ))
+}
 
 
 
