@@ -28,18 +28,34 @@ theme_update(legend.position = 'bottom')
 
 
 
-# make a function to store details about plotting
+# Store details about labeling and plotting -------------------------------------
+
+manag_acc      <- c("c", "d", 'l')
+manag_labs     <- c("Man", "Unm", "Ref")
+
+
+# For density plot:
 dens_plot_details <- function() {
   list(
     geom_density(alpha = 0.5),
     geom_vline(xintercept = 0, colour="red", linetype = "dashed"),
     scale_fill_discrete(name = "Management", 
-                        breaks=c("c", "d"),
-                        labels=c("Managed", "Unmanaged")
+                        breaks = manag_acc,    #c("c", "d"),
+                        labels = manag_labs    #c("Managed", "Unmanaged")
   ))
 }
 
-
+# For raw values plotting: 
+details_boxpl <- function() {
+  list(
+    scale_x_discrete(breaks = manag_acc,
+                     labels = manag_labs),
+    facet_grid(.~dom_sp),
+    theme(legend.position = 'none',
+          axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1)
+    )  
+  )
+}
 
 
 
@@ -185,7 +201,7 @@ RA1_dom_SD <-
   distinct()
 
 
-# Calculate the difference betwee disturbed and reference condistions: 
+# Calculate the difference between disturbed and reference conditions: 
 df_RA1 <-
   plot_IVI_exp %>%
   filter(manag != 'l') %>%
@@ -198,7 +214,8 @@ df_RA1 <-
 
 ### p_RA1: density Plot the values as density plot --------------------------------------------
 
-p_RA1 <- df_RA1 %>% 
+p_RA1 <- 
+  df_RA1 %>% 
   ggplot(aes(RA1, fill = manag)) + 
   xlim(-5,5) +
   dens_plot_details() +
@@ -247,15 +264,7 @@ plot_IVI_exp %>%
 
 
 
-details_boxpl <- function() {
-  list(
-    geom_boxplot(alpha = 0.5),
-    geom_vline(xintercept = 0, colour="red", linetype = "dashed"),
-    scale_fill_discrete(name = "Management", 
-                        breaks=c("c", "d", 'l'),
-                        labels=c("Managed", "Unmanaged", "Reference")
-    ))
-}
+
 
 
 
@@ -328,7 +337,29 @@ p_RA2_pred <- plot_IVI_exp %>%
   theme(legend.position = 'none')
  
 
-  
+# test new plotting with function: density plot or histogram
+# !!! remove!
+#p_RA2_pred <- 
+  plot_IVI_exp %>%
+  filter(sp_count  != 0 ) %>% 
+  group_by(trip_n, manag, sub_n) %>% 
+  summarise(richness = n()) %>% 
+  group_by(trip_n, manag) %>%
+  summarize(mean_richness = mean(richness, na.rm = T)) %>% 
+  as.data.frame() %>%
+  left_join(trip_species, by = "trip_n") %>% 
+  ggplot(aes(x = manag, #factor(manag),
+             y = mean_richness,
+             color = trip_n)) + # , 
+ # geom_boxplot()+
+    geom_point() + 
+  geom_line(aes(group = trip_n), alpha = 0.5) +
+ # facet_grid(.~dom_sp) +
+#  theme(legend.position = 'none') + 
+    details_boxpl() #+
+    
+
+ 
 
 # RA3: competition --------------------------------------------------------
 # community weighted means of shade tolerance DIST <-> REF
