@@ -29,9 +29,9 @@ theme_update(legend.position = 'bottom')
 
 
 # Store details about labeling and plotting -------------------------------------
-
-manag_acc      <- c("c", "d", 'l')
-manag_labs     <- c("Man", "Unm", "Ref")
+# get labels:
+manag.labs <- c("Managed", "Unmanaged", "Reference")
+names(manag.labs) <- c("c", "d", "l")
 
 
 # For density plot:
@@ -40,16 +40,17 @@ dens_plot_details <- function() {
     geom_density(alpha = 0.5),
     geom_vline(xintercept = 0, colour="red", linetype = "dashed"),
     scale_fill_discrete(name = "Management", 
-                        breaks = manag_acc,    #c("c", "d"),
-                        labels = manag_labs    #c("Managed", "Unmanaged")
+                        breaks = names(manag.labs), #manag_acc,    #c("c", "d"),
+                        labels = manag.labs    #c("Managed", "Unmanaged")
   ))
 }
+
 
 # For raw values plotting: 
 details_boxpl <- function() {
   list(
-    scale_x_discrete(breaks = manag_acc,
-                     labels = manag_labs),
+    scale_x_discrete(breaks = names(manag.labs),
+                     labels = manag.labs),
     facet_grid(.~dom_sp),
     theme(legend.position = 'none',
           axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1)
@@ -124,26 +125,6 @@ plot_IVI_exp <-
   ungroup(.) %>% 
   replace_na(list(rIVI = 0))
   
-
-# CHeck if values are correct? Seems correct
-plot_IVI_exp %>% 
-  filter(trip_n == 1 & sub_n == 1 & manag == "c") %>% 
-  print(n = 40)
-
-
-# Get characteristics of the regeneration status of disturbed sites:
-df_full_corr_mrg %>% 
-  filter(!height_class %in% c("HK7","mature", "adv_ENV", "mat_ENV")) %>% 
-  filter(count > 0) %>% 
-  group_by(manag, trip_n) %>% 
-  summarize(mean_density = mean(corr_count, na.rm = T)) %>% 
-  left_join(trip_species) %>% 
-  ggplot(aes(x = factor(manag),
-             y = mean_density,
-             group = dom_sp))+ 
-  geom_point() +
-  geom_line(aes(group = trip_n), alpha = 0.5) +
-  facet_grid(.~dom_sp)
 
 
 # CHeck species importance value: how often are 'Other species" dominant?? ---------------------
@@ -546,7 +527,7 @@ df_RS2 <-
   ungroup(.) %>% 
   group_by(trip_n, manag) %>% 
   summarize(dist_mean_distance   = mean(mean_distance, na.rm = TRUE)) %>% 
-  left_join(RS2_ref_both, by  = "trip_n") %>% 
+  left_join(RS2_ref, by  = "trip_n") %>% 
   mutate(RS2 = (dist_mean_distance  - ref_mean_distance )/ref_sd_distance)
 
 
@@ -781,23 +762,15 @@ out_reorg_pos[is.na(out_reorg_pos)] <- 0
 # merge indicators: -----------------------------------------
 out_reorg_pos <- out_reorg_pos %>% 
   mutate(RA_mean = (RA1+RA2+RA3)/3,
-         RS_mean = (RS1+RS2+RS3)/3,
-         RA_sum  = RA1+RA2+RA3,
-         RS_sum  = RS1+RS2+RS3) 
+         RS_mean = (RS1+RS2+RS3)/3) 
 
 
 
-       
-         
 # Get Euclidean distance: scatter points from [0,0] --------------------------
 out_reorg_pos <- out_reorg_pos %>% 
   mutate(euclid_dist = euclidean(RA_mean, RS_mean)) #%>%
   # classify the poinst by sector: make as squares, as simpler way
   #mutate(sector =  )
-
-
-# fwrite(long.df, paste("C:/Users/ge45lep/Documents/2021_Franconia_mortality/outTables", outName, sep = '/'))
-
 
 
 # color scheme testing  ---------------------------------------------------
@@ -811,10 +784,7 @@ my_sp_vals = c('spruce'= '#7CBB00', # light green
 
 
 
-
 # plot Euclidean distance : -----------------------------------------------
-manag.labs <- c("Managed", "Unmanaged")
-names(manag.labs) <- c("c", "d")
 
 
 # show euclidean distances for each triplet
@@ -843,8 +813,8 @@ p_euclid_lollipop <-
    # ggrepel::geom_text_repel(aes(label = trip_n, color = dom_sp),  size =3.5) +
   theme(axis.text.x= element_blank())  
                  
-windows()
-(p_euclid_lollipop)
+#windows()
+#(p_euclid_lollipop)
 
 
 
@@ -866,8 +836,8 @@ p_scatter_mean <-
   facet_grid(manag~dom_sp, 
              #scales = 'free',
              labeller = labeller(manag = manag.labs)) +
-  theme_update(legend.position = 'bottom') +
-  theme_update(aspect.ratio=1) # make plots perfect square
+  theme_update(legend.position = 'bottom',
+               aspect.ratio=1) # make plots perfect square
 
 
 p_scatter_mean
@@ -883,9 +853,13 @@ dd <- data.frame(x = runif(200, min=0, max=2),
 
 slope = 30 #degrees
 
-# categorize the triplets categories -------------------------------------------
+
+
+# Categorize triplets categories: only b sector: 
+# RS, RA, both
 res_classes <- 
   out_reorg_pos %>% 
+  dplyr::select(RA_mean, RS_mean, euclid_dist) %>% 
   left_join(trip_species) %>% 
   #calculate dfistance from origin
   mutate(orig_dist = sqrt(RA_mean^2 + RS_mean^2)) %>%
@@ -896,18 +870,55 @@ res_classes <-
   #calculate XY label
   mutate(labelXY = case_when((180*atan(RA_mean / RS_mean) / pi) < slope ~ "RS",
                              (180*atan(RA_mean / RS_mean) / pi) > (90 - slope) ~ "RA", 
-                             TRUE ~ "RA-RS")) %>%
-  #create group category
-  mutate(group = ifelse(position == "resilience", 
-                        position, 
-                        paste0(labelXY, position))) %>%
-  mutate(group = factor(group, levels = c('resilience',
-                                          'RA',
-                                          'RA-extreme',
-                                          'RS',
-                                          'RS-extreme',
-                                          "RA-RS",
-                                          "RA-RS-extreme")))
+                             TRUE ~ "RA-RS")) #%>%
+  # #create group category
+  # mutate(group = ifelse(position == "resilience", 
+  #                       position, 
+  #                       paste0(labelXY, position))) %>%
+  # mutate(group = factor(group, levels = c('resilience',
+  #                                         'RA',
+  #                                         'RA-extreme',
+  #                                         'RS',
+  #                                         'RS-extreme',
+  #                                         "RA-RS",
+  #                                         "RA-RS-extreme")))
+
+
+
+# Plot by sector colors: --------------------------------------------------------
+my_Resilience_class = c('RA' ='gold',  'grey45', # light green
+                        'RS' = 'black', # yellow,
+                        'RA-RS' =  'red')  #  bluish
+
+
+p_scatter_mean_col_sect <- 
+  res_classes %>% 
+  ggplot(aes(x = RA_mean,
+             y = RS_mean,
+             color = labelXY)) +
+  geom_abline(intercept = 0, 
+              slope = c(0.6, 1.8), 
+              size = 0.5, lty = 'dotted', color = 'grey') +
+  geom_point(alpha = 0.9, size = 1.2, shape= 16) +
+  scale_color_manual(values = my_Resilience_class ,
+                     name = 'Forest reorganization') +
+  facet_grid(manag~dom_sp, 
+             #scales = 'free',
+             labeller = labeller(manag = manag.labs)) +
+  labs(x = "Reassembly",
+       y = "Restructure") + 
+  scale_x_continuous(breaks = seq(0, 2, by = 1), limits = c(0,2)) +
+  scale_y_continuous(breaks = seq(0, 2, by = 1), limits = c(0,2)) +
+  theme_bw() +
+  theme_update(legend.position = 'bottom',
+              aspect.ratio=1,
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank(),
+              panel.grid  = element_blank()) # make plots perfect squar4
+  
+p_scatter_mean_col_sect
+
+
 
 
 
