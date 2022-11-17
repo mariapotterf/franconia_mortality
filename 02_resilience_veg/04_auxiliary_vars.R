@@ -5,7 +5,7 @@
 # - temp
 # - precip
 # - anomalies?? (compare the 2018-2020 with 1986-2015) - check Cornelius script
-# - deadwood volume
+# - deadwood volume - from ground cover (%), 
 # - ground cover:which aspect? eg. bare grund [%]
 # - disturbance intensity - % of the basal area removed (after DIST)
 
@@ -32,6 +32,9 @@ source('myPaths.R')
 getwd()
 load(file = paste(getwd(), "outData/dataToPlot.Rdata", sep = '/'))
 load(file = paste(getwd(), "outData/eco_traits.Rdata", sep = '/'))
+load(file = paste(getwd(), "outData/dat_restr.Rdata", sep = '/'))
+
+
 
 # Identify data to use:
 head(df_full_corr_mrg)    # - full PLOT based data: df_full_corr, seedlings, advanced, mature - PLOt & surroundings, mature trees filtered 
@@ -50,13 +53,19 @@ df_prec   <- fread(paste(myPath, outTable, 'xy_precip_2000.csv', sep = '/'))
 df_temp   <- fread(paste(myPath, outTable, 'xy_temp_2000.csv', sep = '/'))
 df_spei   <- fread(paste(myPath, outTable, 'xy_spei.csv', sep = '/'))
 
-
-
 # Get patch size data:
-
 dat_size  <- read_excel(paste(myPath, '03_plot_sampling/sites_identification/final/share', 
-                              "sites_unique_ID.xlsx", 
-                              sep = '/'))
+                              "sites_unique_ID.xlsx", sep = '/'))
+
+# get ground cover: get deadwood
+df_ground  <- fread(paste(myPath, outTable, 'df_ground.csv', sep = '/'))
+
+# Process: ---------------------------------------------------------------------
+df_DW_ground <- df_ground %>% 
+  mutate(trip_n = as.character(trip_n),
+         sub_n = as.character(sub_n)) %>% 
+  filter(class == "deadwood/stumps")
+
 
 # keep only useful columns
 df_patch <- 
@@ -116,15 +125,16 @@ df_temp_out <-
   distinct() 
 
 
-
-# Merge clim data with Euclidean distances -------------------------------------
+# get only Euclidean distances as y ---------------------------------------------
 df_euc <- out_reorg_pos %>% 
   dplyr::select(c(trip_n, manag, euclid_dist))
 
 
+# Merge auxiliary data with Euclidean distances --------------------------------
 df <- 
   df_euc %>% 
-    as.data.frame() %>% 
+  as.data.frame() %>% 
+  left_join(df_DW_ground) %>% 
   left_join(df_prec_out) %>% 
   left_join(df_temp_out) %>% 
   left_join(df_patch, by = c("trip_n", "manag")) %>% 
@@ -139,9 +149,38 @@ p_dist_patch <- df %>%
   geom_point() +
   facet_grid(.~manag)
 
+# scatter: euclid vs DW:
+p_dist_DW_ground <- df %>% 
+  ggplot(aes(x = prop ,# proportion deadwood
+             y = euclid_dist,
+             color = manag)) +
+  geom_point() +
+  facet_grid(.~manag)
 
 
-# test GAMM:
+# scatter: euclid vs temp
+#p_dist_DW_ground <- 
+  df %>% 
+  ggplot(aes(x = temp_ref ,# proportion deadwood
+             y = euclid_dist,
+             color = manag)) +
+  geom_point() +
+  facet_grid(.~manag)
+  
+  
+  
+# scatter: euclid vs temp
+#p_dist_DW_ground <- 
+  df %>% 
+    ggplot(aes(x = prec_ref ,# proportion deadwood
+               y = euclid_dist,
+               color = manag)) +
+    geom_point() +
+    facet_grid(.~manag)
+  
+
+
+# test GAMM: -----------------------
 library(mgcv)
 theme_set(theme_bw())
 library(tidymv)

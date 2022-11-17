@@ -79,6 +79,14 @@ reg_trees <- c(
 
 
 
+# Deadwood: from the ground cover [%],
+# from the ENV: 
+#   - standing deadwood 
+#   - lying deadwood 
+#   - stump
+#   - root plate
+#  vars: distance, species [conif/dec], no dbh
+
 
 # Input data -------------------------------------------------------------------
 #### Source paths and functions  -----------------------------------------------
@@ -126,7 +134,7 @@ outMatureENV      = paste(myPath, outTable, 'df_mature_trees_env.csv'   , sep = 
 outAdvancedENV    = paste(myPath, outTable, 'df_advanced_env.csv'       , sep = '/')
 
 outGround                 = paste(myPath, outTable, 'df_ground.csv'  , sep = '/')
-outdeadwood               = paste(myPath, outTable, 'df_deadwood.csv', sep = '/')  # get deadwood volume estimation
+outDeadwood               = paste(myPath, outTable, 'df_deadwood.csv', sep = '/')  # get deadwood volume estimation
 outVideo                  = paste(myPath, outTable, 'df_video.csv'   , sep = '/')
 outPhoto                  = paste(myPath, outTable, 'df_photo.csv'   , sep = '/')
 outPhotoVideoNearestTree  = paste(myPath, outTable, 'df_photo_video_nearTree.csv' , sep = '/')
