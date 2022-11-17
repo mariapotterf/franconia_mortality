@@ -48,15 +48,13 @@ library(R.utils)
 # maybe first group them by the site number, and calculate centroid?
 library(sf)
 
-#xy  <- st_read('C:/Users/ge45lep/Documents/2021_Franconia_mortality/03_plot_sampling/sites_identification/final/share/sites_final.shp')
-
 xy        <- vect('C:/Users/ge45lep/Documents/2021_Franconia_mortality/03_plot_sampling/sites_identification/final/share/sites_final.shp') # read trap location
 # Convert data to DWD coordinate system:
 xy2 <- terra::project(xy, "EPSG:31467")  # coordinate system from the DWD data: Germany
 
 
 # filter through years: >1970 ------------------------
-# 
+# DWD data are stored in Beetles project
 
 myPath = 'C:/Users/ge45lep/Documents/2022_BarkBeetles_Bavaria'
 
@@ -84,12 +82,12 @@ vars <- c('temp', 'precip')
 
 
 for (i in vars){
-  print(i)
+  #print(i)
   
   # List files: from 2000 onwards:
   file_ls <- list.files(paste(myPath, "rawData/DeutschWetter", i, sep = "/"),
                         #pattern = "^20.*\\.gz$",
-                        #pattern = "^19.*\\.gz$",
+                        pattern = "*\\.gz$",
                         recursive=TRUE)
   
   # read in rasters 
