@@ -141,7 +141,7 @@ outPhotoVideoNearestTree  = paste(myPath, outTable, 'df_photo_video_nearTree.csv
   
 
 
-# Identify the exposure numbers: reconstruct the sectors and check how well they fit???
+# Identify the exposition numbers: reconstruct the sectors and check how well they fit???
 # because somethings the trees seems not correctly aligned the the snapshot?
 north = 315-360 & 0-45
 east  = 45-135
@@ -378,6 +378,80 @@ df_ground <-
 fwrite(df_ground, outGround)
 
 
+# Get deadwood from the ENV -----------------------------------------------
+# Standing deadwood
+df_DW_standing <- dat %>% 
+  dplyr::select(matches(paste(c(plot_info, plot_geo, 'env_'), collapse = '|'))) %>%
+  dplyr::select(matches(paste(c(plot_info, plot_geo, 'Standing_deadwood'), 
+                              collapse = '|'))) %>%
+  dplyr::select(-c("env_Standing_deadwood_present")) %>%
+  setnames(c(plot_info, plot_geo, 'orientation', 'species', 'distance')) %>% 
+  mutate(DW_type = 'standing')
+  
+# Lying DW
+df_DW_log <- 
+  dat %>% 
+  dplyr::select(matches(paste(c(plot_info, plot_geo, 'env_'), collapse = '|'))) %>%
+  dplyr::select(matches(paste(c(plot_info, plot_geo, 'Lying_deadwood'), 
+                              collapse = '|'))) %>%
+  dplyr::select(-c("env_Lying_deadwood_present")) %>%
+  setnames(c(plot_info, plot_geo, 'orientation', 'species', 'distance')) %>% 
+  mutate(DW_type = 'log')
+
+
+# DW Stump
+df_DW_stump <- 
+  dat %>% 
+  dplyr::select(matches(paste(c(plot_info, plot_geo, 'env_'), collapse = '|'))) %>%
+  dplyr::select(matches(paste(c(plot_info, plot_geo, 'stump'), 
+                              collapse = '|'))) %>%
+  dplyr::select(-c("env_stump_present")) %>%
+  setnames(c(plot_info, plot_geo, 'orientation', 'species', 'distance')) %>% 
+  mutate(DW_type = 'stump')
+
+# DW root plate
+df_DW_plate <- 
+  dat %>% 
+  dplyr::select(matches(paste(c(plot_info, plot_geo, 'env_'), collapse = '|'))) %>%
+  dplyr::select(matches(paste(c(plot_info, plot_geo, 'Root_plate'), 
+                              collapse = '|'))) %>%
+  dplyr::select(-c("env_Root_plate_present")) %>%
+  setnames(c(plot_info, plot_geo, 'orientation', 'species', 'distance')) %>% 
+  mutate(DW_type = 'root_plate')
+
+
+# Merge DW data and correct species and orientation:
+df_deadwood <- 
+  df_DW_standing %>% 
+  bind_rows(df_DW_log) %>% 
+  bind_rows(df_DW_stump) %>% 
+  bind_rows(df_DW_plate) %>% 
+  mutate(species = case_when(species == "Esche"        ~ "Ash",
+                             species == "Sonstiges NH" ~ "O_Soft",
+                             species == "Sonstiges LH" ~ "O_Hard",
+                             species == "Buche"        ~ "Beech" ,
+                             species == "Vogelbeere"   ~ "Rowan",
+                             species == "Bergahorn"    ~ "Maple",
+                             species == "Fichte"       ~ "Spruce",
+                             species == "Eiche"        ~ "Oak",
+                             species == "Kiefer"       ~ "Pine",
+                             species == "Birke"        ~ "Birch",
+                             species == "Weide"        ~ "Willow",
+                             species == "Tanne"        ~ "Fir",
+                             species == "N.A"          ~ NA_character_ )) %>% 
+  mutate(orientation = case_when(orientation == 'ost'~ 'east',
+                                 orientation == 'west'~ 'west',
+                                 orientation == 'nord'~ 'north',
+                                 orientation == 'sued'~ 'south')) %>% 
+    mutate(trip_n = as.character(trip_n),
+           sub_n  = as.character(sub_n))
+  
+
+#### Save the ground cover table 
+fwrite(df_deadwood, outDeadwood)
+
+
+
 
 # get Mature trees on 4m2 plot (live trees > 10 cm dbh) outside of the ground cover shares [%] -------------
 # indicates number of mature trees per site (1-4), with species, dbh and height
@@ -425,21 +499,6 @@ df_mature_plot2 <- df_mature_trees_plot %>%
   summarize(dbh_sum = sum(DBH, na.rm = T))
 
 
-#df_ground2 <- df_ground %>% 
-#  filter(class == 'Mature_Trees' )
-
-# merge data together
-#dd <- df_mature_plot2 %>% 
-#  left_join(df_ground2, by = c("trip_n", "dom_sp", "manag", "sub_n"))
-
-# check if teh higher dbh (sum if more mature trees are available on the 4m2) links with the higher ground over %
-#plot(dd$dbh_sum, dd$prop)
-
-
-#ggplot(dd, aes(x = dbh_sum, 
-#               y = prop)) +
-#  geom_point() + 
- # geom_smooth()
 
 #### Save the Mature trees per plot:
 fwrite(df_mature_trees_plot, outMaturePlot)
@@ -681,7 +740,7 @@ df_reg_full <-
       species == "OtherHardwood" ~ "O_Hard",
       TRUE ~ species
     )
-  )  # now we have 27 species!!
+  )  # now we have 27 species
  
 
 
