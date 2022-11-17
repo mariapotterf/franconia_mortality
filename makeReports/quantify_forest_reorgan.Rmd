@@ -1,0 +1,468 @@
+---
+title: "Quantifying the propensity of forest reorganization"
+author: "Mária Potterf"
+date:  "`r Sys.Date()`"
+output: 
+  bookdown::html_document2:
+    toc: true
+    toc_depth: 2
+knit: (function(input, ...) {
+    rmarkdown::render(
+      input,
+      output_dir = "../outReports",
+      output_file = file.path("../outReports", glue::glue('Forest_Reorg_{Sys.Date()}'
+    )))
+  })
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, tidy = TRUE, tidy.opts = list(comment = FALSE), message = F, warning = F)
+knitr::opts_chunk$set(fig.width=6, fig.height=3) 
+
+```
+
+
+```{css, echo=FALSE}
+p.caption {
+  font-size: 0.8em;
+}
+```
+
+# Background and implementation
+
+Identify the aspects of the forest reorganization:
+
+* in forest composition: **Reassembly**
+
+    + **RA1**:  Dominant species (by rIVI): Will the dominant species under pre-disturbance under post-disturbance? Species change => indication for change
+    + **RA2**: Tree species richness (counts): if richness under DIST is lower then REF => change   
+    + **RA3**: Competition: shade tolerance CWM: Is the shade tolerance of community lower then before? => change  
+
+* in forest structure: **Restructuring**
+
+    + **RS1**: Stem density: Is the density lower then before? => change
+    + **RS2**: Horizontal structure: Is the structure of gaps and tree spacing larger after disturbances? => change
+    + **RS3**: Vertical structure: Is the mean number of layers under DIST higher then under REF?    
+
+Evaluate by comparing the range of variability under REF condition (mean, SD) compared to the mean under DIST:
+
+- Restructure  = (mean(REF) - mean(D))/SD_REF or
+- Restructure  = (mean(D) - mean(REF))/SD_REF
+
+The order variables can change, to have the indication of change as positive (+) value.
+
+
+## Composite indicators
+
+- means or sums of the individual indicators axis
+
+
+**Final classification of triplets**
+
+Based on the extent of the change; separated by 
+three sectors in the plot to quantify change
+
+![Fig. Response pathways of Forest reorganization (Seidl & Turner #2022)](C:/Users/ge45lep/Documents/2021_Franconia_mortality/r_franconia_mortality/inImg/response_pathways.png){width=75%}
+
+
+# Describe study sites 
+
+The number of samples triplets by dominant tree species. Each triplet has 3 management categories: 
+
+- REF       - reference, undisturbed sites
+- Unmanaged - disturbed sites by drought, uncleared
+- Managed   - cleared
+
+
+```{r setup-root}
+
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file('C:/Users/ge45lep/Documents/2021_Franconia_mortality/r_franconia_mortality'))
+
+```
+
+
+```{r, check-dir, include=FALSE}
+#knitr::opts_knit$set(root.dir = "C:/Users/ge45lep/Documents/2021_Franconia_mortality/r_franconia_mortality")
+
+#getwd()
+```
+
+
+
+
+
+```{r read-libs, eval = TRUE, echo=FALSE, include = FALSE, warning = FALSE, error = FALSE }
+# rm(list=ls())
+
+#getwd()
+
+# Input data -------------------------------------------------------------------
+#getwd()
+load(file = paste(getwd(), "outData/dataToPlot.Rdata", sep = '/'))
+load(file = "outData/dat_restr.Rdata")
+load(file = "outData/vegData.Rdata")
+load(file = "outData/dataToPlot.Rdata")
+load(file = "outData/auxData.Rdata")
+
+
+
+#### Source paths and functions  -----------------------------------------------
+
+source('myPaths.R')
+
+
+#### Read libraries  -----------------------------------------------------------
+library(knitr)
+library(readxl)
+library(dplyr)
+library(data.table)
+library(tidyr)
+library(ggplot2)
+library(stringr)  # use regex expressions
+#library(gridExtra)
+library(ggpubr)
+
+
+```
+
+```{r set-theme, include=FALSE}
+# set theme: plotting: 
+theme_set(theme_bw())
+theme_update(legend.position = 'bottom',
+             aspect.ratio=1)
+
+```
+
+
+
+```{r triplet-count, echo=FALSE}
+#print(getwd())
+out_summary <- dat %>%
+ group_by(dom_sp) %>%
+ distinct(trip_n) %>%
+ tally() %>%
+ rename(species=dom_sp,
+        triplets_count = n)
+
+```
+
+
+```{r sites-count, echo=FALSE}
+n_sites <-
+  dat %>%
+  group_by(trip_n, dom_sp, manag, sub_n) %>%
+  distinct() %>%
+  nrow()
+
+```
+
+**Sites overview:** 
+
+Triplets count:  **`r length(unique(dat$trip_n))`**
+
+Total count of plots (4m2) per triplet&category : **`r n_sites`** plots
+
+
+
+```{r print-summary, echo=F}
+# print nice table in knitr
+out_summary %>% knitr::kable("markdown")
+
+```
+
+
+### Collected data overview 
+ 
+ 
+Plot (4m^2):  
+
+ - seedlings:
+    +  regeneration < 1.3 m: BA = 0, 
+    + regeneration 1.3m-2 m, estimated DBH = 0.8 cm, BA accordingly
+ - advanced regeneration: 
+    + DBH & height measured for each tree
+ - mature trees:
+    + DBH measured for each tree
+ 
+ 
+Surroundings (<15m from the plot center):
+
+ - nearest advanced regeneration: species
+ - nearest mature tree: species, DBH
+ 
+ 
+## Tree density estimation
+
+Two approaches: 
+
+ - density based on plot values (counts of trees/plot = 4 m2)
+ - distance density estimation (based on nearest distance metrics)
+ 
+Both metrics are slope corrected and recalculated to count of trees/ha.
+
+
+```{r p_advanced_hist, echo = F, fig.width = 5, fig.height = 2.5, fig.cap=" Histogram of advanced regeneration in surroundings (ENV) by species (C = Managed, D - Unmanaged, L - Reference (Living))"}
+
+#p_advanced_hist  
+
+```
+
+
+
+
+
+## Species importance value
+
+Calculate **species importance value**
+
+**Importance Value** is a measure of how dominant a species is in a given forest area. 
+
+ - *Relative density*, the number of individuals per area as a percent of the number of individuals of all species.
+ - *Relative basal area*.  the total basal area of Species A as a percent of the total basal area of all species.  Basal area is the sum of the cross sectional area of all the trees of species A, measured at 4.5 ft. above ground. The forester actually measures diameter and then converts that number to basal area.
+ 
+Each of these values is expressed as a percent, and ranges from 0 to 100.
+
+The **Importance Value** is the sum of these three measures, and can range from 0 to 200. Scaled to [0-100] for comarison purposes. The frequency (i.e. the occurence of species per plot) is neglected, to obtain the variation between the plots within the site.
+
+ **Importance value** calculated here considers the extent of the 4m2 plot and distance based on nearest distance measures (for advanced and mature regeneration in surroundings, up to 15 m). 
+ 
+ 
+
+## Advanced regeneration in surroundings:  missing DBH?
+
+Show mean values of the DBH of the advanced regeneration from PLOT:
+
+The DBH values of the Advanced regeneration on the PLOT can serve as a replacement for the NA values of advanced regeneration in the Surrounding. 
+
+
+## Mean value of advanced regeneration DBH from PLOT:
+
+```{r p_dbh_dist, echo = F, fig.width = 5, fig.height = 2.5, fig.cap="Mean+-SE of the individual tree species and management types (C = Managed, D - Unmanaged, L - Reference (Living))"}
+
+p_dbh_dist  
+
+```
+
+
+## Density: mature and advanced regeneration 
+
+the tree is present on the PLOT and in the ENV:
+
+ - mature
+ - advanced
+
+If both values are present (mature and advanced regeneration tree in the PLOT and ENV), select the nearest tree; ignore the species. 
+
+Mature trees_ENV are missing in 100 plots (located out of the focus radius)
+Advanced regeneration is missing from ~ 200 plots. 
+
+
+
+
+
+# Quantify forest reorganization
+
+## Reassembly
+### RA1: Dominant species
+
+- based on species importance value. Dominant species = species with the highest importance value.
+
+Change: if the dominant tree species changes.
+
+```{r p_RA1_pred, fig.width = 6, fig.height = 3, echo = F, fig.cap="Density distribution of RA1 (Dominant type) for two types of management (Dead and Clear-cut)."}
+
+p_RA1_pred  
+
+```
+
+### RA2: Tree species richness 
+
+Number of different tree species per site. 
+Change: if the species richness lowers after disturbance. 
+
+```{r p_RA2_pred, echo = F,  fig.width = 6, fig.height = 3, fig.cap="Density distribution of RA2 (Richness) for two types of management (Dead and Clear-cut)."}
+
+p_RA2_pred
+
+```
+
+
+### RA3: Competition: Shade tolerance
+
+Community weighted mean of the species shade tolerance. 
+Change: if the species CWM lowers after disturbance. 
+ 
+```{r p_RA3_pred, echo = F, fig.width = 6, fig.height = 3, fig.cap="Density distribution of RA3 (Shade tolerance) for two types of management (Dead and Clear-cut)."}
+
+p_RA3_pred
+
+
+```
+
+
+
+
+
+## Restructure
+
+### RS1: Stem density
+
+Compare the stem density before or after disturbance.
+
+Change: if the stem density lowers after disturbance. 
+
+
+
+```{r p_RS1_pred, echo = F,  fig.width = 6, fig.height = 3, fig.cap="Density distribution of RS1 (Stem density) for two types of management (Dead and Clear-cut)."}
+
+p_RS1_pred
+
+```
+
+
+### RS2: Horizontal structure 
+
+Compare horizontal structure pre-& post-disturbance.
+
+Change: if the horizontal structure is larger after disturbance.
+
+**Very sensitive if taking into account only  distance to the mature trees, or mature trees and advanced regeneration!!**
+
+  
+```{r plot-RS2_both, echo = F, fig.width = 6, fig.height = 3,  fig.cap="Density distribution of RS2 (Horizontal structure) for two types of management (Dead and Clear-cut). Both missing advanced regeneration and mature trees replaced by 0."}
+
+p_RS2_both
+
+```
+
+
+```{r p_RS2_mature, echo = F, fig.width = 6, fig.height = 3,  fig.cap="Density distribution of RS2 (Horizontal structure) for two types of management (Dead and Clear-cut). ONly based on mature trees; missing trees replaced by 0."}
+
+p_RS2_mature
+
+```
+
+
+#### Investigate the horizontal distances between:
+
+ - Average distance for Advanced regeneration and for Mature trees before and after completing missing trees (if no tree was present, the distance to the nearest one was set to 16m, outsite of the search radius).
+
+```{r p_distances, echo = F,  fig.width = 5, fig.height = 2.5, fig.cap="Mean horizontal distances to the nearest mature and advanced regeneration tree. a) Filtered nearest Mature and Advanced regeneration tree for Plot and Surroundings, b) Avg distance for mature trees on plot and in surrounding, c) Avg distance for advanced regeneration in plot and in surrounding."}
+
+p_distances
+
+```
+
+
+```{r p_avg_distance_nearest, echo = F,  fig.width = 5, fig.height = 2.5, fig.cap="Mean horizontal distances to the nearest mature and advanced regeneration tree. a) Filtered nearest Mature and Advanced regeneration tree for Plot and Surroundings, b) Avg distance for mature trees on plot and in surrounding, c) Avg distance for advanced regeneration in plot and in surrounding."}
+
+p_avg_distance_nearest
+
+```
+
+
+
+
+### RS3: Vertical structure 
+
+How many layers had the stand pre-post-disturbance?
+
+Change: indicated by different layers number. 
+
+```{r p_RS3_pred, fig.width = 6, fig.height = 3, echo = F, fig.cap="Density distribution of RS3 (vertical structure) for two types of management (Dead and Clear-cut)."}
+
+p_RS3_pred
+
+
+```
+
+# Density distribution: 6 indicators
+
+```{r plot-3vars,fig.height = 4.5, echo = F, fig.cap="Density distribution of the 6 indicators for two types of management (Dead and Clear-cut) for  Reassembly (upper row) and Restructure (lower row). Note different scale on x-axis. "}
+
+p_6vars
+
+
+```
+
+# Results 
+## Forest  propensity to reorganize
+
+## By tree species: Average values
+
+```{r p_scatter_mean,fig.height = 4, echo = F, fig.cap="Scatter plot of the combined [mean] RA and RS indicator per management (Dead, Clear-cut and by dominant species). The dashed lines visually split the plot into forest reorganization types."}
+
+p_scatter_mean
+
+```
+
+
+
+### Euclidean distances: measure of change intensity
+
+Calculate the distances of individual triplets alternatives (Managed-Unmanaged) towards the origin [0,0]. The larger the distance, the higher propensity to reorganize.
+
+```{r p_euclid_lollipop,fig.height = 4.5, fig.width = 6.5, echo = F, fig.cap="Ordered Triplets numbers by the Euclidean distance. Triplet numbers are located within the dots in white. "}
+
+p_euclid_lollipop + 
+  theme(axis.text.x=element_blank(),
+               legend.position = 'bottom') 
+```
+
+
+### Euclidean distanced by species and management 2
+
+```{r p_euclid_segment,fig.height = 4.5, fig.width = 6.5, echo = F, fig.cap="Ordered Triplets numbers by the Euclidean distance. Triplet numbers are located within the dots in white. "}
+
+p_segment  
+```
+
+
+
+## Classify triplets resilience
+
+
+### Summary table: resilience by Tree species
+
+Classify the type of the reorganization based on the Euclidean distance (the intensity of change)  and the direction (towards the Reassembly or Restructure, or Both). 
+
+```{r print-counts-sp, echo=F}
+# print nice table in knitr
+table(res_classes$group, res_classes$dom_sp) %>% knitr::kable("markdown", caption = 'Forest reorganization classes by forest management type. Resilience value - if change is less then <0.5. Extreme values represent change > 1.5. RA - Reassembly. RS- Restructure, RA-RS - both.')
+
+```
+
+### Summary table: resilience by Management type
+
+```{r print-counts-manag, echo=F}
+# print nice table in knitr
+table(res_classes$group, res_classes$manag) %>% knitr::kable("markdown", caption = 'Forest reorganization classes by tree species. Resilience value - if change is less then <0.5. Extreme values represent change > 1.5. RA - Reassembly. RS- Restructure, RA-RS - both')
+
+```
+
+## Importance of reorganizaton axes: 
+
+```{r p_drivers,fig.height = 6, echo = F, fig.cap="mean+-SE for individual indicators per species and management regime."}
+
+p_drivers
+
+```
+
+## Drivers
+
+### Disturbance patch size vs Euclid
+
+```{r p_dist_patch,fig.height = 3, echo = F, fig.cap="Patch size vs euclidean distance"}
+
+p_dist_patch
+
+```
+
+### Temp anomaly vs Euclid
+
+```{r p_anom_temp,fig.height = 3, echo = F, fig.cap="GAm: temp anomaly vs euclidean distance"}
+
+p_anom_temp
+
+```
