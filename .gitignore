@@ -7,7 +7,6 @@ outReports
 outData
 plot1.png
 mortality_report.html
-mortality_report.Rmd
 anom_3.png
 Bavaria_mortality.png
 vegData.Rdata
