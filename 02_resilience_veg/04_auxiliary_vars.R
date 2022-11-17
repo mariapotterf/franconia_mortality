@@ -20,11 +20,6 @@ library(stringr)  # use regex expressions
 library(ggpubr)
 library(ggrepel)
 
-# set theme: plotting: 
-theme_set(theme_bw())
-theme_update(legend.position = 'bottom') 
-
-
 # Input data -------------------------------------------------------------------
 source('my_vars_and_functions.R')
 source('myPaths.R')
@@ -60,11 +55,20 @@ dat_size  <- read_excel(paste(myPath, '03_plot_sampling/sites_identification/fin
 # get ground cover: get deadwood
 df_ground  <- fread(paste(myPath, outTable, 'df_ground.csv', sep = '/'))
 
+
+# set theme: plotting ----------------------------------------------------------- 
+theme_set(theme_bw())
+theme_update(legend.position = 'bottom') 
+
+
+
 # Process: ---------------------------------------------------------------------
 df_DW_ground <- df_ground %>% 
   mutate(trip_n = as.character(trip_n),
          sub_n = as.character(sub_n)) %>% 
-  filter(class == "deadwood/stumps")
+  filter(class == "deadwood/stumps") %>% 
+  group_by(trip_n, manag) %>% 
+  summarise(prop_DW = mean(prop))
 
 
 # keep only useful columns
