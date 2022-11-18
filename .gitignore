@@ -2,9 +2,11 @@
 .Rhistory
 .RData
 .Ruserdata
-img
+inImg
+
 outReports
 outData
+
 plot1.png
 mortality_report.html
 anom_3.png
