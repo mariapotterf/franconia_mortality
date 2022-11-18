@@ -536,45 +536,6 @@ p_RS2
 
 
 
-# get a plot of teh average distances -------------------------------------------
-p_dist_16 <- df_full_corr_mrg %>%
-  filter(count  != 0 ) %>% 
-  filter(vert_layer != 'regen') %>% 
-  dplyr::select(trip_n, manag, sub_n, distance, vert_layer) %>%
-  right_join(df_master_heights_both) %>%
-  mutate(distance = case_when(is.na(distance) ~ 16*100, # complete distances of 16 m if the tree is not present in ENV
-                              !is.na(distance) ~ distance)) %>%
-  group_by(trip_n, manag, sub_n, vert_layer) %>% 
-  slice(which.min(distance)) %>% # filter to have only the shortesdt distance (if several trees were recorded eg on plot)
-  ggplot(aes(y = distance/100,
-             x = vert_layer,
-             color = manag)) +
-  stat_summary() +
-  coord_cartesian(ylim = c(0, 8)) +
-  ggtitle('Added missing trees [set to 16 m]')
-
-
-# get a plot of teh average distances -------------------------------------------
-p_dist_0 <- df_full_corr_mrg %>%
-  filter(count  != 0 ) %>% 
-  filter(vert_layer != 'regen') %>% 
-  dplyr::select(trip_n, manag, sub_n, distance, vert_layer) %>%
-  group_by(trip_n, manag, sub_n, vert_layer) %>% 
-  slice(which.min(distance)) %>% # filter to have only the shortesdt distance (if several trees were recorded eg on plot)
-  ggplot(aes(y = distance/100,
-             x = vert_layer,
-             color = manag)) +
-  stat_summary() +
-  ggtitle('Missing trees') +
-  coord_cartesian(ylim = c(0, 8))
-
-
-p_distances <- ggarrange(p_dist_0, 
-          p_dist_16,
-          nrow = 1, ncol = 2,
-          hjust=-0.8)
-
-
 
 
 
