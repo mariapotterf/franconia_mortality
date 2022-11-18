@@ -29,7 +29,26 @@ p.caption {
 }
 ```
 
-# Background and implementation
+
+# Data collection: summer 2022
+
+##	Study sites selection
+We have identified the triplets of the similar forest management history and site conditions. A triplet represents locally comparable sites of the same pre-disturbance conditions and management history. The triplet consists of three sites representing i) reference conditions, i.e., undisturbed forest; and sites affected by drought and ii) managed by salvage logging, or iii) left unmanaged, with standing dead trees. The minimal disturbance gap size was 0.05 ha (25 x 25m) with minimal gap width on the smallest side of 25 m and disturbance severity of >80% of removed basal area. In total, we identified 40 triplets. 
+
+## 	Sampling design
+
+At each study site, we have collected trees characteristics at two levels: within 4 m2 plot and in its nearest surroundings (distance from plot center: <15m). This approache allowed us effectively account for different tree heights classes and densities. Specifically, we have collected tree species, stem density, and a diameter at breast height (dbh) of individual trees at three height classes: forest regeneration (dbh: < 2 cm, height: < 2 m), advanced regeneration (dbh: 2-10 cm), and mature trees (dbh: > 10 cm). In each plot’s surrounding (within 15 m radius), we have recorded the distance to the nearest advanced regeneration and mature tree, its tree species, and dbh. 
+The plots were randomly located along the sampling grid, with minimal distance between plots of 10 m. The sampling design aimed to capture the stem density at the plot level for forest regeneration, and within the plot surroundings using distance density estimation. The effective number of plots per site to correctly represent distance-based stem density was a priori tested using a simulation approach in R software (R Development Core Team 2019). We used a full factorial experimental design to test the sensitivity of the estimated stem densities of the number of plots (per stand from 4 to 100 plots, increasing by 2)  and stand size (from 0.05 ha to 1 ha). We tested simulated stands with different densities (from 1 to 10000 stems/ha) and repeated simulations 10 times. The mean predicted densities remained stable at 5 (for stand of 0.05 ha) to 15 plots per site (area of 1 ha, Fig. S2), allowing to accordingly scale up the number of plots per site. See full protocol for data collection as Supplementary material SX. 
+
+![Fig. Study sites distribution across Bavaria and across dominant tree species](C:/Users/ge45lep/Documents/2021_Franconia_mortality/r_franconia_mortality/inImg/map_bavaria.png){width=65%}
+
+
+
+
+
+
+
+# Forest reorganization: implementation
 
 Identify the aspects of the forest reorganization:
 
@@ -47,10 +66,10 @@ Identify the aspects of the forest reorganization:
 
 Evaluate by comparing the range of variability under REF condition (mean, SD) compared to the mean under DIST:
 
-- Restructure  = (mean(REF) - mean(D))/SD_REF or
+- Restructure  = (mean(REF) - mean(D))/SD_REF   or
 - Restructure  = (mean(D) - mean(REF))/SD_REF
 
-The order variables can change, to have the indication of change as positive (+) value.
+ -> The order of variables can change, to have the indication of change as positive (+) value.
 
 
 ## Composite indicators
@@ -332,14 +351,14 @@ Change: if the horizontal structure is larger after disturbance.
   
 ```{r plot-RS2_both, echo = F, fig.width = 6, fig.height = 3,  fig.cap="Density distribution of RS2 (Horizontal structure) for two types of management (Dead and Clear-cut). Both missing advanced regeneration and mature trees replaced by 0."}
 
-p_RS2_both
+p_RS2
 
 ```
 
 
 ```{r p_RS2_mature, echo = F, fig.width = 6, fig.height = 3,  fig.cap="Density distribution of RS2 (Horizontal structure) for two types of management (Dead and Clear-cut). ONly based on mature trees; missing trees replaced by 0."}
 
-p_RS2_mature
+#p_RS2_mature
 
 ```
 
@@ -429,7 +448,7 @@ Classify the type of the reorganization based on the Euclidean distance (the int
 
 ```{r print-counts-sp, echo=F}
 # print nice table in knitr
-table(res_classes$group, res_classes$dom_sp) %>% knitr::kable("markdown", caption = 'Forest reorganization classes by forest management type. Resilience value - if change is less then <0.5. Extreme values represent change > 1.5. RA - Reassembly. RS- Restructure, RA-RS - both.')
+table(res_classes$labelXY, res_classes$dom_sp) %>% knitr::kable("markdown", caption = 'Forest reorganization classes by forest management type. Resilience value - if change is less then <0.5. Extreme values represent change > 1.5. RA - Reassembly. RS- Restructure, RA-RS - both.')
 
 ```
 
@@ -437,7 +456,7 @@ table(res_classes$group, res_classes$dom_sp) %>% knitr::kable("markdown", captio
 
 ```{r print-counts-manag, echo=F}
 # print nice table in knitr
-table(res_classes$group, res_classes$manag) %>% knitr::kable("markdown", caption = 'Forest reorganization classes by tree species. Resilience value - if change is less then <0.5. Extreme values represent change > 1.5. RA - Reassembly. RS- Restructure, RA-RS - both')
+table(res_classes$labelXY, res_classes$manag) %>% knitr::kable("markdown", caption = 'Forest reorganization classes by tree species. Resilience value - if change is less then <0.5. Extreme values represent change > 1.5. RA - Reassembly. RS- Restructure, RA-RS - both')
 
 ```
 
