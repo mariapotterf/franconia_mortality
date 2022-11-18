@@ -559,7 +559,7 @@ df_regen <-
 
 # Select the character general remarks on regeneration --------------------
 # need to selcted columsn as characters!!
-# extracted on Nov 8th, no need to run
+# extracted on 11/08/2022, no need to run
 other_sp <- c("OtherHardwood", "OtherSoftwood")
 
 # df_regen_notes <-
