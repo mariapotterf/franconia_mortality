@@ -97,6 +97,7 @@ source('myPaths.R')
 
 #### Read libraries  -----------------------------------------------------------
 library(readxl)
+library(psych)     # for short summary statistics
 library(dplyr)
 library(data.table)
 library(tidyr)
@@ -443,9 +444,22 @@ df_deadwood <-
                                  orientation == 'west'~ 'west',
                                  orientation == 'nord'~ 'north',
                                  orientation == 'sued'~ 'south')) %>% 
+  mutate(distance = case_when(distance == 12 ~ 120,
+                              distance != 12 ~ distance)) %>% 
     mutate(trip_n = as.character(trip_n),
            sub_n  = as.character(sub_n))
-  
+
+
+# check if teh values seems correct?
+# gradient, exposition, distances
+psych::describe(df_deadwood)
+
+# again some issues with distances:
+df_deadwood %>% 
+  filter(distance < 100)
+
+# 2      spruce l     6  distance  = 12 -> to 120
+
 
 #### Save the ground cover table 
 fwrite(df_deadwood, outDeadwood)
@@ -649,11 +663,6 @@ df_regen_planted <-
 
 dim(df_regen_planted)  # 56x9
 
-# check if my regeneration notes covers also the planted species??? and the damaged ones?
-# check this one: 32     beech  c     9     OtherSoftwood HK1                  1  - one planted
-
-df_regen %>% 
-  filter(trip_n == 32 & manag == 'c' & sub_n == 9 & n_total > 0)# %>% 
 
 ## Get the damage data & position:
 # can I see if teh damage was on planted or on naturally regenerated one?
