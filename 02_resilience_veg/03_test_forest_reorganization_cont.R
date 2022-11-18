@@ -21,19 +21,15 @@ library(stringr)  # use regex expressions
 library(ggpubr)
 library(ggrepel)
 
-# set theme: plotting: 
-theme_set(theme_bw())
-theme_update(legend.position = 'bottom') 
-
-
 
 
 # Store details about labeling and plotting -------------------------------------
 # get labels:
+# for management
 manag.labs <- c("Managed", "Unmanaged", "Reference")
 names(manag.labs) <- c("c", "d", "l")
 
-
+# for dominant species
 species.labs <- c("Beech", "Oak", "Pine", "Spruce")
 names(species.labs) <- c("beech", "oak", "pine", "spruce")
 
@@ -442,13 +438,12 @@ df_full_corr_mrg <-
 
 
 # Get stem density by vertical classes:
-#p_density_vert <- 
+p_density_vert <- 
   df_full_corr_mrg %>%  
   left_join(trip_species, by = "trip_n") %>% 
-    group_by(trip_n, manag, vert_layer) %>% 
-   # summarize(mean_dens = mean(corr_count)) %>% 
-ggplot(aes(x = manag, 
-           y = corr_count,
+  group_by(trip_n, manag, vert_layer) %>% 
+  ggplot(aes(x = manag, 
+           y = corr_count/1000,
            fill = manag)) + 
   details_violin() + #,
    # geom_boxplot(outlier.size =0.5) +
@@ -536,43 +531,35 @@ p_RS2
 
 
 
+# p RS2 raw  --------------------------------------------------------------
 
-
-
-# [do not run] Compare only horizontal distance to: ----------------------
-# - 1 mature trees:
-# - to advanced regen:
-# Make unique plots for: 
-# - all trees (PLOt + ENV), 
-# - only ENV 
-# - only the nearest PLOT or ENV?
-p_avg_distance_nearest <- 
-  df_full_corr_mrg %>%
-  filter(count  != 0 ) %>%
-  filter(vert_layer != 'regen') %>%
-  dplyr::select(trip_n, manag, sub_n, distance, height_class) %>%
-  mutate(distan_class = case_when(height_class %in% c("mature","mat_ENV") ~ 'mature',
-                                height_class %in% c("adv_ENV", "HK7")   ~ 'advanced')) %>%
-  group_by(trip_n, manag, sub_n, distan_class) %>% # , height_class
-
-  full_join(plot_counts_df) %>% # add the 0 distances:! how to account if tree is missing??
+p_RS2_pred <- df_full_corr_mrg %>% 
+  filter(count  != 0 ) %>% 
+  filter(vert_layer != 'regen') %>% 
+  dplyr::select(trip_n, manag, sub_n, distance, vert_layer) %>%
+  right_join(df_master_heights_both) %>%
   mutate(distance = case_when(is.na(distance) ~ 16*100, # complete distances of 16 m if the tree is not present in ENV
                               !is.na(distance) ~ distance)) %>%
-  slice(which.min(distance)) %>% # find teh closest mature tree: in plot or in ENV
-  ggplot(aes(x = factor(manag),
-             y = distance/100,
-             color = distan_class)) +
-  stat_summary() +
-  scale_color_manual(name = "Height class",
-                     breaks=c("mature", "advanced"),
-                     labels=c("mature", "advanced"),
-                     values = c("darkgreen","red")) +
-  ylab('Avg Distance [m]') +
-  ggtitle('Nearest Tree\nMature/advanced reg [m]') +
-  coord_cartesian(ylim = c(0, 8)) +
-  theme(legend.position = 'bottom')
-# 
-# 
+  group_by(trip_n, manag, sub_n) %>% 
+  slice(which.min(distance)) %>% # filter to have only the shortest distance (if several trees were recorded eg on plot)
+  ungroup(.) %>% 
+  group_by(trip_n, manag, sub_n) %>% #, vert_layer
+  as.data.frame() %>%
+  left_join(trip_species, by = "trip_n") %>% 
+  ggplot(aes(x = manag, #factor(manag),
+             y = distance,
+             fill = manag)) + 
+  details_violin() # ,
+
+
+
+
+
+
+
+
+
+
 
 
 # RS3: Vertical structure -------------------------------------------------
@@ -624,22 +611,7 @@ df_RS3 <-
 # replace Inf value by 0:
 df_RS3[as.matrix(df_RS3) == Inf]  <- 0
 
-# Plot distribution of vertical classes: by management and tree species
-# !!!??? showhow often which layer is missing? by species, manag, height class? 
-# df_full_corr_mrg %>% 
-#   filter(count  != 0 ) %>% 
-#   dplyr::select(trip_n, manag, sub_n, vert_layer) %>%
-#   distinct(.) %>%
-#  # filter(trip_n == '7' & manag == 'l' & sub_n == '1') 
-#   group_by(trip_n, manag, sub_n, vert_layer) %>% 
-#   summarise(vertical_n = n()) #%>%
-#   ungroup(.) %>% 
-#   group_by(trip_n, manag, vert_layer) %>% 
-#   summarize(mean_vLayer   = mean(vertical_n, na.rm = TRUE))# %>%
-#   ggplot(aes(x = as.factor(manag),
-#              y = mean_vLayer)) +
-#   geom_col(identity = )
-  
+ 
 ### Plot RS3: raw ---------------------------------------------------------------
 p_RS3_pred <- 
   df_full_corr_mrg %>%
@@ -650,16 +622,13 @@ p_RS3_pred <-
   summarise(vertical_n = n()) %>%
   ungroup(.) %>% 
   group_by(trip_n, manag) %>% 
-  summarize(mean_vLayer   = mean(vertical_n, na.rm = TRUE)) %>%
+ # summarize(mean_vLayer   = mean(vertical_n, na.rm = TRUE)) %>%
   as.data.frame() %>%
   left_join(trip_species, by = "trip_n") %>% 
   ggplot(aes(x = manag, #factor(manag),
-             y = mean_vLayer,
-             color = trip_n)) + # , 
-  geom_point() + 
-  geom_line(aes(group = trip_n), alpha = 0.5) +
-  facet_grid(.~dom_sp) +
-  theme(legend.position = 'none')
+             y = vertical_n,
+             fill = manag)) + 
+  details_violin()
   
 
 
@@ -679,12 +648,12 @@ p_RS3 <- df_RS3 %>%
 # Plot densities together  ------------------------------------------------
 
 p_6vars <- ggarrange(
-  p_RA1 + ylim(0,2),
-  p_RA2 + ylim(0,2) ,
-  p_RA3 + ylim(0,2) ,
-  p_RS1 + ylim(0,2) ,
-  p_RS2 + ylim(0,2) ,
-  p_RS3 + ylim(0,2) ,
+  p_RA1 + ylim(0,1.8),
+  p_RA2 + ylim(0,1.8) ,
+  p_RA3 + ylim(0,1.8) ,
+  p_RS1 + ylim(0,1.8) ,
+  p_RS2 + ylim(0,1.8) ,
+  p_RS3 + ylim(0,1.8) ,
   nrow = 2,
   ncol = 3,
   common.legend = TRUE,
