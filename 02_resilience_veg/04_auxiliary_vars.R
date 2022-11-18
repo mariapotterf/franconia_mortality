@@ -68,7 +68,7 @@ df_DW_ground <- df_ground %>%
          sub_n = as.character(sub_n)) %>% 
   filter(class == "deadwood/stumps") %>% 
   group_by(trip_n, manag) %>% 
-  summarise(prop_DW = mean(prop))
+  summarise(prop_DW_gc = mean(prop))
 
 
 # keep only useful columns
@@ -110,7 +110,6 @@ df_prec_out <-
    # filter(year %in% drought_period)
     mutate(prec_ref   = mean(avg_prec[year %in% reference_period], na.rm = T),
            prec_18_20 = mean(avg_prec[year %in% drought_period], na.rm = T),
-           #anomaly    = disturbance_ha / mean(disturbance_ha[year %in% reference_period], na.rm = TRUE) - 1,
            anomaly_prec_18_20  = prec_18_20 / prec_ref - 1) %>% 
   dplyr::select(c(prec_ref, prec_18_20, anomaly_prec_18_20)) %>% 
   distinct() 
@@ -154,8 +153,9 @@ p_dist_patch <- df %>%
   facet_grid(.~manag)
 
 # scatter: euclid vs DW:
-p_dist_DW_ground <- df %>% 
-  ggplot(aes(x = prop ,# proportion deadwood
+#p_dist_DW_ground <- 
+  df %>% 
+  ggplot(aes(x = prop_DW   ,# proportion deadwood
              y = euclid_dist,
              color = manag)) +
   geom_point() +
