@@ -34,6 +34,10 @@ manag.labs <- c("Managed", "Unmanaged", "Reference")
 names(manag.labs) <- c("c", "d", "l")
 
 
+species.labs <- c("Beech", "Oak", "Pine", "Spruce")
+names(species.labs) <- c("beech", "oak", "pine", "spruce")
+
+
 # For density plot:
 dens_plot_details <- function() {
   list(
@@ -45,18 +49,55 @@ dens_plot_details <- function() {
   ))
 }
 
-
-# For raw values plotting: 
-details_boxpl <- function() {
+# details for violin plot: from the raw data
+details_violin <- function() {
   list(
-    scale_x_discrete(breaks = names(manag.labs),
+    geom_violin(trim = T, 
+                lty = 1,
+                lwd = 0.2,
+                alpha = 0.8), # remove outer line
+    stat_summary(fun = "mean", 
+                 geom = "point",
+                 size = 1,
+                 col = 'black'),
+    theme_classic(),
+    scale_x_discrete(name = '',
+                     breaks = names(manag.labs),
                      labels = manag.labs),
-    facet_grid(.~dom_sp),
+    facet_grid(.~dom_sp, 
+               labeller = labeller(dom_sp = species.labs)),
     theme(legend.position = 'none',
-          axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1)
+          panel.background = element_rect(colour = "black", size = 1),
+          aspect.ratio=1,
+          axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1, face = "italic", size = 8)
     )  
   )
 }
+
+# details for point plot, merged by the line: use only for site level data!!
+details_pts <- function() {
+  list(
+    geom_line(aes(group=trip_n), 
+              position = position_dodge(0.2),
+              alpha = 0.5, 
+              col = 'lightgrey'), # +
+    geom_point(aes(fill=manag,
+                   group=trip_n), 
+               position = position_dodge(0.2),
+               size = 2,
+               alpha = 0.8),
+    theme_classic(),
+    scale_x_discrete(name = '',
+                     breaks = names(manag.labs),
+                     labels = manag.labs),
+    #facet_grid(.~dom_sp, 
+    #labeller = labeller(dom_sp = species.labs)),
+    theme_update(legend.position = 'none',
+                 axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1, face = "italic", size = 6)
+    )  
+  )
+}
+
 
 
 
@@ -207,7 +248,7 @@ p_RA1 <-
 
 # plot RA1 raw ---------------------------------------------------------
 
-#p_RA1_pred <-
+p_RA1_pred <-
   plot_IVI_exp %>%
   dplyr::select(trip_n, manag, sub_n, species, rIVI) %>%
   group_by(trip_n, manag, species) %>%
@@ -237,18 +278,8 @@ plot_IVI_exp %>%
   left_join(trip_species, by = "trip_n") %>% 
   ggplot(aes(x = manag, #factor(manag),
              y = ref_rIVI_mean,
-             color = dom_sp)) + # , 
-  geom_point() + 
-  geom_line(aes(group = trip_n), alpha = 0.5) +
-  facet_grid(.~dom_sp)
-
-
-
-
-
-
-
-
+             color = manag)) + # , 
+  details_pts()
 
 
 
@@ -300,45 +331,24 @@ p_RA2 <-df_RA2 %>%
 
 
 # RA2 Plot richness raw --------------------------------------------
-
-p_RA2_pred <- plot_IVI_exp %>%
-  filter(sp_count  != 0 ) %>% 
-  group_by(trip_n, manag, sub_n) %>% 
-  summarise(richness = n()) %>% 
-  group_by(trip_n, manag) %>%
-  summarize(mean_richness = mean(richness, na.rm = T)) %>% 
-  as.data.frame() %>%
-  left_join(trip_species, by = "trip_n") %>% 
-  ggplot(aes(x = manag, #factor(manag),
-             y = mean_richness,
-             color = trip_n)) + # , 
-  geom_point() + 
-  geom_line(aes(group = trip_n), alpha = 0.5) +
-  facet_grid(.~dom_sp) +
-  theme(legend.position = 'none')
- 
-
-# test new plotting with function: density plot or histogram
-# !!! remove!
-#p_RA2_pred <- 
+windows()
+# raw data
+p_RA2_pred <- 
   plot_IVI_exp %>%
   filter(sp_count  != 0 ) %>% 
   group_by(trip_n, manag, sub_n) %>% 
   summarise(richness = n()) %>% 
   group_by(trip_n, manag) %>%
-  summarize(mean_richness = mean(richness, na.rm = T)) %>% 
   as.data.frame() %>%
   left_join(trip_species, by = "trip_n") %>% 
   ggplot(aes(x = manag, #factor(manag),
-             y = mean_richness,
-             color = trip_n)) + # , 
- # geom_boxplot()+
-    geom_point() + 
-  geom_line(aes(group = trip_n), alpha = 0.5) +
- # facet_grid(.~dom_sp) +
-#  theme(legend.position = 'none') + 
-    details_boxpl() #+
-    
+             y = richness,
+             fill = manag)) + 
+  details_violin() # ,
+  
+ 
+ 
+
 
  
 
@@ -388,12 +398,8 @@ p_RA3_pred <- plot_IVI_exp %>%
   left_join(trip_species, by = "trip_n") %>% 
   ggplot(aes(x = manag, #factor(manag),
              y = mean_shade,
-             color = trip_n)) + # , 
-  geom_point() + 
-  geom_line(aes(group = trip_n), alpha = 0.5) +
-  facet_grid(.~dom_sp) +
-  theme(legend.position = 'none')
-
+             fill = manag)) + 
+  details_violin() # ,
 
 
 # RS1: stem density --------------------------------------------------------
@@ -422,21 +428,6 @@ p_RS1 <- df_RS1 %>%
   ggtitle('Stem density')
 
 
-### p_RS1 raw  ------------------------------------------------------------------
-p_RS1_pred <- plot_IVI_exp %>% 
-  group_by(trip_n,manag) %>% 
-  summarize(mean_dens   = mean(all_count, na.rm = TRUE)) %>%
-  as.data.frame() %>%
-  left_join(trip_species, by = "trip_n") %>% 
-  ggplot(aes(x = manag, 
-             y = mean_dens,
-             color = trip_n)) + # , 
-  geom_point() + 
-  geom_line(aes(group = trip_n), alpha = 0.5) +
-  facet_grid(.~dom_sp) +
-  theme(legend.position = 'none')
-
-
 
 
 # RS2: Horizontal structure -----------------------------------------------
@@ -451,15 +442,17 @@ df_full_corr_mrg <-
 
 
 # Get stem density by vertical classes:
-p_density_vert <- 
+#p_density_vert <- 
   df_full_corr_mrg %>%  
+  left_join(trip_species, by = "trip_n") %>% 
     group_by(trip_n, manag, vert_layer) %>% 
    # summarize(mean_dens = mean(corr_count)) %>% 
-    ggplot(aes(x = manag,
-               y = corr_count, #mean_dens,
-               fill = manag)) +
-    geom_boxplot(outlier.size =0.5) +
-    facet_wrap(.~vert_layer, scales = 'free')
+ggplot(aes(x = manag, 
+           y = corr_count,
+           fill = manag)) + 
+  details_violin() + #,
+   # geom_boxplot(outlier.size =0.5) +
+    facet_grid(vert_layer ~ dom_sp, scales = 'free')
 
 
 
@@ -1062,7 +1055,7 @@ sites2 <-
 
 # add resilience category (df) into the sf
 sites_out <- sites2 %>% 
-  left_join(dplyr::select(res_classes, c('trip_n', 'manag', 'group'))) #%>% 
+  left_join(dplyr::select(res_classes, c('trip_n', 'manag', 'labelXY'))) #%>% 
    # nrow()
 
 st_write(sites_out, 
