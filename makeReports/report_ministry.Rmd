@@ -1,11 +1,11 @@
 ---
 title: "Quantifying the propensity of forest reorganization"
-author: "Mária Potterf"
+author: "Mária Potterf, Werner Rammer, Rupert Seidl"
 date:  "`r Sys.Date()`"
 output: 
   bookdown::html_document2:
     toc: true
-    toc_depth: 2
+    toc_depth: 3
 knit: (function(input, ...) {
     rmarkdown::render(
       input,
@@ -29,27 +29,9 @@ p.caption {
 }
 ```
 
+# Study background
 
-# Data collection: summer 2022
-
-##	Study sites selection
-We have identified the triplets of the similar forest management history and site conditions. A triplet represents locally comparable sites of the same pre-disturbance conditions and management history. The triplet consists of three sites representing i) reference conditions, i.e., undisturbed forest; and sites affected by drought and ii) managed by salvage logging, or iii) left unmanaged, with standing dead trees. The minimal disturbance gap size was 0.05 ha (25 x 25m) with minimal gap width on the smallest side of 25 m and disturbance severity of >80% of removed basal area. In total, we identified 40 triplets. 
-
-## 	Sampling design
-
-At each study site, we have collected trees characteristics at two levels: within 4 m2 plot and in its nearest surroundings (distance from plot center: <15m). This approache allowed us effectively account for different tree heights classes and densities. Specifically, we have collected tree species, stem density, and a diameter at breast height (dbh) of individual trees at three height classes: forest regeneration (dbh: < 2 cm, height: < 2 m), advanced regeneration (dbh: 2-10 cm), and mature trees (dbh: > 10 cm). In each plot’s surrounding (within 15 m radius), we have recorded the distance to the nearest advanced regeneration and mature tree, its tree species, and dbh. 
-The plots were randomly located along the sampling grid, with minimal distance between plots of 10 m. The sampling design aimed to capture the stem density at the plot level for forest regeneration, and within the plot surroundings using distance density estimation. The effective number of plots per site to correctly represent distance-based stem density was a priori tested using a simulation approach in R software (R Development Core Team 2019). We used a full factorial experimental design to test the sensitivity of the estimated stem densities of the number of plots (per stand from 4 to 100 plots, increasing by 2)  and stand size (from 0.05 ha to 1 ha). We tested simulated stands with different densities (from 1 to 10000 stems/ha) and repeated simulations 10 times. The mean predicted densities remained stable at 5 (for stand of 0.05 ha) to 15 plots per site (area of 1 ha, Fig. S2), allowing to accordingly scale up the number of plots per site. See full protocol for data collection as Supplementary material SX. 
-
-![Fig. Study sites distribution by dominant tree species across Bavaria](C:/Users/ge45lep/Documents/2021_Franconia_mortality/r_franconia_mortality/inImg/map_bavaria.png){width=65%}
-### Analyses
-
-We have combined the collected tree characteristics to represent the community level information. We summed up the plot- and nearest-distance derived stem densities per plot [stem number/ha]. This represents a robust method to capture different types of forest structures differing in size and densities, and balances between the plots and its immediate surroundings. We have slope-corrected recorded stem densities. 
-Specifically, for each plot, we have calculated stem density [number of trees/ha], relative species importance value [IV, scaled to 0-100%], based on species stem density and its basal area, and species richness, as a number of tree species per plot. We have used species-specific ecological characteristics derived by Niinemets and Valladares (2006) to calculate the community shade tolerance, weighted by IV. We have used the distance to the nearest tree and height classes of trees to derive the horizontal and vertical structure of the forest.
-We have summarized the results to characterize the post-disturbance recovery of disturbed sites based on type of applied management, where the site was cleared (managed) or left unmanaged. Secondly, we have focused on pathways of forest reorganization sensu Seidl and Turner (2022). Following the conceptual ideas outlined by Seidl and Turner (2022), we assessed the propensity of forest reorganization based on post-disturbance forest vegetation relative to reference conditions (representing pre-disturbance state). We have used three indicators for each dimension of forest reorganization (structure, composition), standardized them using z-scores, and combined the obtained responses by means of averaging. The result is an integral indicator of the propensity for reorganization (for the categories resilience, reassembly, restructuring, and replacement) that can be compared across environmental conditions and forest types. The analysis is conducted at the level of individual sites, using the sample plots per site to consider the inherent variation in each property also under reference conditions. Lastly, we investigated how the how disturbance patch size and severity (in term of basal area removed) influence the site specific reorganization path.
-
-
-
-### Forest reorganization: implementation
+## Forest reorganization: implementation
 
 Identify the aspects of the forest reorganization:
 
@@ -73,26 +55,44 @@ Evaluate by comparing the range of variability under REF condition (mean, SD) co
  -> The order of variables can change, to have the indication of change as positive (+) value.
 
 
-#### Composite indicators
+*Combine indicators* by means of the individual indicators per each dimension (struture, composition).
 
-- means of the individual indicators axis
-
-
-**Final classification of triplets**
-
-Based on the extent of the change; separated by 
-three sectors in the plot to quantify change
 
 ![Fig. Response pathways of Forest reorganization (Seidl & Turner #2022)](C:/Users/ge45lep/Documents/2021_Franconia_mortality/r_franconia_mortality/inImg/response_pathways.png){width=75%}
 
 
-# Describe study sites 
+
+# Data collection: summer 2022
+
+##	Study sites selection
+We have identified the triplets of the similar forest management history and site conditions. A triplet represents locally comparable sites of the same pre-disturbance conditions and management history. The triplet consists of three sites representing i) reference conditions, i.e., undisturbed forest; and sites affected by drought and ii) managed by salvage logging, or iii) left unmanaged, with standing dead trees. The minimal disturbance gap size was 0.05 ha (25 x 25m) with minimal gap width on the smallest side of 25 m and disturbance severity of >80% of removed basal area. In total, we identified 40 triplets. 
+
+## 	Sampling design
+
+At each study site, we have collected trees characteristics at two levels: within 4 m2 plot and in its nearest surroundings (distance from plot center: <15m). This approache allowed us effectively account for different tree heights classes and densities. Specifically, we have collected tree species, stem density, and a diameter at breast height (dbh) of individual trees at three height classes: forest regeneration (dbh: < 2 cm, height: < 2 m), advanced regeneration (dbh: 2-10 cm), and mature trees (dbh: > 10 cm). In each plot’s surrounding (within 15 m radius), we have recorded the distance to the nearest advanced regeneration and mature tree, its tree species, and dbh. 
+The plots were randomly located along the sampling grid, with minimal distance between plots of 10 m. The sampling design aimed to capture the stem density at the plot level for forest regeneration, and within the plot surroundings using distance density estimation. The effective number of plots per site to correctly represent distance-based stem density was a priori tested using a simulation approach in R software (R Development Core Team 2019). We used a full factorial experimental design to test the sensitivity of the estimated stem densities of the number of plots (per stand from 4 to 100 plots, increasing by 2)  and stand size (from 0.05 ha to 1 ha). We tested simulated stands with different densities (from 1 to 10000 stems/ha) and repeated simulations 10 times. The mean predicted densities remained stable at 5 (for stand of 0.05 ha) to 15 plots per site (area of 1 ha, Fig. S2), allowing to accordingly scale up the number of plots per site. See full protocol for data collection as Supplementary material SX. 
+
+
+![Fig. Study sites distribution by dominant tree species across Bavaria](C:/Users/ge45lep/Documents/2021_Franconia_mortality/r_franconia_mortality/inImg/map_bavaria.png){width=65%}
+
+## Analyses
+
+We have combined the collected tree characteristics to represent the community level information. We summed up the plot- and nearest-distance derived stem densities per plot [stem number/ha]. This represents a robust method to capture different types of forest structures differing in size and densities, and balances between the plots and its immediate surroundings. We have slope-corrected recorded stem densities. 
+Specifically, for each plot, we have calculated stem density [number of trees/ha], relative species importance value [IV, scaled to 0-100%], based on species stem density and its basal area, and species richness, as a number of tree species per plot. We have used species-specific ecological characteristics derived by Niinemets and Valladares (2006) to calculate the community shade tolerance, weighted by IV. We have used the distance to the nearest tree and height classes of trees to derive the horizontal and vertical structure of the forest.
+
+We have summarized the results to characterize the post-disturbance recovery of disturbed sites based on type of applied management, where the site was cleared (managed) or left unmanaged. Secondly, we have focused on pathways of forest reorganization sensu Seidl and Turner (2022). Following the conceptual ideas outlined by Seidl and Turner (2022), we assessed the propensity of forest reorganization based on post-disturbance forest vegetation relative to reference conditions (representing pre-disturbance state). We have used three indicators for each dimension of forest reorganization (structure, composition), standardized them using z-scores, and combined the obtained responses by means of averaging. The result is an integral indicator of the propensity for reorganization (for the categories resilience, reassembly, restructuring, and replacement) that can be compared across environmental conditions and forest types. The analysis is conducted at the level of individual sites, using the sample plots per site to consider the inherent variation in each property also under reference conditions. Lastly, we investigated how the how disturbance patch size and severity (in term of basal area removed) influence the site specific reorganization path.
+
+
+
+
+
+# Study sites 
 
 The number of samples triplets by dominant tree species. Each triplet has 3 management categories: 
 
 - REF       - reference, undisturbed sites
-- Unmanaged - disturbed sites by drought, uncleared
-- Managed   - cleared
+- MAN       - managed
+- UNM       - disturbed sites by drought, unmanaged
 
 
 ```{r setup-root}
@@ -102,20 +102,11 @@ knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file('C:/Users/ge45
 ```
 
 
+
 ```{r read-libs, eval = TRUE, echo=FALSE, include = FALSE, warning = FALSE, error = FALSE }
 # rm(list=ls())
 
 #getwd()
-
-# Input data -------------------------------------------------------------------
-#getwd()
-load(file = paste(getwd(), "outData/dataToPlot.Rdata", sep = '/'))
-load(file = "outData/dat_restr.Rdata")
-load(file = "outData/vegData.Rdata")
-load(file = "outData/dataToPlot.Rdata")
-load(file = "outData/auxData.Rdata")
-
-
 
 #### Source paths and functions  -----------------------------------------------
 
@@ -134,10 +125,21 @@ library(stringr)  # use regex expressions
 library(ggpubr)
 
 
+
+# Input data -------------------------------------------------------------------
+#getwd()
+load(file = paste(getwd(), "outData/dataToPlot.Rdata", sep = '/'))
+load(file = "outData/dat_restr.Rdata")
+load(file = "outData/vegData.Rdata")
+load(file = "outData/dataToPlot.Rdata")
+load(file = "outData/auxData.Rdata")
+
+
+
+
 ```
 
-### Collected data overview 
- 
+## Collected forest variables
  
 Plot (4m^2):  
 
@@ -156,7 +158,9 @@ Surroundings (<15m from the plot center):
  - nearest mature tree: species, DBH
  
  
-## Tree density estimation
+## Derived characteristics
+ 
+### Tree density
 
 Two approaches: 
 
@@ -166,17 +170,10 @@ Two approaches:
 Both metrics are slope corrected and recalculated to count of trees/ha.
 
 
-```{r p_advanced_hist, echo = F, fig.width = 5, fig.height = 2.5, fig.cap=" Histogram of advanced regeneration in surroundings (ENV) by species (C = Managed, D - Unmanaged, L - Reference (Living))"}
-
-#p_advanced_hist  
-
-```
 
 
 
-
-
-## Species importance value
+### Species importance value
 
 Calculate **species importance value**
 
@@ -192,9 +189,9 @@ The **Importance Value** is the sum of these three measures, and can range from 
  **Importance value** calculated here considers the extent of the 4m2 plot and distance based on nearest distance measures (for advanced and mature regeneration in surroundings, up to 15 m). 
  
  
+### Shade tolerance
 
-
-
+Based on the collected information of the individual species, we have used the species ecological values published by Niinemets and Valladares (2006) to understand the shade tolerance index for the whole community. As weights, we have used species importance value.  
 
 ```{r set-theme, include=FALSE}
 # set theme: plotting: 
@@ -216,6 +213,7 @@ out_summary <- dat %>%
         triplets_count = n)
 
 ```
+
 
 
 ```{r sites-count, echo=FALSE}
@@ -241,147 +239,121 @@ out_summary %>% knitr::kable("markdown")
 
 ```
 
-## Density: mature and advanced regeneration 
 
-the tree is present on the PLOT and in the ENV:
+## Post disturbance recovery & effect of management
 
- - mature
- - advanced
+In total, we have collected data on 1244 plots, aggregated over 40 triplets across Bavaria. 
 
-If both values are present (mature and advanced regeneration tree in the PLOT and ENV), select the nearest tree; ignore the species. 
+Here we present them at the plot level (using violin plots) and averaged at the site level (using dot plot).
 
-Mature trees_ENV are missing in 100 plots (located out of the focus radius)
-Advanced regeneration is missing from ~ 200 plots. 
+### Forest characteristics: by plot
 
+**Dominant species importance value** Distribution of the species importance values across plots for the dominant tree species per study site.
 
+```{r p_RA1_raw, fig.width = 6, fig.height = 3, echo = F, fig.cap="Violin plot of the dominant species importance value per management types (REF-Reference, MAN - Managed, UNM-Unmanaged). The black dot shows mean."}
 
-# Post-disturbance recovery
-
-## Reassembly
-### RA1: Dominant species
-
-```{r p_RA1_pred, fig.width = 6, fig.height = 3, echo = F, fig.cap="Density distribution of RA1 (Dominant type) for two types of management (Dead and Clear-cut)."}
-
-p_RA1_pred  
+p_RA1_raw  
 
 ```
 
-### RA2: Tree species richness 
+**Tree species richness** Number of distinct tree species. 
 
-Number of different tree species per site. 
-Change: if the species richness lowers after disturbance. 
+```{r p_RA2_raw, echo = F,  fig.width = 6, fig.height = 3, fig.cap="Violin plot of the species richness per management types (REF-Reference, MAN - Managed, UNM-Unmanaged). The black dot shows mean."}
 
-```{r p_RA2_pred, echo = F,  fig.width = 6, fig.height = 3, fig.cap="Density distribution of RA2 (Richness) for two types of management (Dead and Clear-cut)."}
-
-p_RA2_pred
+p_RA2_raw
 
 ```
 
 
-### RA3: Competition: Shade tolerance
+**Shade tolerance** Community weighted mean of the species shade tolerance. 
 
-Community weighted mean of the species shade tolerance. 
-Change: if the species CWM lowers after disturbance. 
  
-```{r p_RA3_pred, echo = F, fig.width = 6, fig.height = 3, fig.cap="Density distribution of RA3 (Shade tolerance) for two types of management (Dead and Clear-cut)."}
+```{r p_RA3_raw, echo = F, fig.width = 6, fig.height = 3, fig.cap="Community weighted shade tolerance per management types (REF-Reference, MAN - Managed, UNM-Unmanaged). The black dot shows mean."}
 
-p_RA3_pred
+p_RA3_raw
 
 
 ```
 
+**Stem density** Compare the stem density before or after disturbance.
 
 
+```{r p_RS1_raw, echo = F,  fig.width = 6, fig.height = 4, fig.cap="Violin plot of the dominant species importance value per management types (REF-Reference, MAN - Managed, UNM-Unmanaged). across the tree height classes (mature, advanced regeneration, regeneration). The black dot shows mean. "}
 
-
-## Restructure
-
-### RS1: Stem density
-
-Compare the stem density before or after disturbance.
-
-Change: if the stem density lowers after disturbance. 
-
-
-
-```{r p_RS1_pred, echo = F,  fig.width = 6, fig.height = 3, fig.cap="Density distribution of RS1 (Stem density) for two types of management (Dead and Clear-cut)."}
-
-p_RS1_pred
+p_RS1_raw
 
 ```
 
 
-### RS2: Horizontal structure 
+**Horizontal structure** Compare horizontal structure pre-& post-disturbance.
 
-Compare horizontal structure pre-& post-disturbance.
-
-Change: if the horizontal structure is larger after disturbance.
-
-**Very sensitive if taking into account only  distance to the mature trees, or mature trees and advanced regeneration!!**
 
   
-```{r plot-RS2_both, echo = F, fig.width = 6, fig.height = 3,  fig.cap="Density distribution of RS2 (Horizontal structure) for two types of management (Dead and Clear-cut). Both missing advanced regeneration and mature trees replaced by 0."}
+```{r p_RS2_raw, echo = F, fig.width = 6, fig.height = 3,  fig.cap="Horizontal distances [m] between the nearest mature and advanced regeneration trees per management types (REF-Reference, MAN - Managed, UNM-Unmanaged). The black dot shows mean."}
 
-p_RS2
-
-```
-
-
-```{r p_RS2_mature, echo = F, fig.width = 6, fig.height = 3,  fig.cap="Density distribution of RS2 (Horizontal structure) for two types of management (Dead and Clear-cut). ONly based on mature trees; missing trees replaced by 0."}
-
-#p_RS2_mature
+p_RS2_raw
 
 ```
 
 
-#### Investigate the horizontal distances between:
+**Vertical structure** Compare umber of layers between reference and disturbed conditions.
 
- - Average distance for Advanced regeneration and for Mature trees before and after completing missing trees (if no tree was present, the distance to the nearest one was set to 16m, outsite of the search radius).
+```{r p_RS3_raw, fig.width = 6, fig.height = 3, echo = F, fig.cap="Number of vertical layers [count] (mature, advanced regeneration, regeneration) per management types (REF-Reference, MAN - Managed, UNM-Unmanaged). The black dot shows mean."}
 
-```{r p_distances, echo = F,  fig.width = 5, fig.height = 2.5, fig.cap="Mean horizontal distances to the nearest mature and advanced regeneration tree. a) Filtered nearest Mature and Advanced regeneration tree for Plot and Surroundings, b) Avg distance for mature trees on plot and in surrounding, c) Avg distance for advanced regeneration in plot and in surrounding."}
-
-p_distances
-
-```
-
-
-```{r p_avg_distance_nearest, echo = F,  fig.width = 5, fig.height = 2.5, fig.cap="Mean horizontal distances to the nearest mature and advanced regeneration tree. a) Filtered nearest Mature and Advanced regeneration tree for Plot and Surroundings, b) Avg distance for mature trees on plot and in surrounding, c) Avg distance for advanced regeneration in plot and in surrounding."}
-
-p_avg_distance_nearest
-
-```
-
-
-
-
-### RS3: Vertical structure 
-
-How many layers had the stand pre-post-disturbance?
-
-Change: indicated by different layers number. 
-
-```{r p_RS3_pred, fig.width = 6, fig.height = 3, echo = F, fig.cap="Density distribution of RS3 (vertical structure) for two types of management (Dead and Clear-cut)."}
-
-p_RS3_pred
+p_RS3_raw
 
 
 ```
 
-# Density distribution: 6 indicators
 
-```{r plot-3vars,fig.height = 4.5, echo = F, fig.cap="Density distribution of the 6 indicators for two types of management (Dead and Clear-cut) for  Reassembly (upper row) and Restructure (lower row). Note different scale on x-axis. "}
+### Forest characteristics: by site
+
+Averaged values of individual indicators per site. 
+
+```{r plot-p_6site,fig.height = 5.5,fig.width = 6.5, echo = F, fig.cap="Mean value per indicator and its changes per management types (REF-Reference, MAN - Managed, UNM-Unmanaged) for  Reassembly (upper row) and Restructure (lower row). Note different scale on y-axis. The grey lines represent one triplet."}
+
+p_6site
+
+
+```
+
+
+## Pathways of forest reorganization
+
+Compare the REF conditions with Disturbed conditions (Managed, Unmanaged) using Z-score.
+
+Indication of change of community after disturbance:
+
+- **RA1: Dominant species importance value**: Reduced dominant species importance value
+- **RA2: Tree species richness** :  Decrease in species richness  
+- **RA3: Shade tolerance** Decrease in community weighted mean shade tolerance.
+- **RS1: Stem density**Decrease in stem density.
+- **RS2: Horizontal structure**: Increase in horizontal distances between trees (i.e., forest gaps)
+- **RS3: Vertical structure**: Increase in number of vertical layers. 
+
+
+### Evaluate change from REF condistions
+
+
+Comparing the Ref conditions to Disturbed one using Z-score. Disturbed conditions we managed by two types of management: managed (MAN) or Unmanaged (UNM). 
+
+Density distribution for 6 indicators and their shift from the REF conditions.
+
+
+```{r plot-p_6vars,fig.height = 4.5, echo = F, fig.cap="Density distribution of the 6 indicators for two types of management (Dead and Clear-cut) for  Reassembly (upper row) and Restructure (lower row). Note different scale on x-axis. "}
 
 p_6vars
 
 
 ```
 
-# Results 
-## Forest  propensity to reorganize
 
-## By tree species: Average values
 
-```{r p_scatter_mean,fig.height = 4, echo = F, fig.cap="Scatter plot of the combined [mean] RA and RS indicator per management (Dead, Clear-cut and by dominant species). The dashed lines visually split the plot into forest reorganization types."}
+#### By tree species
+
+Idetify the propensity of change towards reassembly/restructuring by dominant tree species and management applied.
+
+```{r p_scatter_mean,fig.height = 4, echo = F, fig.cap="Scatter plot of the combined [average] Reassembly and Restructring indicators per management types (MAN - Managed, UNM-Unmanaged). The dashed lines visually split the plot into forest reorganization types."}
 
 p_scatter_mean
 
@@ -389,70 +361,63 @@ p_scatter_mean
 
 
 
-### Euclidean distances: measure of change intensity
+### Intensity of change: Euclidean distances
 
-Calculate the distances of individual triplets alternatives (Managed-Unmanaged) towards the origin [0,0]. The larger the distance, the higher propensity to reorganize.
+Calculate the distances of individual sites from the no-change (REF) conditions [0,0]. The larger the distance, the higher propensity to reorganize.
 
-```{r p_euclid_lollipop,fig.height = 4.5, fig.width = 6.5, echo = F, fig.cap="Ordered Triplets numbers by the Euclidean distance. Triplet numbers are located within the dots in white. "}
+```{r p_euclid_lollipop,fig.height = 3.5, fig.width = 4.5, echo = F, fig.cap="Ordered sites by the Euclidean distance per dominant tree species and management type (MAN - Managed, UNM-Unmanaged)"}
 
-p_euclid_lollipop + 
-  theme(axis.text.x=element_blank(),
-               legend.position = 'bottom') 
-```
-
-
-### Euclidean distanced by species and management 2
-
-```{r p_euclid_segment,fig.height = 4.5, fig.width = 6.5, echo = F, fig.cap="Ordered Triplets numbers by the Euclidean distance. Triplet numbers are located within the dots in white. "}
-
-p_segment  
+p_euclid_lollipop 
 ```
 
 
 
-## Classify triplets resilience
 
+### Classify forest reorganization
 
-### Summary table: resilience by Tree species
+#### Summary table: by Tree species
 
 Classify the type of the reorganization based on the Euclidean distance (the intensity of change)  and the direction (towards the Reassembly or Restructure, or Both). 
 
 ```{r print-counts-sp, echo=F}
 # print nice table in knitr
-table(res_classes$labelXY, res_classes$dom_sp) %>% knitr::kable("markdown", caption = 'Forest reorganization classes by forest management type. Resilience value - if change is less then <0.5. Extreme values represent change > 1.5. RA - Reassembly. RS- Restructure, RA-RS - both.')
+table(res_classes$labelXY, res_classes$dom_sp) %>% knitr::kable("markdown", caption = 'Forest reorganization classes by forest management type. RA - Reassembly. RS- Restructure, RA-RS - both')
 
 ```
 
-### Summary table: resilience by Management type
+#### Summary table: by Management type
+
 
 ```{r print-counts-manag, echo=F}
 # print nice table in knitr
-table(res_classes$labelXY, res_classes$manag) %>% knitr::kable("markdown", caption = 'Forest reorganization classes by tree species. Resilience value - if change is less then <0.5. Extreme values represent change > 1.5. RA - Reassembly. RS- Restructure, RA-RS - both')
+table(res_classes$labelXY, res_classes$manag) %>% knitr::kable("markdown", caption = 'Forest reorganization classes by tree species.RA - Reassembly. RS- Restructure, RA-RS - both')
 
 ```
 
-## Importance of reorganizaton axes: 
+#### Importance of reorganizaton axes 
 
-```{r p_drivers,fig.height = 6, echo = F, fig.cap="mean+-SE for individual indicators per species and management regime."}
+```{r p_drivers,fig.height = 5, echo = F, fig.cap="mean+-SE for individual indicators per species and management regime."}
 
 p_drivers
 
 ```
 
-## Drivers
+## Drivers of forest reorganization
 
-### Disturbance patch size vs Euclid
+We consider additional auxiliary variables to explain the observed shift in the community restructuring/reassembly. 
 
-```{r p_dist_patch,fig.height = 3, echo = F, fig.cap="Patch size vs euclidean distance"}
+**Auxiliary variables**:
 
-p_dist_patch
+- temperature
+- precipitation
+- temperature anomaly (2018-2020 compared to 1986-2015)
+- precipitation anomaly (2018-2020 compared to 1986-2015)
+- deadwood amount
+- ground cover [% of bare soil]
 
-```
+We will predict the extend of change (Euclidean distance) by auxiliary variables by generalized linear models.  
 
-### Temp anomaly vs Euclid
+[To be completed over coming months].
 
-```{r p_anom_temp,fig.height = 3, echo = F, fig.cap="GAm: temp anomaly vs euclidean distance"}
 
-p_anom_temp
 
-```
