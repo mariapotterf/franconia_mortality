@@ -11,6 +11,7 @@
 
 rm(list=ls())
 
+
 #### Read libraries  -----------------------------------------------------------
 library(readxl)
 library(dplyr)
@@ -26,15 +27,44 @@ library(ggrepel)
 # Store details about labeling and plotting -------------------------------------
 # get labels:
 # for management
-manag.labs <- c("Managed", "Unmanaged", "Reference")
+manag.labs        <- c("MAN", "UNM", "REF")
 names(manag.labs) <- c("c", "d", "l")
+manag.level       <- c('l', 'c', 'd')   # to order the data on x axis: REF, MAN, UNM
 
 # for dominant species
-species.labs <- c("Beech", "Oak", "Pine", "Spruce")
+species.labs        <- c("Beech", "Oak", "Pine", "Spruce")
 names(species.labs) <- c("beech", "oak", "pine", "spruce")
 
 
-# For density plot:
+
+# Colors ------------------------------------------------------------------
+
+my_sp_vals = c('spruce'= '#7CBB00', # light green
+               'beech' = '#FFBB00', # yellow,
+               'oak'   =  '#F65314',  # red
+               'pine' = '#3A606E')  #  bluish
+
+my_sp_vals2 = c('spruce'= '#85ce00', # light green
+                'beech' = '#ff8000',  # orange' 
+                'oak'   = '#005dff', # blue,
+                'pine' = '#ff0045')  #  red
+
+
+
+
+
+# Theme set ---------------------------------------------------------------
+
+theme_set(theme_classic())
+theme_update(legend.position = 'none',
+             panel.background = element_rect(colour = "black", size = 0.5),
+             aspect.ratio=1,
+             axis.text.x = element_text(angle = 0, #vjust = 1, hjust = 1, 
+                                        #face = "italic", 
+                                        size = 8))
+
+
+# For density plot: ----------------------------------------------------------
 dens_plot_details <- function() {
   list(
     geom_density(alpha = 0.5),
@@ -49,9 +79,9 @@ dens_plot_details <- function() {
 details_violin <- function() {
   list(
     geom_violin(trim = T, 
-                lty = 1,
+                lty = 1, # # remove outer line
                 lwd = 0.2,
-                alpha = 0.8), # remove outer line
+                alpha = 0.8), 
     stat_summary(fun = "mean", 
                  geom = "point",
                  size = 1,
@@ -63,33 +93,40 @@ details_violin <- function() {
     facet_grid(.~dom_sp, 
                labeller = labeller(dom_sp = species.labs)),
     theme(legend.position = 'none',
-          panel.background = element_rect(colour = "black", size = 1),
+          panel.background = element_rect(colour = "black", size = 0.5),
           aspect.ratio=1,
-          axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1, face = "italic", size = 8)
+          axis.text.x = element_text(angle = 0, #vjust = 1, hjust = 1, 
+                                     #face = "italic", 
+                                     size = 8)
     )  
   )
 }
 
-# details for point plot, merged by the line: use only for site level data!!
+# details for point plot, merged by the line: use only for site level data!!------
 details_pts <- function() {
   list(
     geom_line(aes(group=trip_n), 
               position = position_dodge(0.2),
               alpha = 0.5, 
               col = 'lightgrey'), # +
-    geom_point(aes(fill=manag,
+    geom_point(aes(color=dom_sp,
                    group=trip_n), 
                position = position_dodge(0.2),
-               size = 2,
-               alpha = 0.8),
-    theme_classic(),
+               size = 1.8,
+               alpha = 0.7),
+   # theme_classic(),
     scale_x_discrete(name = '',
                      breaks = names(manag.labs),
                      labels = manag.labs),
+      scale_color_manual(values = my_sp_vals2 ,
+                         name = 'Dominant species'),
     #facet_grid(.~dom_sp, 
     #labeller = labeller(dom_sp = species.labs)),
-    theme_update(legend.position = 'none',
-                 axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1, face = "italic", size = 6)
+    theme(legend.position = 'none',
+          axis.text.x = element_text(angle = 0, 
+                                            #vjust = 1, hjust = 1, 
+                                            #face = "italic", 
+                                            size = 8)
     )  
   )
 }
@@ -164,15 +201,6 @@ plot_IVI_exp <-
   
 
 
-# CHeck species importance value: how often are 'Other species" dominant?? ---------------------
-#plot_IVI_exp %>% 
-#  ggplot(aes(x = factor(species),
-#             y = rIVI)) + 
-#  stat_summary(aes(group = manag,
- #                  color = manag))# + 
-  #geom_boxplot()
-
-
 
 # Get new propensity of forest reorganization: 
 # need to get species importance values per plot, not per site!!
@@ -238,13 +266,38 @@ p_RA1 <-
   xlim(-5,5) +
   dens_plot_details() +
   ggtitle('Dominant sp.')
-  #geom_density(alpha = 0.8)
-
-# 
+  
 
 # plot RA1 raw ---------------------------------------------------------
+# filter the dominant species per plot
+# check what is their variability over all plots
+# then get this variation to show it on the violin plot
+# get the dominant species per triplet REF
+df_dom_sp <- dplyr::select(RA1_dom_ref, !c(ref_rIVI_mean)) %>%
+  rename(species_ref = species)
+  
 
-p_RA1_pred <-
+# filter the whole table with only triplets that have the same species
+# complete missing rows by 0
+p_RA1_raw <- plot_IVI_exp %>% 
+  left_join(df_dom_sp, 
+            by=c('trip_n')) %>% 
+  filter(species_ref == species) %>% 
+  left_join(plot_counts_df) %>% 
+  left_join(trip_species, by = "trip_n") %>% 
+  ggplot(aes(x = factor(manag, 
+                        level = c('l', 'c', 'd')), #factor(manag),
+             y = rIVI,
+             fill = manag)) + 
+  details_violin() +
+  ylab("Dom. species [rIVI, %]")
+
+
+
+
+# on site level, lines between triplets ---------------------
+
+p_RA1_site <- 
   plot_IVI_exp %>%
   dplyr::select(trip_n, manag, sub_n, species, rIVI) %>%
   group_by(trip_n, manag, species) %>%
@@ -254,29 +307,15 @@ p_RA1_pred <-
   filter(ref_rIVI_mean == max(ref_rIVI_mean)) %>%
   as.data.frame() %>%
   left_join(trip_species, by = "trip_n") %>% 
-  ggplot(aes(x = manag, #factor(manag),
+  ggplot(aes(x = factor(manag, 
+                        level = c('l', 'c', 'd')),
              y = ref_rIVI_mean,
              color = dom_sp)) + # , 
-  geom_point() + 
-  geom_line(aes(group = trip_n), alpha = 0.5) +
-  facet_grid(.~dom_sp)
- 
+  details_pts()  +
+  ylab("Dom. species [rIVI, %]")
 
-#p_RA1_pred <-
-plot_IVI_exp %>%
-  dplyr::select(trip_n, manag, sub_n, species, rIVI) %>%
-  group_by(trip_n, manag, species) %>%
-  summarize(ref_rIVI_mean = mean(rIVI, na.rm = T)) %>% 
-  ungroup(.) %>% 
-  group_by(trip_n, manag) %>% 
-  filter(ref_rIVI_mean == max(ref_rIVI_mean)) %>%
-  as.data.frame() %>%
-  left_join(trip_species, by = "trip_n") %>% 
-  ggplot(aes(x = manag, #factor(manag),
-             y = ref_rIVI_mean,
-             color = manag)) + # , 
-  details_pts()
 
+p_RA1_site
 
 
 
@@ -325,11 +364,10 @@ p_RA2 <-df_RA2 %>%
 
 
 
-
 # RA2 Plot richness raw --------------------------------------------
-windows()
+#windows()
 # raw data
-p_RA2_pred <- 
+p_RA2_raw <- 
   plot_IVI_exp %>%
   filter(sp_count  != 0 ) %>% 
   group_by(trip_n, manag, sub_n) %>% 
@@ -337,13 +375,35 @@ p_RA2_pred <-
   group_by(trip_n, manag) %>%
   as.data.frame() %>%
   left_join(trip_species, by = "trip_n") %>% 
-  ggplot(aes(x = manag, #factor(manag),
+  ggplot(aes(x = factor(manag, 
+                        level = c('l', 'c', 'd')),
              y = richness,
              fill = manag)) + 
-  details_violin() # ,
+  details_violin() +
+  ylab('Sp. richness')
   
  
  
+# get plot per site ---------------------------------------------------
+p_RA2_site <- 
+  plot_IVI_exp %>%
+  filter(sp_count  != 0 ) %>% 
+  group_by(trip_n, manag, sub_n) %>% 
+  summarise(richness = n()) %>% 
+  ungroup(.) %>% 
+  group_by(trip_n, manag) %>% 
+  summarize(avg_rich = mean(richness, na.rm = F)) %>% 
+  as.data.frame() %>%
+  left_join(trip_species, by = "trip_n") %>% 
+  ggplot(aes(x = factor(manag, 
+                        level = c('l', 'c', 'd')),
+             y = avg_rich,
+             color = dom_sp)) +  
+  details_pts()+
+  ylab('Sp. richness')
+
+
+
 
 
  
@@ -384,7 +444,8 @@ p_RA3 <- df_RA3 %>%
 
 
 ### p_RA3_raw  ----------------------------------------------------------------------------
-p_RA3_pred <- plot_IVI_exp %>% 
+p_RA3_raw <- 
+  plot_IVI_exp %>% 
   left_join(trait_df, by = c('species')) %>% #, by = character()
   ungroup(.) %>% 
   group_by(trip_n, manag) %>% 
@@ -392,10 +453,56 @@ p_RA3_pred <- plot_IVI_exp %>%
                                              rIVI, na.rm = TRUE)) %>%
   as.data.frame() %>%
   left_join(trip_species, by = "trip_n") %>% 
-  ggplot(aes(x = manag, #factor(manag),
+  ggplot(aes(x = factor(manag, 
+                        level = c('l', 'c', 'd')),
              y = mean_shade,
              fill = manag)) + 
-  details_violin() # ,
+  details_violin() +
+  ylab('Shade tolerance\n[mean]')
+
+
+
+# p_RA2_site --------------------------------------------------------------
+
+p_RA3_site <- plot_IVI_exp %>% 
+  left_join(trait_df, by = c('species')) %>% #, by = character()
+  ungroup(.) %>% 
+  group_by(trip_n,  manag) %>% 
+  summarize(mean_shade   = weighted.mean(Shade_tolerance,   
+                                              rIVI, na.rm = TRUE)) %>% 
+  as.data.frame() %>%
+  left_join(trip_species, by = "trip_n") %>% 
+  ggplot(aes(x = factor(manag, 
+                        level = c('l', 'c', 'd')),
+             y = mean_shade,
+             color = dom_sp)) +  
+  details_pts()+
+  ylab('Shade tolerance')
+
+  
+
+
+# DEfine vertical structure -----------------------------------------------
+
+# define the overall layers: same as for vertical structure
+
+# 3 layers: 
+# - regeneration (<= less then 2 m height)
+# - intermediate (> 2 m height & <= 10 cm DBH)
+# - mature (> 10 cm dbh )
+# if the mean number of layers per DIST > REF -> indication of change
+
+
+df_full_corr_mrg <- 
+  df_full_corr_mrg %>%
+  mutate(vert_layer = case_when(height_class %in% c("HK1", "HK2", "HK3", "HK4", "HK5","HK6") ~ 'regen',
+                                height_class %in% c("HK7","adv_ENV" ) ~ 'advanced',
+                                height_class %in% c("mature","mat_ENV" ) ~ 'mature')) 
+
+
+
+
+
 
 
 # RS1: stem density --------------------------------------------------------
@@ -424,38 +531,21 @@ p_RS1 <- df_RS1 %>%
   ggtitle('Stem density')
 
 
+# p_RS1_site -------------------------------------------------------------------
+p_RS1_site <- plot_IVI_exp %>% 
+  group_by(trip_n, manag) %>% 
+  summarize(mean_dens   = mean(all_count, na.rm = TRUE)) %>%
+  as.data.frame() %>%
+  left_join(trip_species, by = "trip_n") %>% 
+  ggplot(aes(x = factor(manag, 
+                        level = c('l', 'c', 'd')),
+             y = mean_dens/1000,
+             color = dom_sp)) +  
+  details_pts()+
+  ylab('Stem dens.(*1000)')
 
 
 # RS2: Horizontal structure -----------------------------------------------
-# define the overall layers: same as for vertical structure
-# need to add disance of 16 m if the mature tree is not present
-df_full_corr_mrg <- 
-  df_full_corr_mrg %>%
-  mutate(vert_layer = case_when(height_class %in% c("HK1", "HK2", "HK3", "HK4", "HK5","HK6") ~ 'regen',
-                                height_class %in% c("HK7","adv_ENV" ) ~ 'advanced',
-                                height_class %in% c("mature","mat_ENV" ) ~ 'mature')) 
-
-
-
-# Get stem density by vertical classes:
-p_density_vert <- 
-  df_full_corr_mrg %>%  
-  left_join(trip_species, by = "trip_n") %>% 
-  group_by(trip_n, manag, vert_layer) %>% 
-  ggplot(aes(x = manag, 
-           y = corr_count/1000,
-           fill = manag)) + 
-  details_violin() + #,
-   # geom_boxplot(outlier.size =0.5) +
-    facet_grid(vert_layer ~ dom_sp, scales = 'free')
-
-
-
-# 3 layers: 
-# - regeneration (<= less then 2 m height)
-# - intermediate (> 2 m height & <= 10 cm DBH)
-# - mature (> 10 cm dbh )
-# if the mean number of layers per DIST > REF -> indication of change
 
 # if there is no tree within 15 m, fill in value 16 m: 
 
@@ -470,6 +560,24 @@ df_master_heights_both <-
   mutate(vert_layer = 'mature') %>% 
   group_by(trip_n, manag, sub_n) %>% 
   complete(vert_layer = .env$v_height_both)
+
+
+# Get stem density by vertical classes:
+p_RS1_raw <- 
+  df_full_corr_mrg %>%  
+  left_join(trip_species, by = "trip_n") %>% 
+  group_by(trip_n, manag, vert_layer) %>% 
+  ggplot(aes(x = factor(manag, 
+                        level = c('l', 'c', 'd')),
+             y = corr_count/1000,
+             fill = manag)) + 
+  details_violin() +
+  facet_grid(vert_layer~dom_sp, 
+             labeller = labeller(dom_sp = species.labs),
+  scales = 'free') +
+  # geom_boxplot(outlier.size =0.5) +
+  ylab('Stem density (*1000)\n')
+
 
 
 
@@ -524,7 +632,7 @@ p_RS2 <- df_RS2 %>%
   ggplot(aes(RS2, fill = manag)) +
   #xlim(-3,3) +
   dens_plot_details()+
-  ggtitle('Horizontal str. [adv+mature]')
+  ggtitle('Horizontal str.')
 
 p_RS2
 
@@ -533,7 +641,7 @@ p_RS2
 
 # p RS2 raw  --------------------------------------------------------------
 
-p_RS2_pred <- df_full_corr_mrg %>% 
+p_RS2_raw <- df_full_corr_mrg %>% 
   filter(count  != 0 ) %>% 
   filter(vert_layer != 'regen') %>% 
   dplyr::select(trip_n, manag, sub_n, distance, vert_layer) %>%
@@ -546,15 +654,43 @@ p_RS2_pred <- df_full_corr_mrg %>%
   group_by(trip_n, manag, sub_n) %>% #, vert_layer
   as.data.frame() %>%
   left_join(trip_species, by = "trip_n") %>% 
-  ggplot(aes(x = manag, #factor(manag),
-             y = distance,
+  ggplot(aes(x = factor(manag, 
+                        level = c('l', 'c', 'd')),
+             y = distance/100,
              fill = manag)) + 
-  details_violin() # ,
+  details_violin() +
+  ylab('Horizontal distance\n[m]')
 
 
 
 
 
+# p_RS2_site --------------------------------------------------------------
+
+p_RS2_site <- df_full_corr_mrg %>%
+  filter(count  != 0 ) %>% 
+  filter(vert_layer != 'regen') %>% 
+  dplyr::select(trip_n, manag, sub_n, distance, vert_layer) %>%
+  right_join(df_master_heights_both) %>%
+  mutate(distance = case_when(is.na(distance) ~ 16*100, # complete distances of 16 m if the tree is not present in ENV
+                              !is.na(distance) ~ distance)) %>%
+  group_by(trip_n, manag, sub_n, vert_layer) %>% 
+  slice(which.min(distance)) %>% # filter to have only the shortesdt distance (if several trees were recorded eg on plot)
+  ungroup(.) %>% 
+  group_by(trip_n, manag, sub_n) %>% # vert_layer 
+  summarise(mean_distance = mean(distance, na.rm = T)) %>%
+  ungroup(.) %>% 
+  group_by(trip_n, manag) %>% 
+  summarize(mean_distance   = mean(mean_distance, na.rm = TRUE)) %>% 
+  as.data.frame() %>%
+  left_join(trip_species, by = "trip_n") %>% 
+  ggplot(aes(x = factor(manag, 
+                        level = c('l', 'c', 'd')),
+             y = mean_distance/100,
+             color = dom_sp)) +  
+  details_pts()  +
+  ylab('Horiz. dist.[m]')
+  
 
 
 
@@ -613,7 +749,7 @@ df_RS3[as.matrix(df_RS3) == Inf]  <- 0
 
  
 ### Plot RS3: raw ---------------------------------------------------------------
-p_RS3_pred <- 
+p_RS3_raw <- 
   df_full_corr_mrg %>%
   filter(count  != 0 ) %>% 
   dplyr::select(trip_n, manag, sub_n, vert_layer) %>%
@@ -625,10 +761,12 @@ p_RS3_pred <-
  # summarize(mean_vLayer   = mean(vertical_n, na.rm = TRUE)) %>%
   as.data.frame() %>%
   left_join(trip_species, by = "trip_n") %>% 
-  ggplot(aes(x = manag, #factor(manag),
+  ggplot(aes(x = factor(manag, 
+                        level = c('l', 'c', 'd')),
              y = vertical_n,
              fill = manag)) + 
-  details_violin()
+  details_violin() +
+  ylab('# Vert. layers')
   
 
 
@@ -640,6 +778,27 @@ p_RS3 <- df_RS3 %>%
   xlim(-4.3,4.3) +
   dens_plot_details() +
   ggtitle('Vertical str.')
+
+### Plot RS3: site ---------------------------------------------------------------
+p_RS3_site <- 
+  df_full_corr_mrg %>%
+  filter(count  != 0 ) %>% 
+  dplyr::select(trip_n, manag, sub_n, vert_layer) %>%
+  distinct(.) %>%
+  group_by(trip_n, manag, sub_n) %>% 
+  summarise(vertical_n = n()) %>%
+  ungroup(.) %>% 
+  group_by(trip_n, manag) %>% 
+  summarize(mean_vLayer   = mean(vertical_n, na.rm = TRUE))  %>% 
+  as.data.frame() %>%
+  left_join(trip_species, by = "trip_n") %>% 
+  ggplot(aes(x = factor(manag, 
+                        level = c('l', 'c', 'd')),
+             y = mean_vLayer,
+             color = dom_sp)) +  
+  details_pts() +
+  ylab('# Vertical layers')
+
 
 
 
@@ -657,7 +816,23 @@ p_6vars <- ggarrange(
   nrow = 2,
   ncol = 3,
   common.legend = TRUE,
-  legend = 'bottom'
+  legend = 'bottom',
+  align = c("hv")
+)
+
+
+p_6site <- ggarrange(
+  p_RA1_site, #+ ylim(0,1.8),
+  p_RA2_site, #+ ylim(0,1.8) ,
+  p_RA3_site, #+ ylim(0,1.8) ,
+  p_RS1_site, #+ ylim(0,1.8) ,
+  p_RS2_site, #+ ylim(0,1.8) ,
+  p_RS3_site,# + ylim(0,1.8) ,
+  nrow = 2,
+  ncol = 3,
+  common.legend = TRUE,
+  legend = 'bottom',
+  align = c("hv")
 )
 
 # Join databases into one indicator by triplet -----------------------------
@@ -726,7 +901,7 @@ p_euclid_lollipop <-
                     xend=reorder(trip_manag, -euclid_dist) , 
                     y=0, 
                     yend=euclid_dist)) +
-  scale_color_manual(values = my_sp_vals ,
+  scale_color_manual(values = my_sp_vals2 ,
                      name = 'Dominant species') +
     facet_wrap(.~manag, 
                scale = 'free_x', 
@@ -752,15 +927,19 @@ p_scatter_mean <-
               slope = c(0.5, 1.8), 
               size = 0.5, lty = 'dashed', color = 'grey') +
   geom_point(alpha = 0.9, size = 1.4) +
-  scale_color_manual(values = my_sp_vals ,
+  scale_color_manual(values = my_sp_vals2 ,
                      name = 'Dominant species') +
+  labs(x = "Reassembly",
+       y = "Restructure") + 
   xlim(0,2) +
   ylim(0,2) +
   facet_grid(manag~dom_sp, 
              #scales = 'free',
              labeller = labeller(manag = manag.labs)) +
-  theme_update(legend.position = 'bottom',
-               aspect.ratio=1) # make plots perfect square
+  theme_classic() +
+  theme(legend.position = 'none',
+        panel.background = element_rect(colour = "black", size = 1),
+        aspect.ratio=1) # make plots perfect square
 
 
 p_scatter_mean
@@ -911,7 +1090,7 @@ p_segment <- out_reorg_pos %>%
                     xend=mean,
                     y=reorder(indicator, mean),
                     yend=reorder(indicator, mean))) +
-  scale_color_manual(values = my_sp_vals ,
+  scale_color_manual(values = my_sp_vals2 ,
                      name = 'Dominant species') +
   facet_grid(manag~ dom_sp, 
              scale = 'free_x', 
@@ -946,7 +1125,7 @@ p_drivers <-
                #fun.args=list(mult = 3), 
                position =  position_dodge(width = 0.6)
                ) +
-  scale_color_manual(values = my_sp_vals ,
+  scale_color_manual(values = my_sp_vals2 ,
                      name = 'Dominant species') +
   scale_x_continuous(breaks = seq(0, 2.9, by = 1)) +
   ylab('') +
