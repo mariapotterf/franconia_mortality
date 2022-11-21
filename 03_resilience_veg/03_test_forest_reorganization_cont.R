@@ -866,15 +866,11 @@ out_reorg_pos <- out_reorg_pos %>%
 
 # Get Euclidean distance: scatter points from [0,0] --------------------------
 out_reorg_pos <- out_reorg_pos %>% 
-  mutate(euclid_dist = euclidean(RA_mean, RS_mean)) #%>%
+  mutate(euclid_dist = sqrt(RA_mean^2 + RS_mean^2))
+#  mutate(euclid_dist = euclidean(RA_mean, RS_mean)) #%>%
   # classify the poinst by sector: make as squares, as simpler way
   #mutate(sector =  )
 
-
-# color scheme testing  ---------------------------------------------------
-
-# The best:nature -------------------------------------------------
-# 801 
 
 
 
@@ -900,11 +896,11 @@ p_euclid_lollipop <-
                     yend=euclid_dist)) +
   scale_color_manual(values = my_sp_vals2 ,
                      name = 'Dominant species') +
-  facet_wrap(.~manag) + 
-  #  facet_wrap(.~manag, 
-  #             scale = 'free_x', 
-  #             labeller = labeller(manag = manag.labs)) +
-    xlab('Triplet number') +
+
+ facet_wrap(.~manag,
+            scale = 'free_x',
+            labeller = labeller(manag = manag.labs)) +
+  xlab('Triplet number') +
   ylab('Euclidean distance') +
    # ggrepel::geom_text_repel(aes(label = trip_n, color = dom_sp),  size =3.5) +
   theme(axis.text.x= element_blank())  
@@ -946,7 +942,11 @@ p_scatter_mean
 
 # Dummy: Test difference between euclidean distance function and manual calculation
 
+df <- data.frame(x = c(1:5),
+                 y = c(1:5))
 
+df$euc = euclidean(df$x, df$y)
+df$dist = sqrt(df$y^2 + df$x^2)
 
 
 # Classify points by sectors ---------------------------------------
@@ -967,10 +967,11 @@ res_classes <-
   dplyr::select(RA_mean, RS_mean, euclid_dist) %>% 
   left_join(trip_species) %>% 
   #calculate dfistance from origin
-  mutate(orig_dist = sqrt(RA_mean^2 + RS_mean^2)) %>%
+#  mutate(orig_dist = sqrt(RA_mean^2 + RS_mean^2)) %>%
+  mutate(euclid_dist = sqrt(RA_mean^2 + RS_mean^2)) %>%
   #calculate position (origin, far, etc..)
-  mutate(position = case_when(orig_dist < 0.5 ~ "resilience",
-                              orig_dist >= 1.5 ~ "-extreme",
+  mutate(position = case_when(euclid_dist < 0.5 ~ "resilience",
+                              euclid_dist >= 1.5 ~ "-extreme",
                               TRUE ~ "")) %>%
   #calculate XY label
   mutate(labelXY = case_when((180*atan(RA_mean / RS_mean) / pi) < slope ~ "RS",
