@@ -875,10 +875,7 @@ out_reorg_pos <- out_reorg_pos %>%
 
 # The best:nature -------------------------------------------------
 # 801 
-my_sp_vals = c('spruce'= '#7CBB00', # light green
-               'beech' = '#FFBB00', # yellow,
-               'oak'   =  '#F65314',  # red
-               'pine' = '#3A606E')  #  bluish
+
 
 
 
@@ -903,9 +900,10 @@ p_euclid_lollipop <-
                     yend=euclid_dist)) +
   scale_color_manual(values = my_sp_vals2 ,
                      name = 'Dominant species') +
-    facet_wrap(.~manag, 
-               scale = 'free_x', 
-               labeller = labeller(manag = manag.labs)) +
+  facet_wrap(.~manag) + 
+  #  facet_wrap(.~manag, 
+  #             scale = 'free_x', 
+  #             labeller = labeller(manag = manag.labs)) +
     xlab('Triplet number') +
   ylab('Euclidean distance') +
    # ggrepel::geom_text_repel(aes(label = trip_n, color = dom_sp),  size =3.5) +
@@ -943,6 +941,11 @@ p_scatter_mean <-
 
 
 p_scatter_mean
+
+
+
+# Dummy: Test difference between euclidean distance function and manual calculation
+
 
 
 
