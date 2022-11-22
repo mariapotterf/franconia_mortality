@@ -643,22 +643,12 @@ p_RS1_raw <-
     facet_wrap(vert_layer~dom_sp, 
                labeller = labeller(dom_sp = species.labs),
                scales = 'free') +
-    #scale_y_continuous(breaks = seq(0, 3, by = 1), 
-    #                   limits = c(0,3)) +
-   # scale_y_log10(breaks = c(0, 10, 100),#trans_breaks("log10", function(x) 10^x),
-  #                labels = trans_format("log10", math_format(10^.x)),
-  #                limits = c(-1,101)) +
      scale_y_continuous(#breaks = c(0, 10, 100),#trans_breaks("log10", function(x) 10^x),
                     #labels = trans_format("log10", math_format(10^.x)),
                     limits = c(4.5,8)) +
-    ylab('Stem density (*1000/ha)\n')# + 
-  #geom_jitter(width = 0.2, alpha = 0.3)  # geom_jitter(position = position_dodge(0.8))+
+    ylab('Stem density (*1000/ha)\n')
   
 
-  
-# Get the stem density numbers:
-# 
-qntils = c(0,0.5, 0.75,0.80, 0.95, 1)
   
 df_full_corr_mrg %>%  
     left_join(trip_species, by = "trip_n") %>% 
@@ -674,18 +664,46 @@ df_full_corr_mrg %>%
 
 
 # Why do I always start with the 2500 per reg???
+
 # are there some plots that do not have any regeneration??
-df_full_corr_mrg %>% 
+# get summary table for regen
+df_full_corr_mrg_reg <- 
+  df_full_corr_mrg %>% 
   filter(vert_layer == 'regen') %>% 
-  group_by(trip_n, manag, sub_n) %>% 
-  summarize(sum_corr_count = sum(corr_count)) %>% 
-  right_join(plot_counts_df) %>% 
-  mutate(sum_corr_count = case_when(is.na(sum_corr_count) ~ 0,
-                                    !is.na(sum_corr_count) ~ sum_corr_count)) %>% 
+    group_by(trip_n, manag, sub_n, vert_layer) %>% 
+     right_join(plot_counts_df) %>%
+    summarize(sum_corr_count = sum(corr_count)) %>% 
+    mutate(sum_corr_count = case_when(is.na(sum_corr_count) ~ 0,
+                                      !is.na(sum_corr_count) ~ sum_corr_count)) %>% 
+  mutate(vert_layer = 'regen') 
+  
+
+# Get table for advanced: here, get avg for advanced regen:
+df_full_corr_mrg_advMat <- 
+  df_full_corr_mrg %>% 
+  filter(vert_layer != 'regen') %>% 
+    group_by(trip_n, manag, sub_n, vert_layer) %>% 
+    summarize(sum_corr_count = mean(corr_count)) %>%  # mean beacsue I have adv in plot and in ENV!!
+   right_join(df_master_heights_both) %>% 
+    mutate(sum_corr_count = case_when(is.na(sum_corr_count) ~ 0,
+                                      !is.na(sum_corr_count) ~ sum_corr_count)) 
+  
+# merge corrected bables for stem density from REg and adv+Matg trees:
+df_stem_dens <- rbind(df_full_corr_mrg_reg,
+                      df_full_corr_mrg_advMat)
+
+df_stem_dens %>% 
+  distinct(trip_n, manag, sub_n, vert_layer)
+
+
+# Get output stem table: ----------------------------------------
+qntils = c(0, 0.25, 0.5, 0.75, 0.95, 1)
+
+out_tab_dens <- df_stem_dens %>% 
   mutate(manag = case_when(manag == 'c' ~ "MAN",
                            manag == 'd' ~ "UNM",
                            manag == 'l' ~ "REF")) %>% 
-  group_by(manag)  %>%  # , vert_layer
+  group_by(manag, vert_layer)  %>%  # , vert_layer
   summarize(mean = mean(sum_corr_count),
             qs = quantile(sum_corr_count, qntils),
             prob = qntils)  %>%
@@ -698,36 +716,6 @@ df_full_corr_mrg %>%
 
 
 
-
-#p_RS1_raw <- 
-  df_full_corr_mrg %>%  
-  left_join(trip_species, by = "trip_n") %>% 
-  group_by(trip_n, manag, vert_layer) %>% 
-#    filter(vert_layer=='regen') %>%
-  #  View()
- #   filter(corr_count < quantile(corr_count, 0.95)) %>% 
-  ggplot(aes(x = factor(manag, 
-                        level = c('l', 'c', 'd')),
-             y = corr_count/1000,
-             fill = manag)) + 
-  #  geom_point(position = position_dodge(0.2)) +
-  details_violin() +
-    scale_y_continuous(#breaks = seq(0, 2, by = 1), 
-                       limits = c(0,10)) +
-  #  scale_y_log10(breaks = trans_breaks("log10", function(x) 10^x),
-  #                labels = trans_format("log10", math_format(10^.x))) +
- #   scale_y_continuous(ylim(0,30)) +
-  facet_wrap(vert_layer~dom_sp, 
-             labeller = labeller(dom_sp = species.labs),
-  scales = 'free') +
-  #  ylim(2.5,10)+
-  ylab('Stem density (*1000)\n')
-  
-  
-  
-  
-  
-  
   
  
   

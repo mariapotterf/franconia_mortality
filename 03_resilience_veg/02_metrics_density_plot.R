@@ -198,14 +198,34 @@ df_mature_trees_plot2 <-
 
 
 
+
+# CHeck if all triplets as sites are present???
+# need to fill in 0 counts!
+df_reg_full2 %>% 
+  distinct(trip_n, manag, sub_n) # 801
+
+df_advanced2 %>% 
+  distinct(trip_n, manag, sub_n) # 263
+
+df_mature_trees_plot2 %>% 
+  distinct(trip_n, manag, sub_n) # 100
+
+#df_reg_full2 <- 
+
+
+
+
+
 # merge all PLOT data into single df
 df_full_plot = rbind(df_reg_full2,
                      df_advanced2,
                      df_mature_trees_plot2)
 
 
+
+
+
 # Slope correct the number of trees per ha: ------------------------------------------
-#ha     <- 10000
 r_side <- 2 # 2m as the lenght of the square
 
 # PLOT: Estimate densities per tree species and per height class; slop corrected
@@ -218,39 +238,10 @@ df_full_plot_corr <-
     correct_factor = ha / area_corr,
     corr_count = count * correct_factor
   )  %>%
-  #  filter(corr_count > 100000)
-  #  distinct(gradient) %>% 
-  #  print(n = 100)
-  # summarize(min(corr_count), max(corr_count))
   mutate(distance = 50) %>% 
   dplyr::select(trip_n, manag, sub_n, species, 
          DBH, distance, height_class, count, corr_count) # correctly order the columns
 
-df_full_plot_corr %>% 
-  filter(trip_n == '16' & sub_n == '4' & species == 'Spruce' & manag == 'l')
-
-# Histogram of the species counts per ha (by species and height c --------
-df_full_plot_corr %>% 
-  filter(corr_count > 0) %>% 
-  ggplot(aes(corr_count)) + 
-  geom_histogram(binwidth = 1000)
-
-
-# Sum up by plot level:
-df_full_plot_corr %>% 
-  group_by(trip_n, manag, sub_n) %>% 
-  summarise(sum_plot = sum(corr_count, na.rm = T )) %>% 
- # filter(corr_count > 0) %>% 
-  ggplot(aes(sum_plot)) + 
-  geom_histogram(binwidth = 1000)
-
-
-# maybe cap values? based on 
-df_full_plot_corr %>% 
-  group_by(trip_n, manag, sub_n) %>% 
-  summarise(sum_plot = sum(corr_count, na.rm = T )) %>% 
-  ungroup(.) %>% 
-  filter(sum_plot > 125000) # 50 
 
 # for 4 m2 real counts: ----------------------------------------- 
 # trip_n manag sub_n sum_plot
@@ -384,83 +375,21 @@ p_dbh_dist <-
 
 
 
-# merge all PLOT data into single df !!! continue from here!!
-df_full_corr = rbind(df_full_plot_corr,
-                     df_advanced_env_corr,
-                     df_mature_env_corr)
+# merge all PLOT data into single df  # 1244
+df_full_corr = rbind(df_full_plot_corr,    # PLOT
+                     df_advanced_env_corr, # ENV
+                     df_mature_env_corr)   # ENV
 
-
-
-
-# test data 
-#df_full_plot_corr %>% 
-#  filter(trip_n == '16' & sub_n == '4' & species == 'Spruce' & manag == 'l')
 
 
 # Plot + ENV: rIVI ------------------------------------------------------------------------
 
 # combine the regeneration, advanced regeneration and mature trees per plot & site
 # Calculate:
-# - relative frequency  - percent of inventory points occupied by species A as a percent of occurence of all species
 # - relative density    - the number of individuals per area as a percent tof teh number of individuals of all species
 # - relative basal area - the total basal area of species A as a percent of teh total basal area of all species. Basal area = sum of the cross sectional area of all tree species of species A.
 # BA - estimated at breast height: eg. remove all regeneration smaller then then 1.3 m: only HK6
 #   
-
-## Site: get data for the Mature trees: ------------------------------------------
-# merge the mature trees from ones present on plots, 
-# and from the ENV: filter which one has a closer tree: on the plot, or nearest one? 
-
-# add distances (in cm) if teh tree is present on the plot:
-# measured from the plot center: +100 cm
-# -> change the distances for surroundings: should be > 100 cm away
-# 
-# my_cols_mature = c('trip_n',
-#                    'dom_sp',
-#                    'manag',
-#                    'sub_n',
-#                    'species',
-#                    'distance',
-#                    'DBH',
-#                    'orientation')
-# 
-# # Prepare mature data: from Mature on plot & in ENV: s
-# # PLOT:
-# df_mature_trees_plot_sub <- df_mature_trees_plot %>%
-#   drop_na() %>% 
-#   ungroup(.) %>% 
-#   mutate(orientation = 'plot',
-#          distance = 40)  %>% 
-#   dplyr::select(all_of(my_cols_mature)) 
-# 
-# 
-# 
-# # ENV:
-# df_mature_trees_env_sub <- 
-#   df_mature_trees_env %>% 
-#   mutate(distance = case_when(distance < 100 ~ distance + 100,
-#                               distance >= 100 ~ distance )) %>% 
-#   dplyr::select(all_of(my_cols_mature)) %>% 
-#   mutate(orientation = 'ENV')
-# 
-# 
-#   
-# # rbind the mature tree data fro the plot and from the Environment  
-# df_mature_all <- rbind(df_mature_trees_env_sub,
-#                        df_mature_trees_plot_sub )
-# 
-# # select the nearest tree (on the plot, in the surroundings) to calculate tree density and basal area
-# # !! not needed! if I am calculating the density estimation from the 
-# df_mature_fin <- 
-#   df_mature_all %>% 
-#   group_by(trip_n, dom_sp, manag, sub_n) %>% 
-#   slice_min(order_by = distance)#  %>% # select the nearest tree
-# 
-
-# can also check if my density estimation will change if using one or the other approach??
-
-
-
 
 
 
@@ -478,6 +407,7 @@ df_full_corr = rbind(df_full_plot_corr,
 # how to combine them?
 # select the density of the one that is closer? if both present, average them? 
 # bt how is they are of different species?
+# complete the plots that have no regeneration: reg = 0!!
 
 
 # 
@@ -526,7 +456,7 @@ df_full_corr %>%
                                   !is.na(tree_on_plot) ~ "mat_plot_env")) %>% 
   #filter(tree_on_plot == 'mat_plot_env')
   group_by(trip_n, manag, sub_n)%>% # tree_on_plot 
-  dplyr::filter(tree_on_plot%in% c("mat_plot_env" )) #%>% # filter specific classes
+  dplyr::filter(tree_on_plot%in% c("mat_plot_env" )) %>% # filter specific classes
   #arrange(trip_n, manag, sub_n)
   #filter(all(c("mat_plot_env", 'env' ) %in% tree_on_plot)) %>% 
   
@@ -593,6 +523,7 @@ df_both = df_mature_both %>% # 100 plots
 # mature trees: select only the ones, that are the closest (eg. on plot), disregarding the species
 # Process: in two steps: filter oly mature trees, select the nearest ones
 # merge back into original tables
+# Complete the missing regen. values: if no regeneration is present
 
 
 # cap max density values based on avg distances: --------------------------------
@@ -625,8 +556,8 @@ df_full_corr_mature %>%
 # df_full_corr_mrg 
 df_full_corr_mature %>% 
   filter(height_class %in% c('mature', 'mat_ENV')) %>% 
-  filter(trip_n == 25) %>% 
-  View()
+  filter(trip_n == 25) #%>% 
+#  View()
 
 
 
@@ -665,6 +596,41 @@ table(df_full_corr_mrg$height_class)
 # # no frequency: not possible on plot level
 # # relative density: 
 # # the number of individuals per area as a percent of the number of individuals of all species.
+# # complete the values by 0 if species is not present;
+# # plot has no regeneration values
+# # Prepare teh data: get the all available tree species in each site; fill in with 0 is teh species is not present
+# v_species <- unique(df_full_corr_mrg$species)
+# v_heights <- unique(df_full_corr_mrg$height_class)
+# 
+# 
+# # get the 'total' table : combination of trip_n, sub_n, and unique specie
+# df_master_species <-   plot_counts_df %>% 
+#   mutate(species = 'Spruce') %>% 
+#   group_by(trip_n, manag, sub_n) %>% 
+#   complete(species = .env$v_species, fill = list(corr_count  = 0))
+# 
+# # get the 'total' table : combination of trip_n, sub_n, and unique specie
+# df_master_heights <-  plot_counts_df %>% 
+#   mutate(height_class = 'HK1') %>% 
+#   group_by(trip_n, manag, sub_n) %>% 
+#   complete(height_class = .env$v_heights, fill = list(corr_count  = 0))
+# 
+# 
+# # add zeros to density estimation:
+# #df_full_corr_mrg_zeros <- 
+#   df_full_corr_mrg %>%
+#     full_join(df_master_species) %>% 
+#     full_join(df_master_heights) %>%
+#     filter(trip_n == 9 & sub_n == 9 & manag == "l")
+#     View()
+#     
+# regeneration is absent eg from trip_n == 9 sub_n == 9 manag == "l"   
+  
+
+# how to account for empty plots (no regen) in density estimation??
+    # I can't in relative density, as I am adding just zeros. BUt It affects
+    # my stem density per plot!!
+    
 df_rel_density <-
   df_full_corr_mrg %>%
   group_by(trip_n, manag, sub_n, species) %>%
@@ -727,26 +693,6 @@ df_full_corr_mrg  %>%
             mean_dens = 10000/(pi*mean_dist^2))
 # --------------------------------------------------------
 
-# how many trees to have?
-my_dist <- seq(1,15, 0.1)
-my_densCicr   <- round(ha/(my_dist^2*pi), 0)
-my_densSquare <- round(ha/(my_dist^2),0)
-my_dist*2
-
-#windows()
-par(mfrow = c(1, 2))
-plot(x = my_dist, y = my_densCicr)
-plot(x = my_dist, y = my_densSquare, col = 'red')
-
-#manag mean_dist mean_dens
-#<chr>     <dbl>     <dbl>
-#  1 c     4.97      129.
-#  2 d     3.90      210.
-#  3 l     2.47      522.
-
-# check how the density indcrease with distance?
-
-
 
 # check basal area between manag
 df_rel_BA_plot %>% 
@@ -756,90 +702,11 @@ df_rel_BA_plot %>%
 
 
 # SITE: Calculate IVI: species importance value -----------------------------------------------
-# merge the rel frequeny, density and basal area ------------------------------------------
+# merge the rel_density and rel_basal area ------------------------------------------
 plot_IVI <- df_rel_density %>% 
   full_join(df_rel_BA_plot) %>% 
   replace_na(., list(all_BA = 0, rel_BA   = 0)) %>% 
   mutate(rIVI = ( rel_density +rel_BA)/2)  # relative IVI
-
-
-
-
-
-# Get species rIVI Plot + ENV: no DBH for advanced regeneration--------------------------------------------------------------
-# how to handle it? now, I have filled in values from the PLOT estimates
-# or handle in the the average value (5 cm?)
-# # relative density: 
-# # the number of individuals per area as a percent of the number of individuals of all species.
-
-# # Relative basal area: DBH for advanced is NA: can't' be true!! then I can't get the relative shares!   
-# try with value of 5cm: average values of the advanced regen DBH;
-# compare the rIVI (dhb supplemented) and rIVI_5
-# # the total basal area of Species A as a percent of the total basal area of all species.  
-# df_rel_BA_plot_6 <- 
-#   df_full_corr %>%
-#   mutate(DBH = case_when(height_class == 'adv_ENV' ~ 6,
-#                          height_class != 'adv_ENV' ~ DBH)) %>% 
-#   #filter(height_class == 'adv_ENV') %>% 
-#   mutate(r = DBH/2,
-#          BA = pi*r^2)  %>%
-#   group_by(trip_n, manag, sub_n, species) %>%
-#   summarize(sp_BA = sum(BA, na.rm = T)) %>%
-#   ungroup(.) %>%
-#   group_by(trip_n, sub_n, manag) %>%
-#   mutate(all_BA = sum(sp_BA, na.rm = T),
-#          rel_BA = sp_BA/all_BA*100) %>%
-#   mutate(rel_BA = replace_na(rel_BA, 0)) #%>%  # replace NA by 0 if BA is missing
-# #  filter(trip_n == 1 & manag == 'c' & sub_n == 1)
-
-
-
-# SITE: Calculate IVI: species importance value -----------------------------------------------
-# merge the rel frequeny, density and basal area ------------------------------------------
-# plot_IVI_6 <-
-#   df_rel_density %>% 
-#   full_join(df_rel_BA_plot_6) %>% 
-#   replace_na(., list(all_BA = 0, rel_BA   = 0)) %>% 
-#   mutate(rIVI = ( rel_density +rel_BA)/2)  # relative IVI
-
-
-# Compare the IVI values between the suplemented DBH, and DBH = 6 for advanced regen?
-# nrow(plot_IVI_6)
-# nrow(plot_IVI)
-# 
-# # Compare the two metrics:
-# dplyr::select(plot_IVI, c(trip_n, manag, sub_n, species, rIVI))  %>% #sp_BA, rel_BA, 
-#   full_join(dplyr::select(plot_IVI_6, c(trip_n, manag, sub_n, species, rIVI)), 
-#             by = c('trip_n', 'manag', 'sub_n', 'species')) %>% # sp_BA, rel_BA,
-#   rename(rIVI_DBH = rIVI.x,
-#          rIVI_DBH6 = rIVI.y) %>% 
-#   mutate(diff = rIVI_DBH-rIVI_DBH6) %>%
-#   #filter(diff< -10) 
-#
-#  ggplot(aes(rIVI_DBH)) + 
-# # geom_density()
-#   
-# 
-# windows()
-# p_compare_density_rIVI <-
-#   dplyr::select(plot_IVI, c(trip_n, manag, sub_n, species, rIVI))  %>% #sp_BA, rel_BA, 
-#   full_join(dplyr::select(plot_IVI_6, c(trip_n, manag, sub_n, species, rIVI)), 
-#             by = c('trip_n', 'manag', 'sub_n', 'species')) %>% # sp_BA, rel_BA,
-#   rename(rIVI_DBH = rIVI.x,
-#          rIVI_DBH6 = rIVI.y) %>% 
-#   mutate(diff = rIVI_DBH-rIVI_DBH6) %>%
-#   pivot_longer(!c(trip_n, manag, sub_n, species, diff),
-#                names_to = 'type', values_to = 'vals')  %>% 
-#   ggplot(aes(vals,
-#              color = type)) + 
-#   geom_density(alpha = 0.5) + 
-#   facet_grid(.~type)
-# 
-
-
-
-
-
 
 
 
