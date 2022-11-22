@@ -563,6 +563,11 @@ df_master_heights_both <-
 
 
 # Get stem density by vertical classes:
+
+# split in two: adv and mature together, regen as separate plot?
+
+library(scales)
+
 p_RS1_raw <- 
   df_full_corr_mrg %>%  
   left_join(trip_species, by = "trip_n") %>% 
@@ -574,16 +579,191 @@ p_RS1_raw <-
   details_violin() +
   facet_grid(vert_layer~dom_sp, 
              labeller = labeller(dom_sp = species.labs),
-  scales = 'free') +
-  # geom_boxplot(outlier.size =0.5) +
+             scales = 'free') +
+  #  ylim(2.5,10)+
   ylab('Stem density (*1000)\n')
 
+# Plot mature and advanced
+#p_RS1_raw_tall <- 
+  df_full_corr_mrg %>%  
+  left_join(trip_species, by = "trip_n") %>% 
+  group_by(trip_n, manag, vert_layer) %>% 
+  filter(vert_layer %in% c('mature', 'advanced')) %>% 
+  ggplot(aes(x = factor(manag, 
+                        level = c('l', 'c', 'd')),
+             y = corr_count/1000,
+             fill = manag)) + 
+  details_violin() +
+  facet_grid(vert_layer~dom_sp, 
+             labeller = labeller(dom_sp = species.labs),
+             scales = 'free') +
+  scale_y_continuous(breaks = seq(0, 3, by = 1), 
+      limits = c(0,3)) +
+  ylab('Stem density (*1000)/ha\n')
+
+
+# plot REgen with log y axis
+  #p_RS1_raw_reg <- 
+  df_full_corr_mrg %>%  
+    left_join(trip_species, by = "trip_n") %>% 
+    group_by(trip_n, manag, vert_layer) %>% 
+    filter(vert_layer == 'regen') %>% 
+    ggplot(aes(x = factor(manag, 
+                          level = c('l', 'c', 'd')),
+               y = corr_count/1000,
+               fill = manag)) + 
+    details_violin() +
+    facet_grid(vert_layer~dom_sp, 
+               labeller = labeller(dom_sp = species.labs),
+               scales = 'free') +
+    #scale_y_continuous(breaks = seq(0, 3, by = 1), 
+    #                   limits = c(0,3)) +
+    scale_y_log10(breaks = c(0, 10, 100),#trans_breaks("log10", function(x) 10^x),
+                  labels = trans_format("log10", math_format(10^.x)),
+                  limits = c(-1,101)) +
+    ylab('Stem density (*1000/ha)\n')# + 
+    #geom_jitter(width = 0.2, alpha = 0.3)  # geom_jitter(position = position_dodge(0.8))+
+  
+
+# Why do I see a wiggly pattern??
+  df_full_corr_mrg %>%  
+    left_join(trip_species, by = "trip_n") %>% 
+    group_by(trip_n, manag, vert_layer) %>% 
+    filter(vert_layer == 'regen') %>% 
+    ggplot(aes(x = factor(manag, 
+                          level = c('l', 'c', 'd')),
+               y = corr_count/1000,
+               fill = manag,
+               color = factor(trip_n))) + 
+   # details_violin() +
+  #  geom_point(position = position_dodge(0.4),
+  #             alpha = 0.5) +
+    geom_jitter(width = 0.4,
+               alpha = 0.5) +
+    facet_wrap(vert_layer~dom_sp, 
+               labeller = labeller(dom_sp = species.labs),
+               scales = 'free') +
+    #scale_y_continuous(breaks = seq(0, 3, by = 1), 
+    #                   limits = c(0,3)) +
+   # scale_y_log10(breaks = c(0, 10, 100),#trans_breaks("log10", function(x) 10^x),
+  #                labels = trans_format("log10", math_format(10^.x)),
+  #                limits = c(-1,101)) +
+     scale_y_continuous(#breaks = c(0, 10, 100),#trans_breaks("log10", function(x) 10^x),
+                    #labels = trans_format("log10", math_format(10^.x)),
+                    limits = c(4.5,8)) +
+    ylab('Stem density (*1000/ha)\n')# + 
+  #geom_jitter(width = 0.2, alpha = 0.3)  # geom_jitter(position = position_dodge(0.8))+
+  
+
+  
+# Get the stem density numbers:
+# 
+qntils = c(0,0.5, 0.75,0.80, 0.95, 1)
+  
+df_full_corr_mrg %>%  
+    left_join(trip_species, by = "trip_n") %>% 
+    group_by(manag, vert_layer)  %>% 
+  mutate(manag = case_when(manag == 'c' ~ "MAN",
+                           manag == 'd' ~ "UNM",
+                           manag == 'l' ~ "REF"
+                           )) %>% 
+    summarize(mean = mean(corr_count),
+            qs = quantile(corr_count, qntils),
+            prob = qntils)  %>%
+  pivot_wider(names_from = prob, values_from = qs ) 
+
+
+# Why do I always start with the 2500 per reg???
+# are there some plots that do not have any regeneration??
+df_full_corr_mrg %>% 
+  filter(vert_layer == 'regen') %>% 
+  group_by(trip_n, manag, sub_n) %>% 
+  summarize(sum_corr_count = sum(corr_count)) %>% 
+  right_join(plot_counts_df) %>% 
+  mutate(sum_corr_count = case_when(is.na(sum_corr_count) ~ 0,
+                                    !is.na(sum_corr_count) ~ sum_corr_count)) %>% 
+  mutate(manag = case_when(manag == 'c' ~ "MAN",
+                           manag == 'd' ~ "UNM",
+                           manag == 'l' ~ "REF")) %>% 
+  group_by(manag)  %>%  # , vert_layer
+  summarize(mean = mean(sum_corr_count),
+            qs = quantile(sum_corr_count, qntils),
+            prob = qntils)  %>%
+  pivot_wider(names_from = prob, values_from = qs ) 
+
+ 
+
+  
 
 
 
-# Process: 
-# - get average nearest distance
-# if mature tree is missing: complete by the distance of 16m*100
+
+
+#p_RS1_raw <- 
+  df_full_corr_mrg %>%  
+  left_join(trip_species, by = "trip_n") %>% 
+  group_by(trip_n, manag, vert_layer) %>% 
+#    filter(vert_layer=='regen') %>%
+  #  View()
+ #   filter(corr_count < quantile(corr_count, 0.95)) %>% 
+  ggplot(aes(x = factor(manag, 
+                        level = c('l', 'c', 'd')),
+             y = corr_count/1000,
+             fill = manag)) + 
+  #  geom_point(position = position_dodge(0.2)) +
+  details_violin() +
+    scale_y_continuous(#breaks = seq(0, 2, by = 1), 
+                       limits = c(0,10)) +
+  #  scale_y_log10(breaks = trans_breaks("log10", function(x) 10^x),
+  #                labels = trans_format("log10", math_format(10^.x))) +
+ #   scale_y_continuous(ylim(0,30)) +
+  facet_wrap(vert_layer~dom_sp, 
+             labeller = labeller(dom_sp = species.labs),
+  scales = 'free') +
+  #  ylim(2.5,10)+
+  ylab('Stem density (*1000)\n')
+  
+  
+  
+  
+  
+  
+  
+ 
+  
+  
+  
+# How to plot only the regeneration?
+# check hist
+df_full_corr_mrg %>%  
+    left_join(trip_species, by = "trip_n") %>% 
+    group_by(trip_n, manag, vert_layer) %>% 
+    filter(vert_layer=='regen') %>%
+  ggplot(aes(x = manag,
+    y = corr_count/1000,
+             fill = manag)) + 
+  geom_violin() +
+  scale_y_log10() + 
+  facet_grid(.~dom_sp)
+#    View()
+  #   filter(corr_count < quantile(corr_count, 0.95)) %>% 
+  ggplot(aes(x = factor(manag, 
+                        level = c('l', 'c', 'd')),
+             y = corr_count/1000,
+             fill = manag)) + 
+  geom_density()
+    geom_point(position = position_dodge(0.2)) +
+    details_violin() +
+    #   scale_y_continuous(ylim(0,30)) +
+    facet_grid(vert_layer~dom_sp, 
+               labeller = labeller(dom_sp = species.labs),
+               scales = 'free') +
+    ylim(2.5,10)+
+    ylab('Stem density (*1000)\n')
+  
+
+
+
 
 # complete by 0 both: advanced and Mature:
 RS2_ref <- 
