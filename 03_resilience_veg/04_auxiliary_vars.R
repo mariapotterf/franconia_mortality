@@ -32,16 +32,21 @@ load(file = paste(getwd(), "outData/dat_restr.Rdata", sep = '/'))
 
 
 # Identify data to use:
-head(df_full_corr_mrg)    # - full PLOT based data: df_full_corr, seedlings, advanced, mature - PLOt & surroundings, mature trees filtered 
-head(plot_IVI)            # - df importance value:from plot, env mature, env advanced, merged by density/ha
-head(trait_df)            # - trait values for all species: eco_traits
-head(df_mature_trees_env) # - trees in the surroundings: mature trees - set distance to 16 m if no tree present
-head(df_advanced_env)     # - trees in the surroundings: advanced
-head(out_reorg_pos)       # - Euclidean distances for each site
+head(df_full_corr_mrg)     # - full PLOT based data: df_full_corr, seedlings, advanced, mature - PLOt & surroundings, mature trees filtered 
+head(plot_IVI)             # - df importance value:from plot, env mature, env advanced, merged by density/ha
+head(trait_df)             # - trait values for all species: eco_traits
+head(df_mature_trees_env)  # - trees in the surroundings: mature trees - set distance to 16 m if no tree present
+head(df_deadwood_env_corr) # - deadwood in ENV, 4 categs: log, root plate, snag, stump  
+head(df_advanced_env)      # - trees in the surroundings: advanced
+head(out_reorg_pos)        # - Euclidean distances for each site
 
 
 # Master plots:
-head(plot_counts_df)      # - total count of the plots per triplets & categories: to standardize the densities...
+head(plot_counts_df)       # - total count of the plots per triplets & categories: to standardize the densities...
+
+# Triplets by dominant species:
+df_dom_sp                  # - indication of dominant species by site
+
 
 # Get climatic variables:
 df_prec   <- fread(paste(myPath, outTable, 'xy_precip_2000.csv', sep = '/'))
@@ -82,6 +87,48 @@ df_patch <-
   filter(!trip_n %in% c(45, 65)) %>% 
   dplyr::select(!dom_sp)
      #    trip_n = as.numeric(trip_n)) 
+
+
+ 
+
+# Get deadwood from surroundings: -----------------------------------------
+# need to first sum up across categories (plot level), 
+# then calculate the average per site
+df_deadwood_site <- df_deadwood_env_corr %>% 
+  group_by(trip_n, manag, sub_n) %>% 
+  summarize(sum_DW_dens = sum(corr_count)) %>% 
+  ungroup(.) %>% 
+  group_by(trip_n, manag) %>% 
+  summarise(mean_DW = mean(sum_DW_dens))
+
+
+# check the values:
+df_deadwood_site %>% 
+  ggplot(aes(x = manag,
+             y = mean_DW)) +
+  geom_point() + 
+  geom_line(aes(group = trip_n))
+
+
+# Check the numbers across the DW categories:
+
+manag.labs        <- c("MAN", "UNM", "REF")
+names(manag.labs) <- c("c", "d", "l")
+manag.level       <- c('l', 'c', 'd')   # to order the data on x axis: REF, MAN, UNM
+
+df_deadwood_env_corr %>% 
+  left_join(df_dom_sp, by = c('trip_n')) %>% 
+  ggplot(aes(x = manag,
+             y = corr_count,
+             group = DW_type,
+             color = DW_type)) +
+  stat_summary(position = position_dodge(0.2)) +
+  stat_summary(fun = "mean", geom = "line",
+               position = position_dodge(0.2)) +  
+  facet_grid(. ~ dom_sp) +
+  scale_x_discrete(name = '',
+                   breaks = names(manag.labs),
+                   labels = manag.labs)
 
 
 
