@@ -63,19 +63,38 @@ rm(list=ls())
 #Other softwood 
 
 reg_trees <- c(
-  'Spruce',    # Picea abies
-  'Beech',     # Fagus sylvatica
-  'Rowan',     # Sorbus aucuparia ?
-  'Fir',       # Abies alba
-  'Oak',       # Quercus sp.  
-  'Maple',     # Acer pseudoplatanus
-  'Birch',     # Betula pendula
-  'Willow',    # Salix sp.
-  'Pine',      # Pinus sylvestris
-  'Ash',       # Fraxinus excelsior 
-  'OtherHardwood',  # list of othr species: in rhe Other_species.xlsx shared by Juri
+  'Spruce',         # Picea abies
+  'Beech',          # Fagus sylvatica
+  'Rowan',          # Sorbus sp
+  'Fir',            # Abies alba
+  'Oak',            # Quercus sp.  
+  'Maple',          # Acer pseudoplatanus
+  'Birch',          # Betula pendula
+  'Willow',         # Salix sp.
+  'Pine',           # Pinus sylvestris
+  'Ash',            # Fraxinus excelsior 
+  'OtherHardwood',  # list of other species: in rhe Other_species.xlsx shared by Juri
   'OtherSoftwood'
 )
+
+
+# the 'Other species':
+
+# species_name	Latin	                Species	      DE-name
+# Hornbeam	    Carpinus betulus	    OtherHardwood	Hbu
+# Cherry	      Prunus avium        	OtherHardwood	Kirche
+# Cherry	      Prunus padus	        OtherHardwood	Kirche
+# Norway Maple	Acer platanoides	    OtherHardwood	SAH
+# Field Maple	  Acer campestre	      OtherHardwood	
+# Ilex	        Ilex aquifolium	      OtherHardwood	
+# Linden	      Tilia Cordata	        OtherHardwood	
+# Douglas	      Pseudotsuga menziesii	OtherSoftwood	
+# Larch	        Larix decidua	        OtherSoftwood	
+# Checker Tree	Sorbus torminalis	    OtherHardwood	Wallnuss
+# Walnut	      Juglans regia	        OtherHardwood	
+# Alder	        Alnus glutinosa	      OtherHardwood	
+# Poplar	      Populus tremula	      OtherHardwood	
+# Whitebeam	    Sorbus aria	          OtherHardwood	
 
 
 
