@@ -197,20 +197,20 @@ df_mature_trees_plot2 <-
   dplyr::select(all_of(my_cols_plot)) 
 
 
-
-
-# CHeck if all triplets as sites are present???
-# need to fill in 0 counts!
-df_reg_full2 %>% 
-  distinct(trip_n, manag, sub_n) # 801
-
-df_advanced2 %>% 
-  distinct(trip_n, manag, sub_n) # 263
-
-df_mature_trees_plot2 %>% 
-  distinct(trip_n, manag, sub_n) # 100
-
-#df_reg_full2 <- 
+# 
+# 
+# # CHeck if all triplets as sites are present??? - adressed in later script
+# # need to fill in 0 counts!
+# df_reg_full2 %>% 
+#   distinct(trip_n, manag, sub_n) # 801
+# 
+# df_advanced2 %>% 
+#   distinct(trip_n, manag, sub_n) # 263
+# 
+# df_mature_trees_plot2 %>% 
+#   distinct(trip_n, manag, sub_n) # 100
+# 
+# #df_reg_full2 <- 
 
 
 
@@ -226,7 +226,7 @@ df_full_plot = rbind(df_reg_full2,
 
 
 # Slope correct the number of trees per ha: ------------------------------------------
-r_side <- 2 # 2m as the lenght of the square
+r_side <- 2               # 2m as the lenght of the square
 
 # PLOT: Estimate densities per tree species and per height class; slop corrected
 df_full_plot_corr <-
@@ -379,6 +379,45 @@ p_dbh_dist <-
 df_full_corr = rbind(df_full_plot_corr,    # PLOT
                      df_advanced_env_corr, # ENV
                      df_mature_env_corr)   # ENV
+
+
+
+# GEt slope corrected density for deadwood:
+
+# PLOT: Estimate densities per tree species and per height class; slope corrected
+df_deadwood_env_corr <- 
+  df_deadwood %>% 
+  mutate(count          = 1, 
+         length_corr    = distance/100 * cos(gradient * pi / 180),
+         area_corr      = pi * length_corr^2, # for circle
+         correct_factor = ha / area_corr,
+         corr_count     = round(count * correct_factor, 0)
+  ) %>%
+  mutate(count      = case_when(is.na(distance) ~ 0, 
+                               !is.na(distance) ~ count),
+         corr_count = case_when(is.na(distance) ~ 0, 
+                               !is.na(distance) ~ corr_count)) %>%
+  mutate(corr_count = case_when(corr_count <= 2500 ~ corr_count,
+                                corr_count > 2500 ~ 2500)) #%>% Cap values 
+
+# check if data are realistic?
+df_deadwood_env_corr %>% 
+  filter(corr_count > 2500) %>%
+  View()
+
+
+# How much deadwood every plot has?
+df_deadwood_env_corr %>% 
+  group_by(trip_n, manag, sub_n) %>% 
+  summarize(sum_DW_stem = sum(corr_count)) %>% 
+  ggplot(aes(sum_DW_stem,
+             fill = manag)) +
+  geom_density(alpha = 0.5) + 
+  facet_grid(. ~ manag)
+ 
+
+# To get DW value per site: need to sum by plots and then average by sites!!
+
 
 
 
@@ -716,6 +755,7 @@ save(plot_IVI,
      df_full_corr_mrg,      # filtered Mature trees by the nearest distance 
      df_reg_full,           # full plot regeneration
      df_ground,             # ground cover
+     df_deadwood_env_corr,  # deadwood stem density per plot and 4 categories
      df_advanced,           # advanced regeneration PLOT, corrected distances
      df_advanced_env,       # advanced regeneration in ENV
      df_mature_trees_env,   # mature trees ENV
