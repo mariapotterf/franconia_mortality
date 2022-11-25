@@ -31,7 +31,7 @@ library(terra)
 library(R.utils)
 library(zoo)
 
-xy        <- vect('C:/Users/ge45lep/Documents/2021_Franconia_mortality/03_plot_sampling/sites_identification/final/share/sites_final.shp') # read trap location
+xy        <- vect('C:/Users/ge45lep/Documents/2021_Franconia_mortality/03_plot_sampling/out_fieldData/new_GPS/sites_final_updPassau.shp') # read trap location
 # Convert data to DWD coordinate system:
 xy2 <- terra::project(xy, "EPSG:31467")  # coordinate system from the DWD data: Germany
 

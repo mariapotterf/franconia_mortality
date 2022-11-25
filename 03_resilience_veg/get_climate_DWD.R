@@ -48,7 +48,7 @@ library(R.utils)
 # maybe first group them by the site number, and calculate centroid?
 library(sf)
 
-xy        <- vect('C:/Users/ge45lep/Documents/2021_Franconia_mortality/03_plot_sampling/sites_identification/final/share/sites_final.shp') # read trap location
+xy        <- vect('C:/Users/ge45lep/Documents/2021_Franconia_mortality/03_plot_sampling/out_fieldData/new_GPS/sites_final_updPassau.shp') # read trap location
 # Convert data to DWD coordinate system:
 xy2 <- terra::project(xy, "EPSG:31467")  # coordinate system from the DWD data: Germany
 
@@ -60,11 +60,16 @@ myPath = 'C:/Users/ge45lep/Documents/2022_BarkBeetles_Bavaria'
 
 # List files: from 2000 onwards:
 i = 'temp'
+
+# test several patterns:
+patterns <- c("^20.*\\.gz$|^198.*\\.gz$|^199.*\\.gz$")
+
 file_ls <- list.files(paste(myPath, 'rawData/DeutschWetter', i, sep = "/"),
-                      #pattern = "^20.*\\.gz$",
-                      pattern = "*\\.gz$",
+                      pattern = patterns,#"^20.*\\.gz$",
+                      #pattern = "*\\.gz$",
                       recursive=TRUE)
 
+(file_ls)
 s <- c("jan/193501asc.gz", "feb/188209asc.gz", "mar/197501asc.gz", "apr/202107asc.gz")
 
 f_1970 <- function(x, y = 1970) {
@@ -82,12 +87,13 @@ vars <- c('temp', 'precip')
 
 
 for (i in vars){
-  #print(i)
+  print(i)
   
   # List files: from 2000 onwards:
   file_ls <- list.files(paste(myPath, "rawData/DeutschWetter", i, sep = "/"),
                         #pattern = "^20.*\\.gz$",
-                        pattern = "*\\.gz$",
+                        pattern = patterns,
+                        #pattern = "*\\.gz$",
                         recursive=TRUE)
   
   # read in rasters 
