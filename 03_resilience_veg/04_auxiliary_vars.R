@@ -11,7 +11,7 @@
 
 
 #### Read libraries  -----------------------------------------------------------
-#library(readxl)
+library(readxl)
 library(dplyr)
 library(data.table)
 library(tidyr)
@@ -49,12 +49,12 @@ df_dom_sp                  # - indication of dominant species by site
 
 
 # Get climatic variables:
-df_prec   <- fread(paste(myPath, outTable, 'xy_precip_2000.csv', sep = '/'))
-df_temp   <- fread(paste(myPath, outTable, 'xy_temp_2000.csv', sep = '/'))
-df_spei   <- fread(paste(myPath, outTable, 'xy_spei.csv', sep = '/'))
+df_prec   <- fread(paste(myPath, outTable, 'xy_precip.csv', sep = '/'))
+df_temp   <- fread(paste(myPath, outTable, 'xy_temp.csv', sep = '/'))
+#df_spei   <- fread(paste(myPath, outTable, 'xy_spei.csv', sep = '/'))
 
 # Get patch size data:
-dat_size  <- read_excel(paste(myPath, '03_plot_sampling/sites_identification/final/share', 
+dat_size  <- read_excel(paste(myPath, '02_contact_forest_owners/find_sites_field/final/final_share', 
                               "sites_unique_ID.xlsx", sep = '/'))
 
 # get ground cover: get deadwood
@@ -79,7 +79,7 @@ df_DW_ground <- df_ground %>%
 # keep only useful columns
 df_patch <- 
   dat_size %>% 
-  select(Name, Area_m2) %>% 
+  dplyr::select(Name, Area_m2) %>% 
   separate(Name, c('trip_n', 'dom_sp', 'manag'), '-') %>% 
   mutate(manag = tolower(manag),
          trip_n = as.character(as.numeric(trip_n))) %>% 
@@ -136,9 +136,6 @@ df_deadwood_env_corr %>%
 # split Name in three columsn, get means per year and site (to have only 40 vals)
 # calculate anomalies (1986-2015 vs 2018-2020)
 # get only summer temperatures? vegetation period?
-
-# !!! now he climate values are only from 2000 to 2020!!! need to complete the years from 1986!
-
 
 # Get anomalies:  
 # get vector of years as reference
