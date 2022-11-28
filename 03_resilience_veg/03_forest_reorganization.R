@@ -1269,7 +1269,7 @@ p_drivers
 
 library(sf)
 
-sites <- st_read('C:/Users/ge45lep/Documents/2021_Franconia_mortality/03_plot_sampling/sites_identification/final/share/sites_final.shp')
+sites <- st_read('C:/Users/ge45lep/Documents/2021_Franconia_mortality/03_plot_sampling/out_fieldData/new_GPS/sites_final_updPassau.shp')
 
 # remove sites that were skipped: 45 & 65
 sites2 <- 
