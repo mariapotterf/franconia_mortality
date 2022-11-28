@@ -46,7 +46,8 @@ head(out_reorg_pos)        # - Euclidean distances for each site
 head(plot_counts_df)       # - total count of the plots per triplets & categories: to standardize the densities...
 
 # Triplets by dominant species:
-df_dom_sp                  # - indication of dominant species by site
+trip_species               # dominant species by site design
+df_dom_sp                  # - indication of dominant species by site, dominance by rIVI
 
 
 # Get climatic variables:
@@ -69,6 +70,12 @@ theme_update(legend.position = 'bottom')
 
 
 # Process: ---------------------------------------------------------------------
+
+#$ add padding zeors:
+trip_species <-  trip_species %>%  
+  mutate(trip_n = stringr::str_pad(trip_n, 2, pad = "0")) 
+
+
 df_DW_ground <- df_ground %>% 
   mutate(trip_n = as.character(trip_n),
          sub_n = as.character(sub_n)) %>% 
@@ -149,7 +156,7 @@ drought_period   <- 2018:2020
 # Precipitation
 df_prec_out <- 
   df_prec %>% 
-  filter(month %in% 4:10 & year %in% 1986:2020) %>% 
+  filter(year %in% 1986:2020) %>%  #month %in% 4:10 & 
   separate(Name, c('trip_n', 'dom_sp', 'manag'), '-') %>% 
   group_by(trip_n, year) %>% 
     ungroup(.) %>% 
@@ -165,7 +172,7 @@ df_prec_out <-
 
 df_temp_out <- 
   df_temp %>% 
-  filter(month %in% 4:10 & year %in% 1986:2020) %>% # get only vegetation season
+  filter( year %in% 1986:2020) %>% # month %in% 4:10 &, get the whole year get only vegetation season
   separate(Name, c('trip_n', 'dom_sp', 'manag'), '-') %>% 
   group_by(trip_n, year) %>% 
   summarize(avg_temp = mean(vals)) %>% 
@@ -186,10 +193,11 @@ df <-
   df_euc %>% 
   mutate(trip_n = stringr::str_pad(trip_n, 2, pad = "0")) %>% 
   as.data.frame() %>% 
-  left_join(df_DW_ground) %>% 
-  left_join(df_deadwood_site) %>% 
+  left_join(filter(df_DW_ground, manag != 'l')) %>% 
+  left_join(filter(df_deadwood_site, manag != 'l')) %>% 
   left_join(df_prec_out) %>% 
   left_join(df_temp_out) %>% 
+  left_join(trip_species) %>% 
   left_join(df_patch, by = c("trip_n", "manag")) %>% 
   mutate(manag = as.factor(manag))  
 
@@ -273,54 +281,7 @@ p_anom_temp <- model_p %>%
   geom_smooth_ci(manag)
 
 
-# Disturbance intensity ---------------------------------------------------------
-# Get the BA of removed mature trees:
-# = % removed living trees between REF and DIST
-# get BA of REF, of DIST
-# BA = sum over ha, then divide by the number of sub_n by site
-# !!!!
 
-df_full_corr_mrg %>% 
-  filter(height_class %in% c('mature', 'mat_ENV')) %>% 
-  right_join(plot_counts_df) %>% 
-  mutate(DBH = case_when(is.na(DBH) ~ 0, # complete 
-                         !is.na(DBH) ~ DBH),
-         corr_count  = case_when(is.na(corr_count ) ~ 0, # complete 
-                         !is.na(corr_count ) ~ corr_count)) %>%
-  #filter(trip_n == 25) %>% 
-  mutate(r = DBH/100/2, # r in meters
-         BA = pi*r^2, #) %>% #,
-         BA_ha = BA*corr_count )  %>% # set on hectar value, is comparable now
-  # filter(DBH == 0)
-  group_by(trip_n, manag) %>% 
-    mutate(avg_BA = mean(BA_ha, na.rm = T)) %>%
-  #View()
-  filter(trip_n == 66) %>% 
-  View()
-    #summarize(avg_BA = mean(BA_ha, na.rm = T)) %>%
- mutate(ref_BA = avg_BA[which(c(manag == 'l'))[1]]) %>% 
-#filter(trip_n == 1 ) %>% 
-  #arrange(BA_ha   ) %>% 
- # print(n = 30)
-  mutate(severity_BA = 100 - (avg_BA / ref_BA*100)) %>% # % of removed/died mature trees
-  filter(severity_BA < 0)
-  #mutate(rel_BA = replace_na(rel_BA, 0)) #%>%  # replace NA by 0 if BA is missing
-
-
-# weird values:
-# 66-d ~ 127%
-# 25-d ~ 130%
-
-
-# Investigate ---------------------------------
-df_full_corr_mrg %>% 
-  filter(height_class %in% c('mature', 'mat_ENV')) %>% 
-  filter(trip_n == 25) %>% 
-  group_by(manag) %>% 
-  mutate(avg_BA = mean(BA_ha, na.rm = T)) %>%
-  View()
-
- 
  
  
 save(df,        # output file with all predictors for stat testing
