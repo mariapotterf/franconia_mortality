@@ -6,8 +6,9 @@
 # - precip
 # - anomalies?? (compare the 2018-2020 with 1986-2015) - check Cornelius script
 # - deadwood volume - from ground cover (%), 
-# - ground cover:which aspect? eg. bare grund [%]
-# - disturbance intensity - % of the basal area removed (after DIST)
+# - from teh ENV data - need to discuss which variables (log, standing, stump, root plate to use?)
+# - ground cover:which aspect? eg. bare ground [%]
+# - disturbance intensity - % of the basal area removed (after DIST) - not included
 
 
 #### Read libraries  -----------------------------------------------------------
@@ -73,7 +74,8 @@ df_DW_ground <- df_ground %>%
          sub_n = as.character(sub_n)) %>% 
   filter(class == "deadwood/stumps") %>% 
   group_by(trip_n, manag) %>% 
-  summarise(prop_DW_gc = mean(prop))
+  summarise(prop_DW_gc = mean(prop)) %>% 
+  mutate(trip_n = stringr::str_pad(trip_n, 2, pad = "0")) 
 
 
 # keep only useful columns
@@ -85,7 +87,8 @@ df_patch <-
          trip_n = as.character(as.numeric(trip_n))) %>% 
   filter(manag != 'l') %>% 
   filter(!trip_n %in% c(45, 65)) %>% 
-  dplyr::select(!dom_sp)
+  dplyr::select(!dom_sp) %>% 
+  mutate(trip_n = stringr::str_pad(trip_n, 2, pad = "0")) #%>% 
      #    trip_n = as.numeric(trip_n)) 
 
 
@@ -99,7 +102,8 @@ df_deadwood_site <- df_deadwood_env_corr %>%
   summarize(sum_DW_dens = sum(corr_count)) %>% 
   ungroup(.) %>% 
   group_by(trip_n, manag) %>% 
-  summarise(mean_DW = mean(sum_DW_dens))
+  summarise(mean_DW = mean(sum_DW_dens)) %>% 
+  mutate(trip_n = stringr::str_pad(trip_n, 2, pad = "0"))
 
 
 # check the values:
@@ -180,12 +184,25 @@ df_euc <- out_reorg_pos %>%
 # Merge auxiliary data with Euclidean distances --------------------------------
 df <- 
   df_euc %>% 
+  mutate(trip_n = stringr::str_pad(trip_n, 2, pad = "0")) %>% 
   as.data.frame() %>% 
   left_join(df_DW_ground) %>% 
+  left_join(df_deadwood_site) %>% 
   left_join(df_prec_out) %>% 
   left_join(df_temp_out) %>% 
   left_join(df_patch, by = c("trip_n", "manag")) %>% 
   mutate(manag = as.factor(manag))  
+
+
+
+# add padding zeros
+
+library(stringr)
+v <- c('1', '2', '13')
+
+
+
+
 
 
 # scatter: euclid vs size:
@@ -306,7 +323,8 @@ df_full_corr_mrg %>%
  
  
  
-save(p_dist_patch, # scatter plot
-      p_anom_temp, # test model: temperature
-      file="outData/auxData.Rdata")
+save(df,        # output file with all predictors for stat testing
+     p_dist_patch, # scatter plot
+     p_anom_temp, # test model: temperature
+     file="outData/auxData.Rdata")
  
