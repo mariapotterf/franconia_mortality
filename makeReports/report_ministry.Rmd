@@ -10,7 +10,7 @@ knit: (function(input, ...) {
     rmarkdown::render(
       input,
       output_dir = "../outReports",
-      output_file = file.path("../outReports", glue::glue('Forest_Reorg_M_{Sys.Date()}'
+      output_file = file.path("../outReports", glue::glue('test_Forest_Reorg_M_{Sys.Date()}'
     )))
   })
 
@@ -28,6 +28,56 @@ p.caption {
   font-size: 0.8em;
 }
 ```
+
+
+```{r setup-root}
+
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file('C:/Users/ge45lep/Documents/2021_Franconia_mortality/r_franconia_mortality'))
+
+```
+
+
+
+```{r read-libs, eval = TRUE, echo=FALSE, include = FALSE, warning = FALSE, error = FALSE }
+# rm(list=ls())
+
+getwd()
+
+#### Source paths and functions  -----------------------------------------------
+
+source('myPaths.R')
+
+
+#### Read libraries  -----------------------------------------------------------
+library(knitr)
+library(readxl)
+library(dplyr)
+library(data.table)
+library(tidyr)
+library(ggplot2)
+library(stringr)  # use regex expressions
+#library(gridExtra)
+library(ggpubr)
+
+# Read pictures as part of teh R chunks
+library(knitr) 
+library(png)
+
+
+
+# Input data -------------------------------------------------------------------
+#getwd()
+#load(file = paste(getwd(), "outData/dataToPlot.Rdata", sep = '/'))
+load(file = "outData/dat_restr.Rdata")
+load(file = "outData/vegData.Rdata")
+load(file = "outData/dataToPlot.Rdata")
+load(file = "outData/auxData.Rdata")
+
+
+
+
+```
+
 
 # Study background
 
@@ -73,7 +123,23 @@ At each study site, we have collected trees characteristics at two levels: withi
 The plots were randomly located along the sampling grid, with minimal distance between plots of 10 m. The sampling design aimed to capture the stem density at the plot level for forest regeneration, and within the plot surroundings using distance density estimation. The effective number of plots per site to correctly represent distance-based stem density was a priori tested using a simulation approach in R software (R Development Core Team 2019). We used a full factorial experimental design to test the sensitivity of the estimated stem densities of the number of plots (per stand from 4 to 100 plots, increasing by 2)  and stand size (from 0.05 ha to 1 ha). We tested simulated stands with different densities (from 1 to 10000 stems/ha) and repeated simulations 10 times. The mean predicted densities remained stable at 5 (for stand of 0.05 ha) to 15 plots per site (area of 1 ha, Fig. S2), allowing to accordingly scale up the number of plots per site. See full protocol for data collection as Supplementary material SX. 
 
 
-![Fig. Study sites distribution by dominant tree species across Bavaria](C:/Users/ge45lep/Documents/2021_Franconia_mortality/r_franconia_mortality/inImg/map_bavaria.png){width=65%}
+```{r add-map, fig.cap = 'Map of study sites across Bavaria by dominant tree species'}
+# All defaults
+
+
+img1_path <- "C:/Users/ge45lep/Documents/2021_Franconia_mortality/r_franconia_mortality/inImg/map_bavaria.png"
+
+getwd()
+img1_path
+
+
+img1 <- readPNG(img1_path, native = TRUE, info = TRUE)
+attr(img1, "info")
+
+include_graphics(img1_path)
+```
+
+
 
 ## Analyses
 
@@ -95,49 +161,7 @@ The number of samples triplets by dominant tree species. Each triplet has 3 mana
 - UNM       - disturbed sites by drought, unmanaged
 
 
-```{r setup-root}
 
-knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file('C:/Users/ge45lep/Documents/2021_Franconia_mortality/r_franconia_mortality'))
-
-```
-
-
-
-```{r read-libs, eval = TRUE, echo=FALSE, include = FALSE, warning = FALSE, error = FALSE }
-# rm(list=ls())
-
-#getwd()
-
-#### Source paths and functions  -----------------------------------------------
-
-source('myPaths.R')
-
-
-#### Read libraries  -----------------------------------------------------------
-library(knitr)
-library(readxl)
-library(dplyr)
-library(data.table)
-library(tidyr)
-library(ggplot2)
-library(stringr)  # use regex expressions
-#library(gridExtra)
-library(ggpubr)
-
-
-
-# Input data -------------------------------------------------------------------
-#getwd()
-load(file = paste(getwd(), "outData/dataToPlot.Rdata", sep = '/'))
-load(file = "outData/dat_restr.Rdata")
-load(file = "outData/vegData.Rdata")
-load(file = "outData/dataToPlot.Rdata")
-load(file = "outData/auxData.Rdata")
-
-
-
-
-```
 
 ## Collected forest variables
  
@@ -235,7 +259,7 @@ Total count of plots (4m2) per triplet&category : **`r n_sites`** plots
 
 ```{r print-summary, echo=F}
 # print nice table in knitr
-out_summary %>% knitr::kable("markdown")
+out_summary %>% knitr::kable("markdown", caption = 'Number of study sites per dominant tree species.')
 
 ```
 
@@ -275,17 +299,39 @@ p_RA3_raw
 
 ```
 
-**Stem density** Compare the stem density before or after disturbance.
+**Stem density** 
 
+As the forest regeneration density is in magnitude higher then the mature and advanced regeneration density, we report it in two plots.
 
-```{r p_RS1_raw, echo = F,  fig.width = 6, fig.height = 4, fig.cap="Violin plot of the dominant species importance value per management types (REF-Reference, MAN - Managed, UNM-Unmanaged). across the tree height classes (mature, advanced regeneration, regeneration). The black dot shows mean. "}
+Mature trees and advanced regeneration:
 
-p_RS1_raw
+```{r p_RS1_raw_MatAdv, echo = F,  fig.width = 6, fig.height = 4, fig.cap="Violin plot of stem density values (per hectar) per management types (REF-Reference, MAN - Managed, UNM-Unmanaged) for mature and advanced tree height classes. The black dot shows mean. "}
+
+p_RS1_raw_MatAdv
 
 ```
 
 
-**Horizontal structure** Compare horizontal structure pre-& post-disturbance.
+
+```{r p_RS1_raw_reg, echo = F,  fig.width = 6, fig.height = 4, fig.cap="Violin plot of stem density values (per hectar) per management types (REF-Reference, MAN - Managed, UNM-Unmanaged) for forest regeneration. Note the logaritmic scale on y-axis. The black dot shows mean. "}
+
+p_RS1_raw_reg
+
+```
+
+Quantile characteristics by stem density per vertical classes and management type.
+
+
+```{r out_tab_dens, echo=F}
+# print nice table in knitr
+out_tab_dens %>% knitr::kable("markdown", caption = 'Stem densities per hectar per management types (REF-Reference, MAN - Managed, UNM-Unmanaged) and tree vertical classes.')
+
+```
+
+
+
+
+**Horizontal structure** Compare the horizontal distances between advanced regeneration and mature trees before and after disturbance.
 
 
   
