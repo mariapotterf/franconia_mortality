@@ -38,9 +38,17 @@ library('dplyr')
 
 
 # Get data:
+source('my_vars_and_functions.R')
+source('myPaths.R')
+
+# Input data -------------------------------------------------------------------
 
 getwd()
-load(file = paste(getwd(), "outData/auxData.Rdata", sep = '/'))
+#load(file = paste(getwd(), "outData/auxData.Rdata", sep = '/'))
+
+#Read data
+#C:/Users/ge45lep/Documents/2021_Franconia_mortality/outTables/
+df <- read.csv(paste(myPath, outTable, 'df_gam.csv', sep = '/'))  
 
 # Describe data:
 
