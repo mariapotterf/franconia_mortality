@@ -6,10 +6,10 @@
 # - precip
 # - anomalies?? (compare the 2018-2020 with 1986-2015) - check Cornelius script
 # - deadwood volume - from ground cover (%), 
-# - from teh ENV data - need to discuss which variables (log, standing, stump, root plate to use?)
+# - from the ENV data - need to discuss which variables (log, standing, stump, root plate to use?)
 # - ground cover:which aspect? eg. bare ground [%]
 # - disturbance intensity - % of the basal area removed (after DIST) - not included
-
+# - avg distance to nearest DW/living trees?
 
 #### Read libraries  -----------------------------------------------------------
 library(readxl)
@@ -31,19 +31,22 @@ load(file = paste(getwd(), "outData/eco_traits.Rdata", sep = '/'))
 load(file = paste(getwd(), "outData/dat_restr.Rdata", sep = '/'))
 
 
+# Export table with predictors
+outGAM                 = paste(myPath, outTable, 'df_gam.csv'  , sep = '/')
+
 
 # Identify data to use:
 head(df_full_corr_mrg)     # - full PLOT based data: df_full_corr, seedlings, advanced, mature - PLOt & surroundings, mature trees filtered 
 head(plot_IVI)             # - df importance value:from plot, env mature, env advanced, merged by density/ha
 head(trait_df)             # - trait values for all species: eco_traits
-head(df_mature_trees_env)  # - trees in the surroundings: mature trees - set distance to 16 m if no tree present
+#head(df_mature_trees_env)  # - trees in the surroundings: mature trees - set distance to 16 m if no tree present
 head(df_deadwood_env_corr) # - deadwood in ENV, 4 categs: log, root plate, snag, stump  
 head(df_advanced_env)      # - trees in the surroundings: advanced
 head(out_reorg_pos)        # - Euclidean distances for each site
 
 
 # Master plots:
-head(plot_counts_df)       # - total count of the plots per triplets & categories: to standardize the densities...
+head(plot_counts_df)       # - all combinations of the plots per triplets & categories: to standardize the densities...
 
 # Triplets by dominant species:
 trip_species               # dominant species by site design
@@ -105,6 +108,7 @@ df_patch <-
 # need to first sum up across categories (plot level), 
 # then calculate the average per site
 df_deadwood_site <- df_deadwood_env_corr %>% 
+  filter(DW_type %in% c("standing",   "log")) %>% 
   group_by(trip_n, manag, sub_n) %>% 
   summarize(sum_DW_dens = sum(corr_count)) %>% 
   ungroup(.) %>% 
@@ -188,7 +192,14 @@ df_euc <- out_reorg_pos %>%
   dplyr::select(c(trip_n, manag, euclid_dist))
 
 
+
+# Get predictors from RA and RS axis:
+out_reorg_pos <- out_reorg_pos %>% 
+  mutate(trip_n = stringr::str_pad(trip_n, 2, pad = "0"))
+  
+
 # Merge auxiliary data with Euclidean distances --------------------------------
+
 df <- 
   df_euc %>% 
   mutate(trip_n = stringr::str_pad(trip_n, 2, pad = "0")) %>% 
@@ -198,19 +209,9 @@ df <-
   left_join(df_prec_out) %>% 
   left_join(df_temp_out) %>% 
   left_join(trip_species) %>% 
+  left_join(out_reorg_pos) %>% 
   left_join(df_patch, by = c("trip_n", "manag")) %>% 
   mutate(manag = as.factor(manag))  
-
-
-
-# add padding zeros
-
-library(stringr)
-v <- c('1', '2', '13')
-
-
-
-
 
 
 # scatter: euclid vs size:
@@ -280,12 +281,12 @@ p_anom_temp <- model_p %>%
            x = anomaly_temp_18_20)) +
   geom_smooth_ci(manag)
 
-
-
+#
+fwrite(df, outGAM)
  
  
-save(df,        # output file with all predictors for stat testing
-     p_dist_patch, # scatter plot
-     p_anom_temp, # test model: temperature
-     file="outData/auxData.Rdata")
+#save(df,        # output file with all predictors for stat testing
+#     p_dist_patch, # scatter plot
+#     p_anom_temp, # test model: temperature
+#     file="outData/auxData.Rdata")
  
