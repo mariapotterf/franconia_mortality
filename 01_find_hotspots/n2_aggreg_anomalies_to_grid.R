@@ -29,19 +29,19 @@ source('myPaths.R')
 
 
 
-
+#C:\Users\ge45lep\Documents\2021_Franconia_mortality\01_find_hotspots\outSpatial
 # Read files --------------------------------------------------------------
-grid    <- read_sf(paste(myPath, 'outSpatial', "grid_12.shp", sep = '/'))
+grid    <- read_sf(paste(myPath, '01_find_hotspots/outSpatial', "grid_12.shp", sep = '/'))
 
 
 # Get rasters
-disturbance <- raster(paste(myPath, inFolder, "disturbance_map_bavaria.tif", sep = "/"))
-forest      <- raster(paste(myPath, inFolder, "forestcover_germany.tif", sep = "/"))
+disturbance <- raster(paste(myPath, inFolder, "geodata/disturbance_map_bavaria.tif", sep = "/"))
+forest      <- raster(paste(myPath, inFolder, "geodata/forestcover_germany.tif", sep = "/"))
 
 
 # bavaria extent:
 # Get Bavaria data ----------------------
-bav.shp <- st_read(paste(myPath, inFolder, "outline_bavaria.gpkg", sep = "/"), 
+bav.shp <- st_read(paste(myPath, inFolder, "geodata/outline_bavaria.gpkg", sep = "/"), 
                    layer = 'outline_bavaria') # read watershed
 
 
@@ -210,8 +210,8 @@ st_crs(dat_grid_2018_2020_2) <-  st_crs(grid)
 
 
 # export a new shp: final grid
-st_write(dat_grid_2018_2020_2, 
-         paste('C:/Users/ge45lep/Documents/2021_Franconia_mortality/outSpatial/share', 'anom_12_fin.shp', sep = "/"), delete_layer = TRUE )
+#st_write(dat_grid_2018_2020_2, 
+#         paste('C:/Users/ge45lep/Documents/2021_Franconia_mortality/01_find_hotspots/outSpatial/share', 'anom_12_fin.shp', sep = "/"), delete_layer = TRUE )
 
 # Need to pass the values of the anomaly year into 'hotspot' statement to 
 # put them in a one map
