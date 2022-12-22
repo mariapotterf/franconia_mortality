@@ -31,7 +31,7 @@ source('myPaths.R')
 
 #C:\Users\ge45lep\Documents\2021_Franconia_mortality\01_find_hotspots\outSpatial
 # Read files --------------------------------------------------------------
-grid    <- read_sf(paste(myPath, '01_find_hotspots/outSpatial', "grid_12.shp", sep = '/'))
+grid    <- read_sf(paste(myPath, '01_find_hotspots/outSpatial', "grid_50.shp", sep = '/'))
 
 
 # Get rasters
@@ -101,13 +101,13 @@ out.df <- forest_df %>%
 # Working example on one size grid!
 
 # get vector of years as reference
-reference_period <- 1986:2015
+reference_period <- 1986:2015 # 30 (length(1986:2015))
 drought_period   <- 2018:2020
 
 
 # Calculate anomalies: first remove the grids that have less than 1 ha/year of mortality at average:
 # is this valid for my hexa data as well? !
-# calculate anomalies for the year 2018-2020 as
+# calculate anomalies for the year 2018-2020 as well
 # calculate anomalies from year 2019-2020
 out.df2 <-
   out.df %>%
