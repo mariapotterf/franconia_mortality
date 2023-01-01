@@ -6,7 +6,7 @@
 # - precip
 # - anomalies?? (compare the 2018-2020 with 1986-2015) - check Cornelius script
 # - deadwood volume - from ground cover (%), 
-# - from the ENV data - need to discuss which variables (log, standing, stump, root plate to use?)
+# - from the ENV data - from all cetegories (log, standing, stump, root plate to use?), use only "standing",   "log"
 # - ground cover:which aspect? eg. bare ground [%]
 # - disturbance intensity - % of the basal area removed (after DIST) - not included
 # - avg distance to nearest DW/living trees?
