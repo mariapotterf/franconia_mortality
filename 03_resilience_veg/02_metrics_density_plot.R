@@ -7,14 +7,16 @@
 
 # use all data across plots (4m2), analyze is on the scale of the site (all plots grouped by category and triplet number)
 
-# mature trees: nearest one from plot/surroundings to get the area and density of mature trees 
+# mature trees:    nearest one from plot/surroundings to get the area and density of mature trees 
 # nearest advanced regen: 
 # advanced regeneration: plot
 # new regeneration: plot
 
 
 # relative frequencies, densities and basal area per plot: 
-# for Mature trees: use mature trees metrics for plot: just simple estimation of the number of trees/hectar per the distance radius
+# for Mature trees: use mature trees metrics for plot: 
+#                   just simple estimation of the number of trees/hectar 
+#                   per the distance radius
 # recalculate all to hectares
 
 # analyze several aspects of the composition and structure to see how does the site changes after the disturbances
@@ -32,7 +34,7 @@
 #   - advanced regen (missing height and DBH!) - complete DBH from the plot level regen
 #   - make sure to add +100 cm (distance to the center, if missing )
 # dbh for advanced regen in ENV:  
-#   - replace by the dbh from the advanced regen for IVi calculation
+#   - replace by the dbh from the advanced regen for IVI calculation
 # outcome: get the species importance value per plot! nearest trees add as 
 # try simply for site: can be easier (can have all 3 dimensions of species importance value)
 
@@ -302,6 +304,7 @@ df_advanced_env_corr <- df_advanced_env %>%
          DBH, distance, height_class, count, corr_count) # correctly order the columns
 
 
+
 range(df_advanced_env_corr$corr_count)
   
 ## ENV: mature: -------------------------------------------------------------------
@@ -401,9 +404,9 @@ df_deadwood_env_corr <-
                                 corr_count > 2500 ~ 2500)) #%>% Cap values 
 
 # check if data are realistic?
-df_deadwood_env_corr %>% 
-  filter(corr_count > 2500) %>%
-  View()
+# df_deadwood_env_corr %>% 
+#   filter(corr_count > 2500) %>%
+#   View()
 
 
 # How much deadwood every plot has?
@@ -425,8 +428,8 @@ df_deadwood_env_corr %>%
 
 # combine the regeneration, advanced regeneration and mature trees per plot & site
 # Calculate:
-# - relative density    - the number of individuals per area as a percent tof teh number of individuals of all species
-# - relative basal area - the total basal area of species A as a percent of teh total basal area of all species. Basal area = sum of the cross sectional area of all tree species of species A.
+# - relative density    - the number of individuals per area as a percent of the number of individuals of all species
+# - relative basal area - the total basal area of species A as a percent of the total basal area of all species. Basal area = sum of the cross sectional area of all tree species of species A.
 # BA - estimated at breast height: eg. remove all regeneration smaller then then 1.3 m: only HK6
 #   
 
@@ -665,6 +668,22 @@ table(df_full_corr_mrg$height_class)
 #     
 # regeneration is absent eg from trip_n == 9 sub_n == 9 manag == "l"   
   
+
+# 2023/03/13 get density of teh mature trees DBH
+# add the indication of the dom species (dom_sp)
+df_trips <- plot_counts_df %>% 
+  select(-c(sub_n)) %>% 
+  distinct()
+
+
+df_full_corr_mrg %>% 
+  filter(height_class %in% c("mature",  "mat_ENV")) %>% 
+  left_join(df_trips) %>% 
+  group_by(manag, dom_sp) %>% 
+  summarise(mean = mean(DBH),
+            med = median(DBH))
+  
+
 
 # how to account for empty plots (no regen) in density estimation??
     # I can't in relative density, as I am adding just zeros. BUt It affects
