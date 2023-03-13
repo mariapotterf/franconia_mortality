@@ -533,18 +533,33 @@ df_full_corr_mrg_reg <-
 
 
 # Get table for advanced: here, get avg for advanced regen:
-df_full_corr_mrg_advMat <- 
+df_full_corr_mrg_adv <- 
   df_full_corr_mrg %>% 
-  filter(vert_layer != 'regen') %>% 
+  filter(vert_layer == 'advanced') %>% 
   group_by(trip_n, manag, sub_n, vert_layer) %>% 
   summarize(sum_corr_count = mean(corr_count)) %>%  # mean beacsue I have adv in plot and in ENV!!
-  right_join(df_master_heights_both) %>% 
+  right_join(plot_counts_df) %>% 
   mutate(sum_corr_count = case_when(is.na(sum_corr_count) ~ 0,
                                     !is.na(sum_corr_count) ~ sum_corr_count)) 
 
-# merge corrected bables for stem density from REg and adv+Matg trees:
+# 
+#!!!!! get sum for the mature Trees
+df_full_corr_mrg_Mat <- 
+  df_full_corr_mrg %>% 
+  filter(vert_layer == 'mature') %>% 
+  group_by(trip_n, manag, sub_n, vert_layer) %>% 
+  summarize(sum_corr_count = sum(corr_count)) %>%  # mean beacsue I have adv in plot and in ENV!!
+  right_join(plot_counts_df) %>%
+  mutate(sum_corr_count = case_when(is.na(sum_corr_count) ~ 0,
+                                    !is.na(sum_corr_count) ~ sum_corr_count)) 
+
+
+
+
+# merge corrected tables for stem density from REg and adv+Matg trees:
 df_stem_dens <- rbind(df_full_corr_mrg_reg,
-                      df_full_corr_mrg_advMat)
+                      df_full_corr_mrg_adv,
+                      df_full_corr_mrg_Mat)
 
 # df_stem_dens %>% 
 #   distinct(trip_n, manag, sub_n, vert_layer)
@@ -680,10 +695,7 @@ p_RS1_raw_reg <- df_stem_dens %>%
 p_RS1_raw_MatAdv <- 
   df_stem_dens %>%  
   left_join(trip_species, by = "trip_n") %>% 
-   # filter(vert_layer == 'mature' & dom_sp == 'spruce') %>% 
-  #  arrange(trip_n, manag, sub_n) %>% 
-  #  View() 
-  group_by(trip_n, manag, vert_layer) %>% 
+   group_by(trip_n, manag, vert_layer) %>% 
   filter(vert_layer != 'regen') %>% 
   ggplot(aes(x = factor(manag, 
                         level = c('l', 'c', 'd')),
@@ -785,8 +797,8 @@ df_full_corr_mrg %>%
              y = DBH,
              fill = manag)) + 
   details_violin() +
-  geom_jitter(alpha = 0.5) +
-  #coord_cartesian(ylim = c(0, 70)) +
+  #geom_jitter(alpha = 0.5) +
+  coord_cartesian(ylim = c(0, 100)) +
   #dens_plot_details()+
   ggtitle('Mature trees DBH') +
   facet_grid(. ~ dom_sp )
