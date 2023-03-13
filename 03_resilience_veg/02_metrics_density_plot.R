@@ -669,20 +669,12 @@ table(df_full_corr_mrg$height_class)
 # regeneration is absent eg from trip_n == 9 sub_n == 9 manag == "l"   
   
 
-# 2023/03/13 get density of teh mature trees DBH
-# add the indication of the dom species (dom_sp)
-df_trips <- plot_counts_df %>% 
-  select(-c(sub_n)) %>% 
-  distinct()
-
-
-df_full_corr_mrg %>% 
-  filter(height_class %in% c("mature",  "mat_ENV")) %>% 
-  left_join(df_trips) %>% 
-  group_by(manag, dom_sp) %>% 
-  summarise(mean = mean(DBH),
-            med = median(DBH))
-  
+ 
+# library(ggplot2)
+# df_full_corr_mrg %>% 
+#   filter(height_class %in% c("mature",  "mat_ENV")) %>% 
+#   left_join(df_trips) %>% 
+#   g
 
 
 # how to account for empty plots (no regen) in density estimation??
