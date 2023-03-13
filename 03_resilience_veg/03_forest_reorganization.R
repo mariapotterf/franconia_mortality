@@ -672,7 +672,7 @@ p_RS1_raw_reg <- df_stem_dens %>%
     scale_y_log10(breaks = c(0, 10, 100),#trans_breaks("log10", function(x) 10^x),
                   labels = trans_format("log10", math_format(10^.x)),
                   limits = c(-1,101)) +
-    ylab('Stem density (*1000/ha)\n')# + 
+    ylab('log Stem density (*1000/ha)\n')# + 
     #geom_jitter(width = 0.2, alpha = 0.3)  # geom_jitter(position = position_dodge(0.8))+
   
 
@@ -755,6 +755,41 @@ p_RS2 <- df_RS2 %>%
 
 p_RS2
 
+
+#  2023/03/13  why there seems to be a low mortality of mature trees in disturbed ites?
+# is it because of DBH? check!
+
+# get density plot of teh mature trees DBH
+# add the indication of the dom species (dom_sp)
+
+
+qntils = c(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1)
+df_full_corr_mrg %>% 
+  filter(height_class %in% c("mature",  "mat_ENV")) %>% 
+  left_join(trip_species, by = "trip_n") %>% 
+  group_by(manag, dom_sp) %>% 
+  summarize(mean = mean(DBH),
+            qs = quantile(DBH, qntils),
+            prob = qntils) %>%
+  pivot_wider(names_from = prob, values_from = qs ) %>% 
+  mutate_if(is.numeric, round) %>% 
+  arrange(dom_sp)
+
+
+
+df_full_corr_mrg %>% 
+  filter(height_class %in% c("mature",  "mat_ENV")) %>% 
+  left_join(trip_species, by = "trip_n") %>% 
+  ggplot(aes(x = factor(manag, 
+                        level = c('l', 'c', 'd')),
+             y = DBH,
+             fill = manag)) + 
+  details_violin() +
+  geom_jitter(alpha = 0.5) +
+  #coord_cartesian(ylim = c(0, 70)) +
+  #dens_plot_details()+
+  ggtitle('Mature trees DBH') +
+  facet_grid(. ~ dom_sp )
 
 
 
