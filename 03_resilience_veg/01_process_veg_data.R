@@ -752,7 +752,7 @@ df_other_regen2 <-
 #     )) # %>% 
 
 
-# 2022/11/08 - no need to currently explude the planted species, or having the damaged tree excluded(included)
+# 2022/11/08 - no need to currently exclude the planted species, or having the damaged tree excluded(included)
 # simply exclude all of teh data from the 'regeneration' - of species == Other, and add rows from teh manual selection
 df_reg_full <-
   df_regen %>%
@@ -902,7 +902,7 @@ df_mature_trees_env <-
                                   species == "Birke"        ~ "Birch",
                                   species == "Weide"        ~ "Willow",
                                   species == "Tanne"        ~ "Fir")) %>% 
-  mutate(orientation = case_when(orientation == 'ost'~ 'east',
+  mutate(orientation = case_when(orientation == 'ost' ~ 'east',
                                  orientation == 'west'~ 'west',
                                  orientation == 'nord'~ 'north',
                                  orientation == 'sued'~ 'south')) %>% 
