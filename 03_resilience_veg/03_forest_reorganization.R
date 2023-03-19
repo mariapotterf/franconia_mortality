@@ -805,6 +805,96 @@ df_full_corr_mrg %>%
 
 
 
+# 03/19/2023 check BA between disturbed/undisturbed plots:  -----------------------
+# -----------------------------------------------------------
+# identify why there is low difference between disturbed/undisturbed plts, 
+#  check for beech in stem density: is bit because the survuval trees are smaller? 
+# !!!  hypothesis: same number of small DBH trees on disturbed site as large DBH trees in REF?
+df_full_corr_mrg  %>% 
+  filter(height_class %in% c('mature', 'mat_ENV')) %>% 
+  mutate(r = DBH/2,
+         BA = pi*r^2,
+         BA_ha = BA*corr_count/ha)  %>%
+  #arrange(trip_n, manag)
+  group_by(trip_n, manag) %>% #, sub_n, species
+  summarize(mean_BA = mean(BA_ha, na.rm = T)) %>%
+  left_join(trip_species, by = "trip_n") %>% 
+  ggplot(aes(x = factor(manag, 
+                        level = c('l', 'c', 'd')),
+             y = mean_BA,
+             fill = manag)) + 
+  details_violin() +
+  geom_jitter(alpha = 0.5) +
+  #coord_cartesian(ylim = c(0, 100)) +
+  ggtitle('Mature trees BA') +
+  facet_grid(. ~ dom_sp )
+
+
+# identify where are the lowest differences in BA: REF-DIST, in which plts?
+check_BA<- df_full_corr_mrg  %>% 
+  filter(height_class %in% c('mature', 'mat_ENV')) %>% 
+  mutate(r = DBH/2,
+         BA = pi*r^2,
+         BA_ha = BA*corr_count/ha)  %>%
+  group_by(trip_n, manag) %>% #, sub_n, species
+  summarize(mean_BA = mean(BA_ha, na.rm = T)) %>%
+  left_join(trip_species, by = "trip_n") %>% 
+  pivot_wider(names_from = manag, values_from = mean_BA  ) %>%
+  mutate(REF_MAN = l-c,
+         REF_MAN_perc = REF_MAN/l*100,
+         REF_UNM = l-d,
+         REF_UNM_perc = REF_UNM/l*100) #%>% 
+  
+
+
+  
+
+# make plots:
+# REF vs Managed
+p1 <- check_BA %>% 
+  arrange(dom_sp, REF_MAN_perc) %>%
+  group_by(dom_sp) %>% 
+  mutate(id = row_number()) %>% # number triplets for simple plotting
+  ggplot(aes(x = id, 
+             y = REF_MAN_perc,
+             label = trip_n)) +
+  geom_col() +
+  facet_wrap(.~dom_sp, scale = 'free') +
+  ggtitle("Diff. Basal area\nREF-MAN (%)") +
+  geom_text(size = 2.7, col = "red",check_overlap = TRUE)
+  
+
+p2 <- 
+  check_BA %>% 
+  arrange(dom_sp, REF_UNM_perc) %>%
+  group_by(dom_sp) %>% 
+  mutate(id = row_number()) %>% # number triplets for simple plotting
+  ggplot(aes(x = id, 
+             y = REF_UNM_perc,
+             label = trip_n)) +
+  geom_col() +
+  facet_wrap(.~dom_sp, scale = 'free') +
+  ggtitle("Diff. Basal area\nREF-UNM (%)") +
+  geom_text(size = 2.7, col = "red",
+            check_overlap = TRUE,
+            vjust = 0.5)
+
+ggarrange(p1, p2, ncol = 2)
+  
+# dummy example: fill in values 1:nrow() by group
+d <- data.frame(nam = c("b", "b", "b",
+                        'a', 'a',
+                        'd', 'd', 'd', 'd'))
+
+# https://stackoverflow.com/questions/12925063/numbering-rows-within-groups-in-a-data-frame
+d %>% 
+  group_by(nam) %>% 
+  mutate(id = row_number()) 
+
+
+
+
+
 # p RS2 raw  --------------------------------------------------------------
 
 p_RS2_raw <- df_full_corr_mrg %>% 
