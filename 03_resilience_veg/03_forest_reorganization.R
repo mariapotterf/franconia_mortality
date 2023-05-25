@@ -805,7 +805,7 @@ df_full_corr_mrg %>%
 
 
 
-# 03/19/2023 check BA between disturbed/undisturbed plots:  -----------------------
+# 03/19/2023 check BA between REF:managed and unmanaged plots:  -----------------------
 # -----------------------------------------------------------
 # identify why there is low difference between disturbed/undisturbed plts, 
 #  check for beech in stem density: is bit because the survuval trees are smaller? 
@@ -831,13 +831,16 @@ df_full_corr_mrg  %>%
 
 
 # identify where are the lowest differences in BA: REF-DIST, in which plts?
-check_BA<- df_full_corr_mrg  %>% 
+#check_BA<- 
+  df_full_corr_mrg  %>% 
   filter(height_class %in% c('mature', 'mat_ENV')) %>% 
   mutate(r = DBH/2,
          BA = pi*r^2,
          BA_ha = BA*corr_count/ha)  %>%
-  group_by(trip_n, manag) %>% #, sub_n, species
-  summarize(mean_BA = mean(BA_ha, na.rm = T)) %>%
+  group_by(trip_n, manag, sub_n) %>% #, sub_n, species
+  summarize(sum_BA = sum(BA_ha, na.rm = T)) %>% # sum BA across plots
+    group_by(trip_n, manag) %>% #, sub_n, species
+    summarize(mean_BA = mean(sum_BA, na.rm = T)) %>% # average BA across sites
   left_join(trip_species, by = "trip_n") %>% 
   pivot_wider(names_from = manag, values_from = mean_BA  ) %>%
   mutate(REF_MAN = l-c,
@@ -880,6 +883,54 @@ p2 <-
             vjust = 0.5)
 
 ggarrange(p1, p2, ncol = 2)
+
+
+# investigate individual plots withing beech 33 (MAN), 24 (UNM):
+library(ggbeeswarm)
+df_full_corr_mrg  %>% 
+  filter(height_class %in% c('mature', 'mat_ENV')) %>% 
+  filter(trip_n %in% c('33', '24', '22')) %>% 
+  mutate(r = DBH/2,
+         BA = pi*r^2,
+         BA_ha = BA*corr_count/ha)  %>%
+  group_by(trip_n, manag, sub_n) %>% #, sub_n, species
+  summarize(sum_BA = sum(BA_ha, na.rm = T)) %>% # sum BA across plots
+  group_by(trip_n, manag) %>% #, sub_n, species
+  mutate(mean_BA = mean(sum_BA, na.rm = T)) %>% # average BA across sites
+  #left_join(trip_species, by = "trip_n") %>%
+  ggplot(aes(x = manag, 
+             y = sum_BA)) +
+  #geom_jitter() +
+  geom_beeswarm(alpha = 0.5) +
+  stat_summary(fun = "mean", 
+               colour = "red", size = 2, geom = "point") +
+  facet_wrap(.~trip_n) +
+  scale_x_discrete(name = '',
+                   breaks = names(manag.labs),
+                   labels = manag.labs)
+
+ 
+
+
+
+
+# CHeck 24: UNM is 800 BA!!
+df_full_corr_mrg %>% 
+  filter(height_class %in% c('mature', 'mat_ENV')) %>% 
+  filter(trip_n == 24 & manag == 'd')
+
+# check which plots have distance == 50
+
+df_full_corr_mrg %>% 
+  filter(height_class %in% c('mature', 'mat_ENV') & manag != 'l') %>% 
+  filter(distance == 50 & DBH > 40) %>% 
+  ungroup(.) %>%  
+  distinct(trip_n) %>% 
+  pull()
+
+
+
+
   
 # dummy example: fill in values 1:nrow() by group
 d <- data.frame(nam = c("b", "b", "b",

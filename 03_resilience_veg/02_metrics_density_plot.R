@@ -626,7 +626,7 @@ df_full_corr_mrg  %>%
 
 # Add missing trees to BA and density -------------------------------------
 
-#df_full_corr_mrg <- 
+#!!! df_full_corr_mrg <- 
   df_full_corr_mrg %>% 
   group_by(trip_n, manag) %>% 
   distinct(height_class) %>% 
@@ -757,6 +757,16 @@ plot_IVI <- df_rel_density %>%
   full_join(df_rel_BA_plot) %>% 
   replace_na(., list(all_BA = 0, rel_BA   = 0)) %>% 
   mutate(rIVI = ( rel_density +rel_BA)/2)  # relative IVI
+
+
+
+
+
+
+
+
+
+
 
 
 
