@@ -51,12 +51,7 @@ range(v_elev)
 
 
 # Get mean distance beween patches per site 
-xy_3035 <- terra::project(xy, "EPSG:3035")  # coordinate system for Europe in m
-
 # https://stackoverflow.com/questions/44187812/5-nearest-neighbors-based-on-given-distance-in-r
-
-
-xy_3035_df <- as.data.frame(xy_3035, geom = 'WKT') # add XY coordinates
 
 # get coordinates as two separate columns: use sf object
 xy2_df <- st_coordinates(xy2_sf)
@@ -65,19 +60,6 @@ xy2_df <- st_coordinates(xy2_sf)
 library(FNN)
 library(tidyverse)
 library(data.table)
-
-# Create example data frame
-dataset <- fread("id    x         y       age
-1  1745353   930284.1    30
-2  1745317   930343.4    23
-3  1745201   930433.9    10
-4  1745351   930309.4    5
-5  1745342   930335.2    2
-6  1746619   929969.7    66
-7  1746465   929827.1    7
-8  1746731   928779.5    55
-9  1746629   929902.6    26
-10 1745938   928923.2    22")
 
 # Calculate the nearest ID and distance
 near_data <- get.knn(xy2_df[, 1:2], k = 2)
