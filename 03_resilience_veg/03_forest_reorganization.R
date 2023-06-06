@@ -343,6 +343,23 @@ plot_IVI_exp %>%
             median_rich_patch  = median(richness, na.rm = F)) 
 
 
+# post-disturbance richnes per patch
+plot_IVI_exp %>% 
+  filter(sp_count  != 0 ) %>% 
+ # filter(manag != 'l') %>%
+  group_by(manag, trip_n, species) %>%  # merge the same species over several rows
+  summarise(unique_spec_patch = n()) %>% 
+  ungroup(.) %>% 
+  group_by(manag, trip_n) %>% 
+  summarise(richness = n()) %>%
+ # ungroup(.) %>% 
+  summarize(mean_rich_patch  = mean(richness, na.rm = F),
+            median_rich_patch  = median(richness, na.rm = F)) 
+
+
+
+
+
 # per plot
 plot_IVI_exp %>% 
   filter(sp_count  != 0 ) %>% 
