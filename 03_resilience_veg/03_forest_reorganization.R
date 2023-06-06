@@ -329,6 +329,33 @@ p_RA1_site
 # steps:
 # 1. richness: count number of species average number of species REF, SD same
 # 2. D - average number of species post-disturbance
+
+# per patch: get average & median richness
+plot_IVI_exp %>% 
+  filter(sp_count  != 0 ) %>% 
+  group_by(manag, trip_n, species) %>%  # merge the same species over several rows
+  summarise(unique_spec_patch = n()) %>% 
+  ungroup(.) %>% 
+  group_by(manag, trip_n) %>% 
+  summarise(richness = n()) %>%
+  ungroup(.) %>% 
+  summarize(mean_rich_patch  = mean(richness, na.rm = F),
+            median_rich_patch  = median(richness, na.rm = F)) 
+
+
+# per plot
+plot_IVI_exp %>% 
+  filter(sp_count  != 0 ) %>% 
+  group_by(manag, trip_n, sub_n) %>% 
+  summarise(richness = n()) %>% 
+  ungroup(.) %>% 
+  #group_by(trip_n) %>%
+  summarize(mean_rich_plot  = mean(richness, na.rm = F),
+            median_rich_plot  = median(richness, na.rm = F)) 
+
+
+
+
 RA2_ref <- 
   plot_IVI_exp %>%
   filter(sp_count  != 0 ) %>% 
