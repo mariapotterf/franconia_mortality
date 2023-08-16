@@ -43,12 +43,36 @@ windows()
 plot(elev)
 plot(xy2_sf, add = TRUE)
 
-# get elevation
-v_elev      <- terra::extract(elev, xy2_sf)
+# get elevation data for each point
+xy2_sf$elevation      <- terra::extract(elev, xy2_sf)
 
-range(v_elev)
+range(xy2_sf$elevation)
 #[1] 128 971 m
 
+# get coordinates as two separate columns: use sf object
+xy2_df <- st_coordinates(xy2_sf)
+
+# add XY coordinates
+xy2_sf2 <- cbind(xy2_sf, xy2_df) 
+
+# update names, keep elevation data
+xy2_sf3<- xy2_sf2 %>%
+  separate(Name, c("trip_n", "dom_sp", "manag"), "-") %>%
+  dplyr::select("trip_n", "dom_sp", "manag", 'X', 'Y', 'elevation') %>% 
+  mutate(manag = tolower(manag))
+  
+#st_get_geometry(xy2_sf)
+
+xy2_df_out <- xy2_sf3 %>% 
+  st_drop_geometry()
+
+# Export the sf file
+st_write(xy2_sf3, paste(myPath, outSpatial, "xy_3035_elev.gpkg", sep = "/"), 
+         layer = 'xy_3035_elev') # read watershed
+
+
+# export CSV table 
+fwrite(xy2_df_out, paste(myPath, outTable, "xy_3035_elev.csv", sep = "/"))
 
 # Get mean distance beween patches per site 
 # https://stackoverflow.com/questions/44187812/5-nearest-neighbors-based-on-given-distance-in-r
