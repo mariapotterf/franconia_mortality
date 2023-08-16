@@ -148,8 +148,8 @@ load(file = paste(getwd(), "outData/eco_traits.Rdata", sep = '/'))
 head(df_full_corr_mrg)    # - full PLOT based data: df_full_corr, seedlings, advanced, mature - PLOt & surroundings, mature trees filtered 
 head(plot_IVI)            # - df importance value:from plot, env mature, env advanced, merged by density/ha
 head(trait_df)            # - trait values for all species: eco_traits
-head(df_mature_trees_env) # - trees in the surroundings: mature trees - set distance to 16 m if no tree present
-head(df_advanced_env)     # - trees in the surroundings: advanced
+#head(df_mature_trees_env) # - trees in the surroundings: mature trees - set distance to 16 m if no tree present
+#head(df_advanced_env)     # - trees in the surroundings: advanced
 
 
 # Master plots:
@@ -537,13 +537,6 @@ p_RA3_site <- plot_IVI_exp %>%
 # - mature (> 10 cm dbh )
 # if the mean number of layers per DIST > REF -> indication of change
 
-# classify the data
-
-df_full_corr_mrg <- 
-  df_full_corr_mrg %>%
-  mutate(vert_layer = case_when(height_class %in% c("HK1", "HK2", "HK3", "HK4", "HK5","HK6") ~ 'regen',
-                                height_class %in% c("HK7","adv_ENV" ) ~ 'advanced',
-                                height_class %in% c("mature","mat_ENV" ) ~ 'mature')) 
 
 
 
@@ -592,7 +585,7 @@ df_full_corr_mrg_Mat <-
   df_full_corr_mrg %>% 
   filter(vert_layer == 'mature') %>% 
   group_by(trip_n, manag, sub_n, vert_layer) %>% 
-  summarize(sum_corr_count = sum(corr_count)) %>%  # mean beacsue I have adv in plot and in ENV!!
+  summarize(sum_corr_count = sum(corr_count)) %>%  # sum because I have filtered the mature trees: take only ones in closest distance! 
   right_join(plot_counts_df) %>%
   mutate(sum_corr_count = case_when(is.na(sum_corr_count) ~ 0,
                                     !is.na(sum_corr_count) ~ sum_corr_count)) 
@@ -635,7 +628,7 @@ out_tab_dens <- df_stem_dens %>%
 
 
 out_tab_dens
-outStemDens            = paste(myPath, outTable, 'raw_stem_dens.csv'              , sep = '/')  # contains infor of plantation& damage
+outStemDens            = paste(myPath, outTable, 'quantil_stem_dens.csv'              , sep = '/')  # contains infor of plantation& damage
 
 #### Save the table 
 fwrite(out_tab_dens, outStemDens)
