@@ -634,6 +634,17 @@ df_full_corr_mrg  %>%
 
 table(df_full_corr_mrg$height_class)  
 
+# classify the data by height category:
+
+df_full_corr_mrg <- 
+  df_full_corr_mrg %>%
+  mutate(vert_layer = case_when(height_class %in% c("HK1", "HK2", "HK3", "HK4", "HK5","HK6") ~ 'regen',
+                                height_class %in% c("HK7","adv_ENV" ) ~ 'advanced',
+                                height_class %in% c("mature","mat_ENV" ) ~ 'mature')) 
+
+
+
+
 # Get species rIVI Plot + ENV--------------------------------------------------------------
 # # no frequency: not possible on plot level
 # # relative density: 
