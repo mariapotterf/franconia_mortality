@@ -40,8 +40,15 @@ load(file = paste(getwd(), "outData/dat_restr.Rdata", sep = '/'))
 
 # Get rasters: deciduous vs coniferous,
 # calculate the buffer as well;
-forest_type <- raster(paste(myPath, outFolder, "bav_fortype_ext30_int2u_LZW.tif", sep = "/"))
+forest_type <- terra::rast("C:/Users/ge45lep/Documents/2022_BarkBeetles_Bavaria/outSpatial/bav_fortype_ext30_int2u_LZW.tif")
+xy          <- st_read(paste(myPath, outSpatial, "xy_3035_elev.gpkg", sep = "/"), 
+                layer = 'xy_3035_elev') # read XY data
 
+
+# need to filter XY data: remove 45, 65 - not possible to plot sample! 
+xy <- xy %>% 
+  dplyr::filter(!trip_n %in% c("45", "65")) %>% 
+  unite(name, c('trip_n','dom_sp', 'manag' )) # %>% 
 
 # output file
 outPath = paste('C:/Users/ge45lep/Documents/2021_Franconia_mortality/03_plot_sampling/out_fieldData/share_veget_Jorg')
@@ -71,7 +78,7 @@ v_all_height = unique(df_full_corr_mrg$vert_layer)
 # for 27 species
 df_master_species_plot <- df_master_species %>% 
   ungroup(.) %>% 
-  select(-sub_n) %>% 
+  dplyr::select(-sub_n) %>% 
   distinct()
 
 table(df_master_species_plot$trip_n,df_master_species_plot$manag)
@@ -80,7 +87,7 @@ table(df_master_species_plot$trip_n,df_master_species_plot$manag)
 # make master dataframe having both height categories: 
 df_master_heights <-   plot_counts_df %>% 
   ungroup(.) %>% 
-  select(-sub_n) %>% 
+  dplyr::select(-sub_n) %>% 
   distinct() %>% 
   mutate(vert_layer = 'mature') %>% 
   group_by(trip_n, manag) %>% 
@@ -138,16 +145,54 @@ fwrite(out[[2]], paste(outPath, 'matrix_mature.csv', sep = '/'))
 fwrite(out[[3]], paste(outPath, 'matrix_regen.csv', sep = '/'))
 
 
-
+# Get deciduous vs coniferous and no-forest
 # 1 km buffer -------------------------------------------------------------
-
-xy_1000 = xy %>% 
-  st_buffer(1000)   # 1000 m = 1 km 
-
-
-plot(xy_1000['OBJECTID'])
-
-# convert to terra format
-forest_terra  <- rast(forest_type)
-
+xy_vect <- vect(xy)  # convert to terra object
 # codes: 2 = coniferous, 1 = deciduous, 0 = no forest 
+windows()
+
+# split features in individual objects
+buff_ls <- terra::split(xy_vect, "name")
+
+
+# make a function to loop it over buffers, as they seem to overlap
+extract_rst_val <- function(xy_vect, ...) {
+  
+  name <- xy_vect$name   # get name
+  #print(name)
+  
+  # get buffer
+  buff <- buffer(xy_vect, 1000)
+  
+  # crop data and then mask them to have a circle
+  forest_crop <- crop(forest_type, buff)
+  forest_mask <- mask(forest_crop, buff)
+  
+  # Get vector of values
+  val <- values(forest_mask)
+  
+  # count number of cells:
+  df <- as.data.frame(table(val))
+  
+  # add name
+  df$name <- name
+  
+  return(df)
+}
+
+out_ls <- lapply(buff_ls, extract_rst_val)
+
+# merge partial tables into one df
+forest_df      <-do.call("rbind", out_ls)
+
+# get area
+forest_df$area_ha <- forest_df$Freq*0.09  # 30*30 m
+
+ 
+# check if I have reasonable sums? area of 1 buffer (r = 1000 m) is ~323 (314 ha)  
+forest_df %>% 
+  group_by(name) %>% 
+  summarise(sum_area = sum(area_ha))  # here they are at least the same
+
+
+fwrite(forest_df, paste(outPath, 'matrix_forest_1km.csv', sep = '/'))
