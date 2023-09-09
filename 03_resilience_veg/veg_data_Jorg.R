@@ -38,6 +38,11 @@ getwd()
 load(file = paste(getwd(), "outData/dataToPlot.Rdata", sep = '/'))
 load(file = paste(getwd(), "outData/dat_restr.Rdata", sep = '/'))
 
+
+# output file
+outPath = paste('C:/Users/ge45lep/Documents/2021_Franconia_mortality/03_plot_sampling/out_fieldData/share_veget_Jorg')
+
+
 # Get rasters: deciduous vs coniferous,
 # calculate the buffer as well;
 forest_type <- terra::rast("C:/Users/ge45lep/Documents/2022_BarkBeetles_Bavaria/outSpatial/bav_fortype_ext30_int2u_LZW.tif")
@@ -50,12 +55,19 @@ xy <- xy %>%
   dplyr::filter(!trip_n %in% c("45", "65")) %>% 
   unite(name, c('trip_n','dom_sp', 'manag' )) # %>% 
 
-# output file
-outPath = paste('C:/Users/ge45lep/Documents/2021_Franconia_mortality/03_plot_sampling/out_fieldData/share_veget_Jorg')
+
+# check projection
+st_is_longlat(xy) # FALSE
 
 # Identify data to use:
 head(df_full_corr_mrg)    # - full PLOT based data: df_full_corr, seedlings, advanced, mature - PLOt & surroundings, mature trees filtered 
 plot_counts_df_sum        # - number of plots per site & treatment 
+
+
+# read elevation df with XY coordinates:
+# export CSV table 
+fwrite(xy2_df_out, paste(myPath, outTable, "xy_3035_elev.csv", sep = "/"))
+
 
 # filter data to check if really regen is missing: 61 D
 
@@ -188,11 +200,14 @@ forest_df      <-do.call("rbind", out_ls)
 # get area
 forest_df$area_ha <- forest_df$Freq*0.09  # 30*30 m
 
+forest_df <- forest_df %>% 
+  separate(name, c("trip_n", "dom_sp", "manag"), '_') %>% 
+  dplyr::select(-Freq)
  
 # check if I have reasonable sums? area of 1 buffer (r = 1000 m) is ~323 (314 ha)  
 forest_df %>% 
-  group_by(name) %>% 
-  summarise(sum_area = sum(area_ha))  # here they are at least the same
+  group_by(trip_n, manag) %>% 
+  summarise(sum_area = sum(area_ha))  # here they are ~ correct area
 
 
-fwrite(forest_df, paste(outPath, 'matrix_forest_1km.csv', sep = '/'))
+fwrite(forest_df, paste(outPath, 'df_forest_1km.csv', sep = '/'))
