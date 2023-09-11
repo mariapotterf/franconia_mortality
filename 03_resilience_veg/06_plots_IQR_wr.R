@@ -1,8 +1,11 @@
 # Plots for Leipzig GfO conference
 
-# read from Werners data
+# read from Werners data - need to go back to my data,
+# as therse data are already relative REF vs DIST, and organized in teh wide format
 
-# get barplots with IQR for each indicator
+
+
+# get barplots with IQR for each indicator:
 
 load('C:/Users/ge45lep/Documents/2021_Franconia_mortality/code_werner/out_reorg_full_v3/out_reorg_full.RData')
 
@@ -55,4 +58,13 @@ ggplot(data = diamonds,
     width = .2) +
   coord_cartesian(ylim=c(60, 67)) # ylim=c(59,66)
 
-                  
+             
+
+# understand the (mean(dist) - mean(ref))/sd(ref)
+
+(dist <- c(5,4,3,4,5))
+mean(dist)
+(ref <- c(3,3,3,3,2.8))
+mean(ref)
+sd(ref)
+(mean(dist)-mean(ref))/sd(ref)
