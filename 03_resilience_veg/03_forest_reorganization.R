@@ -153,7 +153,7 @@ head(trait_df)            # - trait values for all species: eco_traits
 
 
 # Master plots:
-head(plot_counts_df)      # - total count of the plots per triplets & categories: to standardize the densities...
+head(plot_counts_df)      # - total count of the plots per triplets & categories: to correct densities accounting for empty plots...
 
 
 # Get dataframes of the species --------------------------------------------------
@@ -176,7 +176,7 @@ master_tripl <- distinct(dplyr::select(plot_counts_df_sum, trip_n))
 
 
 # Prepare teh data: get the all available tree species in each site; fill in with 0 is teh species is not present
-v_species <- unique(df_full_corr_mrg$species)
+v_species <- unique(df_full_corr_mrg$species)  # 27 species
 
 # RA: Reassembly: ------------------------------------------------------------------
 #
@@ -577,7 +577,9 @@ df_full_corr_mrg_adv <-
   summarize(sum_corr_count = mean(corr_count)) %>%  # mean beacsue I have adv in plot and in ENV!!
   right_join(plot_counts_df) %>% 
   mutate(sum_corr_count = case_when(is.na(sum_corr_count) ~ 0,
-                                    !is.na(sum_corr_count) ~ sum_corr_count)) 
+                                    !is.na(sum_corr_count) ~ sum_corr_count)) %>% 
+  mutate(vert_layer = 'advanced') # populate new columns
+
 
 # 
 #!!!!! get sum for the mature Trees
@@ -588,7 +590,8 @@ df_full_corr_mrg_Mat <-
   summarize(sum_corr_count = sum(corr_count)) %>%  # sum because I have filtered the mature trees: take only ones in closest distance! 
   right_join(plot_counts_df) %>%
   mutate(sum_corr_count = case_when(is.na(sum_corr_count) ~ 0,
-                                    !is.na(sum_corr_count) ~ sum_corr_count)) 
+                                    !is.na(sum_corr_count) ~ sum_corr_count)) %>% 
+  mutate(vert_layer = 'mature')
 
 
 
@@ -597,6 +600,8 @@ df_full_corr_mrg_Mat <-
 df_stem_dens <- rbind(df_full_corr_mrg_reg,
                       df_full_corr_mrg_adv,
                       df_full_corr_mrg_Mat)
+
+# !!!! the manag levels are missing!!!! Sept 11, 2023  corrected, need to check!
 
 # df_stem_dens %>% 
 #   distinct(trip_n, manag, sub_n, vert_layer)
@@ -608,7 +613,45 @@ df_stem_dens <- df_stem_dens %>%
          manag = factor(manag,
                              levels = c('l',
                                         'c',
-                                        'd')))
+                                       'd')))
+
+
+# Get combination trip_n and dominant species
+df_site_dom_sp <- df_mature_trees_plot %>% 
+  ungroup() %>% 
+  select(trip_n, dom_sp) %>% 
+  distinct()
+
+# make barplot with IQR
+df_stem_dens2 <- df_stem_dens %>% 
+  left_join(df_site_dom_sp, by = 'trip_n') #%>%
+  
+windows()
+ggplot(data = df_stem_dens2,
+         aes(x = manag, 
+             y = sum_corr_count,
+             fill = dom_sp)) + 
+  # Add bars as medians
+  stat_summary(fun = "median", 
+               geom = "bar", 
+               alpha = .7) +
+  stat_summary(
+    data = df_stem_dens2,
+    mapping = aes(x = manag, 
+                  y = sum_corr_count,
+                  fill = dom_sp),
+    fun.min = function(z) { quantile(z,0.25) },
+    fun.max = function(z) { quantile(z,0.75) },
+    fun = median,
+    geom  = 'errorbar',
+    width = .2) +
+  facet_wrap(vert_layer ~ dom_sp , scales="free"  ) +
+  ylab('Stem density/ha') +
+  scale_x_discrete(name = '',
+                   breaks = names(manag.labs),
+                   labels = manag.labs)
+
+
 
 
 # Get output stem table: ----------------------------------------
