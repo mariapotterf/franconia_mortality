@@ -890,6 +890,19 @@ df_full_corr_mrg %>%
 # identify why there is low difference between disturbed/undisturbed plts, 
 #  check for beech in stem density: is bit because the survuval trees are smaller? 
 # !!!  hypothesis: same number of small DBH trees on disturbed site as large DBH trees in REF?
+
+forest_labeller <- function(variable,value){
+  return(forest_type_names[value])
+}
+
+forest_type_names <- list(
+  'beech'="Beech",
+  'oak'="Oak",
+  'pine'="Pine",
+  'spruce'="Spruce"
+)
+
+
 df_full_corr_mrg  %>% 
   filter(height_class %in% c('mature', 'mat_ENV')) %>% 
   mutate(r = DBH/2,
@@ -897,37 +910,168 @@ df_full_corr_mrg  %>%
          BA_ha = BA*corr_count/ha)  %>%
   #arrange(trip_n, manag)
   group_by(trip_n, manag) %>% #, sub_n, species
-  summarize(mean_BA = mean(BA_ha, na.rm = T)) %>%
+  full_join(plot_counts_df, by = join_by(trip_n, manag, sub_n)) %>%  # join all of the combination of manag, plots and mature and ENV trees classes
+  mutate(BA_ha, replace_na(BA_ha)) %>% # add the sites without living trees
+  summarize(mean_BA = mean(BA_ha, na.rm = T), .groups = 'drop') %>%
   left_join(trip_species, by = "trip_n") %>% 
+ mutate(dom_sp = factor(dom_sp, 
+                         levels = c('spruce', 'pine', 'beech', 'oak'))) %>% 
   ggplot(aes(x = factor(manag, 
-                        level = c('l', 'c', 'd')),
+                        levels = c('l', 'c', 'd')),
              y = mean_BA,
              fill = manag)) + 
   details_violin() +
-  geom_jitter(alpha = 0.5) +
+  geom_boxplot(width = 0.1, fill = "white", alpha = 0.7) + 
+  #geom_jitter(alpha = 0.5) +
   #coord_cartesian(ylim = c(0, 100)) +
-  ggtitle('Mature trees BA') +
-  facet_grid(. ~ dom_sp )
+  labs(y = expression("Basal area [m"^2*"]")) +
+ # ggtitle('Mature trees BA') +
+  facet_grid(. ~ dom_sp , labeller = forest_labeller)   # 
 
+
+# Create all combinations of trip_n and manag
+trip_manag_combinations <- trip_species %>%
+  distinct(trip_n) %>%
+  mutate(manag = list(c("l", "c", "d"))) %>%
+  unnest(manag)
+
+# make sure that every site has both metrics, 
+# to properly account for the basal area per site!
+#mature_height_combination <- plot_counts_df %>%
+#  group_by(trip_n, sub_n) %>%
+#  mutate(height_class = list(c("mature", "mat_ENV"))) %>% 
+#  unnest(height_class) %>% 
+#  full_join(trip_manag_combinations, by = join_by(trip_n, manag))
 
 # identify where are the lowest differences in BA: REF-DIST, in which plts?
-#check_BA<- 
-  df_full_corr_mrg  %>% 
+# make sure that every plot (and subplot) has all of teh mature abd mat_ENV categories!
+check_BA %>% 
+  #
   filter(height_class %in% c('mature', 'mat_ENV')) %>% 
+  ungroup(.) %>% 
+  count(height_class)
+
+# need to recalculate tree density: 
+# if I have one tree in plot (4m2) ~ 2500 trees/ha
+# if I have tree in distance 1.1 m (outsdide of the plot)
+ha = 10000
+dist = 1.1
+area = 1.1*2^2
+ha/area
+
+
+df_trees_ha <- tibble(
+  DBH = dbhs,
+  trees_per_ha = sapply(dbhs, trees_per_hectare)
+)
+
+
+# Severity as BA removed 
+  
+df_full_corr_mrg_BA_upd <- df_full_corr_mrg  %>% 
+  filter(height_class %in% c('mature', 'mat_ENV')) %>% 
+  mutate(area = ((distance+20)/100)*2^2) %>% 
+  #View()
+  mutate(corr_count_env_upd = ifelse(
+    height_class  == "mat_ENV" & distance < 130 , ha/area, corr_count)) %>% 
+  #mutate(check_1 = corr_count_env_upd) %>%
+  mutate(corr_count_env_upd = ifelse(
+      DBH >= 50 & corr_count_env_upd > 515, 515, corr_count_env_upd)) %>% 
+ # mutate(check_2 = corr_count_env_upd) %>%
+  mutate(corr_count_env_upd = ifelse(
+      DBH > 30 & DBH <50  & corr_count_env_upd > 400, 400, corr_count_env_upd)
+  ) %>% 
+ # mutate(check_3 = corr_count_env_upd) %>%
+  #View()
   mutate(r = DBH/2,
          BA = pi*r^2,
-         BA_ha = BA*corr_count/ha)  %>%
+         # BA_ha = BA*corr_count/ha,
+         BA_ha_corr = BA*corr_count_env_upd/ha) %>%
+  full_join(plot_counts_df) %>%  # join all of the combination of manag, plots and mature and ENV trees classes
+  mutate(BA_ha_corr = replace_na(BA_ha_corr, 0)) #%>% 
+  
+View(df_full_corr_mrg_BA_upd)
+dim(df_full_corr_mrg_BA_upd)
+
+severity_BA_upd<- 
+  df_full_corr_mrg_BA_upd %>% 
+    # View()
   group_by(trip_n, manag, sub_n) %>% #, sub_n, species
-  summarize(sum_BA = sum(BA_ha, na.rm = T)) %>% # sum BA across plots
+  summarize(sum_BA = sum(BA_ha_corr)) %>% # sum BA across plots (to get the on plot and in the surroundings values)
+    #View()
     group_by(trip_n, manag) %>% #, sub_n, species
-    summarize(mean_BA = mean(sum_BA, na.rm = T)) %>% # average BA across sites
-  left_join(trip_species, by = "trip_n") %>% 
+    summarize(mean_BA = mean(sum_BA)) %>% # average BA across sites
+   # nrow()
+    ungroup(.) %>% 
+  right_join(trip_species, by = "trip_n") %>%
+   # group_by(trip_n,manag) %>% 
+   #count(trip_n) %>% 
+   # View()
   pivot_wider(names_from = manag, values_from = mean_BA  ) %>%
   mutate(REF_MAN = l-c,
-         REF_MAN_perc = REF_MAN/l*100,
+         managed = round(REF_MAN/l*100,2),
          REF_UNM = l-d,
-         REF_UNM_perc = REF_UNM/l*100) #%>% 
+         unmanaged = round(REF_UNM/l*100,2)) #%>% 
+  #  View()
+
+# get median severity: % of trees removed compared to REF per forest type
+severity_BA_upd %>% 
+  dplyr::select(dom_sp,
+                managed, 
+                unmanaged) %>% 
+  pivot_longer(cols = c(managed, unmanaged), 
+             names_to = "diff_type", 
+             values_to = "perc") %>% 
+  dplyr::filter(perc > 0) %>% 
+ # mutate(perc = ifelse(perc<0, 0, perc)) %>%  # corrected, as teh reference can't have lower BA then the disturbed
+ # group_by(diff_type, dom_sp) %>% 
+  summarise(median = median(perc))
   
+
+
+
+
+
+# severity as difference between the stem density of the mature trees
+
+df_full_corr_mrg_dens_upd <- df_full_corr_mrg  %>% 
+  filter(height_class %in% c('mature', 'mat_ENV')) %>% 
+  full_join(plot_counts_df) %>%  # join all of the combination of manag, plots and mature and ENV trees classes
+  mutate(corr_count = replace_na(corr_count, 0)) #%>% 
+
+
+severity_dens<- 
+  df_full_corr_mrg_dens_upd %>% 
+  # View() 
+  full_join(plot_counts_df_sum) %>% 
+  group_by(trip_n, manag) %>% #, sub_n, species
+  dplyr::summarize(sum_dens = mean(corr_count)) %>% # sum density and dividde by the number of subplots
+  ungroup(.) %>% 
+  right_join(trip_species, by = "trip_n") %>%
+  # group_by(trip_n,manag) %>% 
+  #count(trip_n) %>% 
+  # View()
+   # ungroup(.) %>% 
+  pivot_wider(names_from = manag, values_from = sum_dens  ) %>%
+  mutate(REF_MAN = l-c,
+         managed = round(REF_MAN/l*100,2),
+         REF_UNM = l-d,
+         unmanaged = round(REF_UNM/l*100,2)) #%>% 
+#  View()
+
+# get median severity: % of trees removed compared to REF per forest type
+severity_dens %>% 
+  dplyr::select(dom_sp,
+                managed, 
+                unmanaged) %>% 
+  pivot_longer(cols = c(managed, unmanaged), 
+               names_to = "diff_type", 
+               values_to = "perc") %>% 
+  dplyr::filter(perc > 0) %>% 
+  # mutate(perc = ifelse(perc<0, 0, perc)) %>%  # corrected, as teh reference can't have lower BA then the disturbed
+  group_by(diff_type, dom_sp) %>% 
+  summarise(median = median(perc))
+
 
 
   
@@ -969,6 +1113,7 @@ ggarrange(p1, p2, ncol = 2)
 library(ggbeeswarm)
 df_full_corr_mrg  %>% 
   filter(height_class %in% c('mature', 'mat_ENV')) %>% 
+  full_join(trip_manag_combinations) %>%  # join all of the combination and classes
   filter(trip_n %in% c('33', '24', '22')) %>% 
   mutate(r = DBH/2,
          BA = pi*r^2,
