@@ -801,3 +801,21 @@ save(plot_IVI,
      file="outData/dataToPlot.Rdata")
 
 
+save(plot_IVI,
+     df_full_corr,
+     df_full_corr_mrg,      # filtered Mature trees by the nearest distance 
+     df_reg_full,           # full plot regeneration
+     #df_ground,             # ground cover
+     #df_deadwood_env_corr,  # deadwood stem density per plot and 4 categories
+     df_advanced,           # advanced regeneration PLOT, corrected distances
+     df_advanced_env,       # advanced regeneration in ENV
+     df_mature_trees_env,   # mature trees ENV
+     df_mature_trees_plot,  # mature trees PLOT
+     plot_counts_df,        # master table having all triplets and subsets structure
+     df_dbh_mean_advanced,  # df - DBH of advanced regeneration on plot
+     p_dbh_dist,            # plot of DBH of advanced regeneration
+     #p_compare_density_rIVI, # plot: compare density dist. between 2 types of rIVI vals
+     #p_mature_hist,         # histogram of MATURe trees in ENV
+     #p_advanced_hist,       # histogram of ADV trees in ENV
+     file="outData_share/data_plot_level.Rdata")
+
