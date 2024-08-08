@@ -39,7 +39,7 @@
 # try simply for site: can be easier (can have all 3 dimensions of species importance value)
 
 
-# Get density and basal area?
+# Get density and basal area
 # ---------------------------------
 
 # two estimations: 
