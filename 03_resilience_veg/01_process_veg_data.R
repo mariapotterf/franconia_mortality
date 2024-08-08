@@ -1041,3 +1041,15 @@ save(dat,                   # all raw data together
      file="outData/vegData.Rdata")
 
   
+
+save(#dat,                   # all raw data together  
+     df_reg_full,           # full regeneration, with specified 'Other species' #included planted and damaged trees
+     # df_regen,             # full plot regeneration
+     #df_ground,             # ground cover
+     df_advanced,           # advanced regeneration PLOT, corrected distances
+     df_advanced_env,       # advanced regeneration in ENV
+     df_mature_trees_env,   # mature trees ENV
+     df_mature_trees_plot,  # mature trees PLOT
+    # df_deadwood,           # get 4 types of deadwood in ENV   
+     plot_counts_df,        # master table having all triplets and subsets structure
+     file="outData_share/vegData.Rdata")
