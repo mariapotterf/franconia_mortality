@@ -1059,13 +1059,6 @@ p_scatter_mean
 
 
 
-# Dummy: Test difference between euclidean distance function and manual calculation
-
-df <- data.frame(x = c(1:5),
-                 y = c(1:5))
-
-df$euc = euclidean(df$x, df$y)
-df$dist = sqrt(df$y^2 + df$x^2)
 
 
 # Classify points by sectors ---------------------------------------
@@ -1290,14 +1283,14 @@ sites_out <- sites2 %>%
   left_join(dplyr::select(res_classes, c('trip_n', 'manag', 'labelXY'))) #%>% 
    # nrow()
 
-st_write(sites_out, 
-         'C:/Users/ge45lep/Documents/2021_Franconia_mortality/outSpatial/resilience_class/sites_resilience.shp',
-         append=FALSE)
+# st_write(sites_out, 
+#          'C:/Users/ge45lep/Documents/2021_Franconia_mortality/outSpatial/resilience_class/sites_resilience.shp',
+#          append=FALSE)
 
 # 
 # Export objects -----------------------------------------------------------
 
-save.image(file="outData/dat_restr.Rdata")
+#save.image(file="outData/dat_restr.Rdata")
 
 
 ## WR
@@ -1370,9 +1363,7 @@ wr_species_all <-
   group_by(trip_n, manag, nsubplots, species) %>%
   summarise(sp_count_present = mean(sp_count), sp_count_sd = sd(sp_count), sp_count_n=n(), sp_count_mean = sum(sp_count/nsubplots)) %>% 
   mutate(rel_count = sp_count_mean / sum(sp_count_mean)) %>%
-  left_join(trip_species)
- 
-  %>%
+  left_join(trip_species)%>%
   pivot_wider(id_cols=c(trip_n, manag), names_from=species, values_from=c(sp_count_mean,rel_count))
 
 
@@ -1395,20 +1386,20 @@ out_reorg_full <-
 # noch dazuhängen von triplet  
 
   out_reorg_full <-
-    out_reorg_full %>% left_join(trip_species %>% mutate(trip_n=as.integer(trip_n)))
+    out_reorg_full %>% left_join(trip_species %>% mutate(trip_n=trip_n))
   
 # noch dazuhängen von area
 out_reorg_full <-
   out_reorg_full %>% left_join( df %>% select(trip_n, manag, dom_sp, Area_m2) %>% mutate(trip_n=as.integer(trip_n))  )
   
   
-write.csv(out_reorg_full, file="outData/out_reorg_full.csv", row.names = F)
+write.csv(out_reorg_full, file="outData_share/out_reorg_full.csv", row.names = F)
 
-write.csv(wr_stems, file="outData/wr_stems.csv", row.names = F)
+write.csv(wr_stems, file="outData_share/wr_stems.csv", row.names = F)
 
-write.csv(wr_species_am, file="outData/wr_species_am.csv", row.names = F)  
+write.csv(wr_species_am, file="outData_share/wr_species_am.csv", row.names = F)  
 
-write.csv(wr_species_all, file="outData/wr_species_all.csv", row.names = F)  
+write.csv(wr_species_all, file="outData_share/wr_species_all.csv", row.names = F)  
 ## /WR
 
 ## WR
@@ -1554,9 +1545,9 @@ abline(a=0,b=1)
 summary(cbind("fix" = df_RS1_fix$RS1,"orig" = df_RS1$RS1))
 
 out_reorg_full_fix <- out_reorg_full %>% 
-  select(-dist_mean_dens,  -ref_mean_dens, -ref_sd_dens,  -RS1) %>% left_join(df_RS1_fix %>% mutate(trip_n=as.integer(trip_n), manag=as.factor(manag)))
+  select(-dist_mean_dens,  -ref_mean_dens, -ref_sd_dens,  -RS1) %>% left_join(df_RS1_fix %>% mutate(trip_n=trip_n, manag=as.factor(manag)))
 
-save(out_reorg_full_fix, file="out_reorg_full_fix.RData")
+save(out_reorg_full_fix, file="outDAta_share/out_reorg_full_fix.RData")
 
 ## ok, jetzt noch alternive für RA1 (siehe unten dazuhängen)
 
