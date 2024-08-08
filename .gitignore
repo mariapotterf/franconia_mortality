@@ -4,8 +4,9 @@
 .Ruserdata
 inImg
 
-outReports
-outData
+outReports/
+outData/
+outData_share/
 
 plot1.png
 Rplot.png
