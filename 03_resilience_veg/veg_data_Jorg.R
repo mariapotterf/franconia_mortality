@@ -40,12 +40,12 @@ load(file = paste(getwd(), "outData/dat_restr.Rdata", sep = '/'))
 
 
 # output file
-outPath = paste('C:/Users/ge45lep/Documents/2021_Franconia_mortality/03_plot_sampling/out_fieldData/share_veget_Jorg')
+outPath = paste('out_Data_share/share_veget_Jorg')
 
 
 # Get rasters: deciduous vs coniferous,
 # calculate the buffer as well;
-forest_type <- terra::rast("C:/Users/ge45lep/Documents/2022_BarkBeetles_Bavaria/outSpatial/bav_fortype_ext30_int2u_LZW.tif")
+forest_type <- terra::rast("C:/Users/potterf/OneDrive - CZU v Praze/Dokumenty/2022_BarkBeetles_Bavaria/outSpatial/bav_fortype_ext30_int2u_LZW.tif")
 xy          <- st_read(paste(myPath, outSpatial, "xy_3035_elev.gpkg", sep = "/"), 
                 layer = 'xy_3035_elev') # read XY data
 
@@ -66,14 +66,14 @@ plot_counts_df_sum        # - number of plots per site & treatment
 
 # read elevation df with XY coordinates:
 # export CSV table 
-fwrite(xy2_df_out, paste(myPath, outTable, "xy_3035_elev.csv", sep = "/"))
+#fwrite(xy2_df_out, paste(myPath, outTable, "xy_3035_elev.csv", sep = "/"))
 
 
 # filter data to check if really regen is missing: 61 D
 
 df_full_corr_mrg %>% 
-  filter(vert_layer == 'regen' ) %>% 
-  filter(trip_n == '61' & manag == 'd') #%>%  
+  dplyr::filter(vert_layer == 'regen' ) %>% 
+  dplyr::filter(trip_n == '61' & manag == 'd') #%>%  
 
 # check if data correct: 
 # - height classes
@@ -135,8 +135,7 @@ veg_matrix <-
    values_from = sum_stem,
              values_fill = 0) %>% # replace NA by 0 if missing speies
   ungroup(.) %>% 
-  right_join(df_master_heights, by = c("trip_n", "manag", "vert_layer"),
-             values_fill = 0)  %>% # add all 3 height categories
+  right_join(df_master_heights, by = c("trip_n", "manag", "vert_layer"))  %>% # add all 3 height categories, , #values_fill = 0
   replace(is.na(.), 0) 
   
     
