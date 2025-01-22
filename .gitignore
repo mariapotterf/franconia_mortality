@@ -7,6 +7,8 @@ inImg
 outReports/
 outData/
 outData_share/
+outTable/
+share/
 
 plot1.png
 Rplot.png
